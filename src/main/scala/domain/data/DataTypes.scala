@@ -1,4 +1,4 @@
-package model
+package domain.data
 
 enum Label:
   case Positive
