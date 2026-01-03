@@ -1,5 +1,6 @@
 package domain.data
 
+import scala.annotation.targetName
 import scala.collection.immutable.Vector as ScalaVector
 
 object LinearAlgebra:
@@ -20,27 +21,50 @@ object LinearAlgebra:
 
   extension (v: Vector)
     def length: Int = v.size
+
+    @targetName("vectorPlus")
     def +(other: Vector): Vector = v.zip(other).map(_ + _)
+
     def -(other: Vector): Vector = v.zip(other).map(_ - _)
+
+    @targetName("vectorTimesScalar")
     def *(scalar: Double): Vector = v.map(_ * scalar)
+
     def /(scalar: Double): Vector = v.map(_ / scalar)
-    def dot(other: Vector): Double = v.zip(other).map(_ * _).sum
+
+    infix def dot(other: Vector): Double = v.zip(other).map(_ * _).sum
+
     def |*|(other: Vector): Vector = v.zip(other).map(_ * _)
+
+    @targetName("vectorMap")
     def map(f: Double => Double): Vector = v.map(f)
+
     def toList: List[Double] = v.toList
+
     def headOption: Option[Double] = v.headOption
+
     def apply(i: Int): Double = v(i)
 
   extension (m: Matrix)
-    def *(v: Vector): Vector = m.map(row => row dot v)
+    @targetName("matrixTimesVector")
+    def *(v: Vector): Vector = m.map(row => row.dot(v))
+
+    @targetName("matrixPlus")
     def +(other: Matrix): Matrix =
       m.lazyZip(other).map((row1, row2) =>
         row1.lazyZip(row2).map(_ + _)
       )
+
+    @targetName("matrixTimesScalar")
     def *(scalar: Double): Matrix = m.map(_.map(_ * scalar))
+
     def T: Matrix =
       if m.isEmpty then ScalaVector.empty
       else m.transpose
+
+    @targetName("matrixMap")
     def map(f: Double => Double): Matrix = m.map(_.map(f))
+
     def rows: Int = m.size
+
     def cols: Int = if m.isEmpty then 0 else m.head.size
