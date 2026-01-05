@@ -20,21 +20,32 @@ object LinearAlgebra:
       ScalaVector.fill(rows)(ScalaVector.fill(cols)(0.0))
 
   extension (v: Vector)
-    def length: Int = v.size
+    def length: Int =
+      v.size
 
     @targetName("vectorPlus")
-    def +(other: Vector): Vector = v.zip(other).map(_ + _)
+    def +(other: Vector): Vector =
+      v.zip(other).map(_ + _)
 
-    def -(other: Vector): Vector = v.zip(other).map(_ - _)
+    @targetName("vectorMinus")
+    def -(other: Vector): Vector =
+      v.zip(other).map(_ - _)
 
     @targetName("vectorTimesScalar")
-    def *(scalar: Double): Vector = v.map(_ * scalar)
+    def *(scalar: Double): Vector =
+      v.map(_ * scalar)
 
-    def /(scalar: Double): Vector = v.map(_ / scalar)
+    def /(scalar: Double): Vector =
+      v.map(_ / scalar)
 
-    infix def dot(other: Vector): Double = v.zip(other).map(_ * _).sum
+    infix def dot(other: Vector): Double =
+      v.zip(other).map(_ * _).sum
 
-    def |*|(other: Vector): Vector = v.zip(other).map(_ * _)
+    def |*|(other: Vector): Vector =
+      v.zip(other).map(_ * _)
+
+    infix def outer(other: Vector): Matrix =
+      v.map(vi => other.map(oj => vi * oj))
 
     @targetName("vectorMap")
     def map(f: Double => Double): Vector = v.map(f)
@@ -47,12 +58,20 @@ object LinearAlgebra:
 
   extension (m: Matrix)
     @targetName("matrixTimesVector")
-    def *(v: Vector): Vector = m.map(row => row.dot(v))
+    def *(v: Vector): Vector =
+      require(m.head.length == v.length)
+      m.map(row => row.dot(v))
 
     @targetName("matrixPlus")
     def +(other: Matrix): Matrix =
       m.lazyZip(other).map((row1, row2) =>
         row1.lazyZip(row2).map(_ + _)
+      )
+
+    @targetName("matrixMinus")
+    def -(other: Matrix): Matrix =
+      m.lazyZip(other).map((row1, row2) =>
+        row1.lazyZip(row2).map(_ - _)
       )
 
     @targetName("matrixTimesScalar")

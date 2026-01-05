@@ -72,4 +72,18 @@ class LinearAlgebraTest extends AnyFunSuite with Matchers {
   test("Matrix transpose swaps dimensions") {
     Matrix.zeros(2, 5).T.rows shouldBe 5
   }
+
+  test("Matrix subtraction subtracts elements pairwise") {
+    val m1 = Matrix.fill(2, 2)(10.0)
+    val m2 = Matrix.fill(2, 2)(3.0)
+
+    ((m1 - m2) * Vector(1.0, 1.0)).toList shouldBe List(14.0, 14.0)
+  }
+
+  test("Vector outer product creates correct matrix values") {
+    val v1 = Vector(1.0, 2.0, 3.0)
+    val v2 = Vector(4.0, 5.0)
+
+    ((v1 outer v2) * Vector(1.0, 1.0)).toList shouldBe List(9.0, 18.0, 27.0)
+  }
 }
