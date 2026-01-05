@@ -1,7 +1,7 @@
 Product Backlog Item;Sprint Task;Volunteer;Initial Estimate of Effort;1;2;3;4;5;6
 Core Math Engine;testing Mob Code;Fantilli;2;0;0;0;0;0;0
 ;implementation Loss & Backprop;Fantilli;7;7;5;;;;
-;SGD & integration;Fantilli;6;6;6;;;;
+;SGD & integration;Fantilli;6;6;5;;;;
 Data Engineering & Persistence;dataset generator;Colletta;5;;;;;;
 ;data spilt and batching;Colletta;5;;;;;;
 ;serialization and export;Colletta;5;;;;;;
