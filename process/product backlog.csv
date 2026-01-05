@@ -1,10 +1,15 @@
+DISTRIBUTED NEURAL TRAINING SIMULATION (DNTS) - PRODUCT BACKLOG;;;;;;;;;
+;;;;;;;;;
+>>> SPRINT 1: 05-11 Gennaio;;;;;;;;;
 Product Backlog Item;Sprint Task;Volunteer;Initial Estimate of Effort;1;2;3;4;5;6
 Core Math Engine;testing Mob Code;Fantilli;2;0;0;0;0;0;0
-;implementation Loss & Backprop;Fantilli;7;7;5;2;;;
-;SGD & integration;Fantilli;6;6;5;5;;;
+;implementation Loss & Backprop;Fantilli;5;5;3;0;0;0;0
+;SGD & integration;Fantilli;2;2;1;0;0;0;0
 Data Engineering & Persistence;dataset generator;Colletta;5;;;;;;
 ;data spilt and batching;Colletta;5;;;;;;
 ;serialization and export;Colletta;5;;;;;;
 Actor System Skeleton;actor protocol;Giacobbi;5;;;;;;
 ;Model Actor;Giacobbi;5;;;;;;
 ;Trainer & CM Skeleton;Giacobbi;5;;;;;;
+;;;;;;;;;
+;;;;;;;;;
