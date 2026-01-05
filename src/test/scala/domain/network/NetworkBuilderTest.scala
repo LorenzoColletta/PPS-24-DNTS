@@ -50,4 +50,28 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
 
     noException should be thrownBy model.predict(Point2D(0.5, 0.5))
   }
+
+  test("Builder with same seed should produce identical weights") {
+    val seed = 12345L
+
+    val net1 = NetworkBuilder.fromInputs(Feature.X)
+      .addLayer(2, Activations.sigmoid)
+      .withSeed(seed)
+      .build()
+      .network
+
+    val net2 = NetworkBuilder.fromInputs(Feature.X)
+      .addLayer(2, Activations.sigmoid)
+      .withSeed(seed)
+      .build()
+      .network
+
+    (
+      net1.layers.head.weights,
+      net1.layers.head.biases
+    ) shouldBe (
+      net2.layers.head.weights,
+      net2.layers.head.biases
+    )
+  }
 }

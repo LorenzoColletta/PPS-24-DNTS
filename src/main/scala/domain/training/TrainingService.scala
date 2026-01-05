@@ -17,11 +17,14 @@ object TrainingService:
     features: List[Feature],
     hp: HyperParams,
     epochs: Int,
-    batchSize: Int
+    batchSize: Int,
+    seed: Option[Long] = None
   ): (Network, List[Double]) =
 
     require(batchSize > 0, "Batch size must be positive")
     require(epochs > 0, "Epochs must be positive")
+
+    val rand = seed.map(s => new Random(s)).getOrElse(new Random())
 
     val regStrategy = Regularizers.fromConfig(hp.regularization)
     val optimizer = new Optimizers.SGD(hp.learningRate, regStrategy)
@@ -29,7 +32,16 @@ object TrainingService:
 
     val (trainedNetwork, lossHistory) = (1 to epochs).foldLeft((initialNetwork, List.empty[Double])) {
       case ((currentNet, lossAcc), _) =>
-        val (epochNet, epochAvgLoss) = runEpoch(currentNet, dataset, features, optimizer, batchSize, lossFn)
+        val (epochNet, epochAvgLoss) =
+          runEpoch(
+            currentNet,
+            dataset,
+            features,
+            optimizer,
+            batchSize,
+            lossFn,
+            rand
+          )
         (epochNet, lossAcc :+ epochAvgLoss)
     }
     (trainedNetwork, lossHistory)
@@ -41,10 +53,11 @@ object TrainingService:
     features: List[Feature],
     optimizer: Optimizer,
     batchSize: Int,
-    lossFn: LossFunction
+    lossFn: LossFunction,
+    rand: Random
   ): (Network, Double) =
 
-    val shuffledData = Random.shuffle(dataset)
+    val shuffledData = rand.shuffle(dataset)
     val batches = shuffledData.grouped(batchSize).toList
 
     val (finalNet, totalEpochLoss) = batches.foldLeft((network, 0.0)) {

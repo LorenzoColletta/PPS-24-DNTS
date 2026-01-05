@@ -9,9 +9,15 @@ import domain.data.LinearAlgebra.*
 
 class TrainingServiceTest extends AnyFunSuite with Matchers {
 
+  private final val fixedSeed = 1234L
+
   test("Training on a single point forces loss to zero") {
     val singlePt = List(LabeledPoint2D(Point2D(0.5, 0.5), Label.Positive))
-    val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y).build()
+
+    val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y)
+      .withSeed(fixedSeed)
+      .build()
+
     val hp = HyperParams(learningRate = 2.0, regularization = Regularization.None)
 
     val (_, history) = TrainingService.train(
@@ -20,7 +26,8 @@ class TrainingServiceTest extends AnyFunSuite with Matchers {
       List(Feature.X, Feature.Y),
       hp,
       epochs = 200,
-      batchSize = 1
+      batchSize = 1,
+      seed = Some(fixedSeed)
     )
 
     history.last should be < 0.001
@@ -34,16 +41,18 @@ class TrainingServiceTest extends AnyFunSuite with Matchers {
       LabeledPoint2D(Point2D(1.0, 1.0), Label.Positive)
     )
 
-    val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y).build()
-    val hp = HyperParams(learningRate = 1.0)
+    val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y)
+      .withSeed(fixedSeed)
+      .build()
 
     val (net, _) = TrainingService.train(
       model.network,
       andData,
       List(Feature.X, Feature.Y),
-      hp,
+      HyperParams(learningRate = 1.0),
       epochs = 1000,
-      batchSize = 4
+      batchSize = 4,
+      seed = Some(fixedSeed)
     )
 
     val output = net.forward(Vector(1.0, 1.0)).headOption.getOrElse(0.0)
@@ -53,7 +62,7 @@ class TrainingServiceTest extends AnyFunSuite with Matchers {
 
   test("Weights change after training epoch") {
     val data = List(LabeledPoint2D(Point2D(1.0, 1.0), Label.Positive))
-    val model = NetworkBuilder.fromInputs(Feature.X).build()
+    val model = NetworkBuilder.fromInputs(Feature.X).withSeed(fixedSeed).build()
     val startW = model.network.layers.head.weights
 
     val (net, _) = TrainingService.train(
@@ -62,7 +71,8 @@ class TrainingServiceTest extends AnyFunSuite with Matchers {
       List(Feature.X),
       HyperParams(0.1),
       1,
-      1
+      1,
+      seed = Some(fixedSeed)
     )
 
     net.layers.head.weights should not be startW

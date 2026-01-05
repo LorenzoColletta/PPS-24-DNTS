@@ -12,8 +12,11 @@ object NetworkBuilder:
 
   case class Builder(
     features: List[Feature],
-    hiddenLayers: List[LayerConf]
+    hiddenLayers: List[LayerConf],
+    seed: Option[Long] = None
   ):
+    def withSeed(s: Long): Builder = this.copy(seed = Some(s))
+
     def addLayer(neurons: Int, activation: Activation): Builder =
       val newConf = LayerConf(neurons, activation)
       this.copy(hiddenLayers = this.hiddenLayers :+ newConf)
@@ -21,7 +24,7 @@ object NetworkBuilder:
     def build(): Model =
       require(features.nonEmpty, "No input features defined")
 
-      val rand = new Random()
+      val rand = seed.map(s => new Random(s)).getOrElse(new Random())
       val inputSize = features.length
 
       def initWeights(rows: Int, cols: Int, standardDeviation: Double): Matrix =
