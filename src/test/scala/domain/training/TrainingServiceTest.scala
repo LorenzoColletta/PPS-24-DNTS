@@ -19,7 +19,7 @@ class TrainingServiceTest extends AnyFunSuite with Matchers {
       singlePt,
       List(Feature.X, Feature.Y),
       hp,
-      epochs = 100,
+      epochs = 200,
       batchSize = 1
     )
 
