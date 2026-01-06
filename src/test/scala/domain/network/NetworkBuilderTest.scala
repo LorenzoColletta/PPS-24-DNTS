@@ -4,7 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
 import domain.data.Point2D
-import domain.network.Activations.given
+import domain.network.Activations
 
 class NetworkBuilderTest extends AnyFunSuite with Matchers {
 
@@ -14,13 +14,13 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
 
   test("Builder accumulates layer configurations with correct activations") {
     NetworkBuilder.fromInputs(Feature.X)
-      .addLayer(10, Activations.relu)
-      .hiddenLayers.head.activation.name shouldBe "ReLU"
+      .addLayer(10, Activations.Relu)
+      .hiddenLayers.head.activation.name shouldBe "Relu"
   }
 
   test("Build generates a Model with input dimension matching feature count") {
     val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y, Feature.ProductXY)
-      .addLayer(5, Activations.tanh)
+      .addLayer(5, Activations.Tanh)
       .build()
 
     model.network.layers.head.weights.cols shouldBe 3
@@ -28,7 +28,7 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
 
   test("Build forces Sigmoid activation on the output layer") {
     val model = NetworkBuilder.fromInputs(Feature.X)
-      .addLayer(5, Activations.relu)
+      .addLayer(5, Activations.Relu)
       .build()
 
     model.network.layers.last.activation.name shouldBe "Sigmoid"
@@ -36,7 +36,7 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
 
   test("Model incorporates Feature transformation in prediction pipeline") {
     val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y)
-      .addLayer(2, Activations.sigmoid)
+      .addLayer(2, Activations.Sigmoid)
       .build()
 
     model.predict(Point2D(1.0, 1.0)) should (be >= 0.0 and be <= 1.0)
@@ -44,8 +44,8 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
 
   test("Built network propagates forward pass without runtime errors") {
     val model = NetworkBuilder.fromInputs(Feature.X)
-      .addLayer(10, Activations.relu)
-      .addLayer(10, Activations.tanh)
+      .addLayer(10, Activations.Relu)
+      .addLayer(10, Activations.Tanh)
       .build()
 
     noException should be thrownBy model.predict(Point2D(0.5, 0.5))
@@ -55,13 +55,13 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
     val seed = 12345L
 
     val net1 = NetworkBuilder.fromInputs(Feature.X)
-      .addLayer(2, Activations.sigmoid)
+      .addLayer(2, Activations.Sigmoid)
       .withSeed(seed)
       .build()
       .network
 
     val net2 = NetworkBuilder.fromInputs(Feature.X)
-      .addLayer(2, Activations.sigmoid)
+      .addLayer(2, Activations.Sigmoid)
       .withSeed(seed)
       .build()
       .network

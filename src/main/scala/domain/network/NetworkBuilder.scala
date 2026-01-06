@@ -13,7 +13,9 @@ object NetworkBuilder:
   case class Builder(
     features: List[Feature],
     hiddenLayers: List[LayerConf],
-    seed: Option[Long] = None
+    seed: Option[Long] = None,
+    outputNeurons: Int = 1,
+    outputActivation: Activation = Activations.Sigmoid
   ):
     def withSeed(s: Long): Builder = this.copy(seed = Some(s))
 
@@ -40,10 +42,10 @@ object NetworkBuilder:
           (accLayers :+ Layer(w, b, conf.activation), conf.neurons)
       }
 
-      val outAct = summon[Activation](using Activations.sigmoid)
-      val outW = initWeights(1, lastSize, outAct.standardDeviation(lastSize, 1))
-      val outB = Vector.zeros(1)
+      val outStdDev = outputActivation.standardDeviation(lastSize, outputNeurons)
+      val outW = initWeights(outputNeurons, lastSize, outStdDev)
+      val outB = Vector.zeros(outputNeurons)
 
-      val finalNetwork = Network(layers :+ Layer(outW, outB, outAct))
+      val finalNetwork = Network(layers :+ Layer(outW, outB, outputActivation))
 
       Model(finalNetwork, features)

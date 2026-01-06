@@ -54,7 +54,7 @@ class StrategiesTest extends AnyFunSuite with Matchers {
   test("SGD updates weights by subtracting scaled gradient") {
     val optimizer = new Optimizers.SGD(0.5, Regularizers.fromConfig(Regularization.None))
 
-    val layer = Layer(Matrix.fill(1, 1)(10.0), Vector(0.0), Activations.relu)
+    val layer = Layer(Matrix.fill(1, 1)(10.0), Vector(0.0), Activations.Relu)
     val net = Network(List(layer))
     val grad = NetworkGradient(List(LayerGradient(Matrix.fill(1, 1)(2.0), Vector(0.0))))
 
