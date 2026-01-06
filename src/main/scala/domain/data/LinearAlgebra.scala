@@ -16,8 +16,13 @@ object LinearAlgebra:
   object Matrix:
     def fill(rows: Int, cols: Int)(gen: => Double): Matrix =
       ScalaVector.fill(rows)(ScalaVector.fill(cols)(gen))
+
     def zeros(rows: Int, cols: Int): Matrix =
       ScalaVector.fill(rows)(ScalaVector.fill(cols)(0.0))
+
+    def fromData(rows: Int, cols: Int, data: List[Double]): Matrix =
+      val chunks = data.grouped(cols).toVector
+      chunks.map(row => ScalaVector(row *))
 
   extension (v: Vector)
     def length: Int =
@@ -87,3 +92,5 @@ object LinearAlgebra:
     def rows: Int = m.size
 
     def cols: Int = if m.isEmpty then 0 else m.head.size
+
+    def toFlatList: List[Double] = m.flatMap(_.toList).toList
