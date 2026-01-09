@@ -22,32 +22,51 @@ class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
     adapter.identifier shouldBe 99999
   }
 
+  test("Adapter exposes correct public constant for Network manifest") {
+    AkkaSerializerAdapter.ManifestNetwork shouldBe "N"
+  }
+
+  test("Adapter produces correct manifest string for a Network object") {
+    val net = createDummyNetwork()
+
+    adapter.manifest(net) shouldBe AkkaSerializerAdapter.ManifestNetwork
+  }
+
   test("Adapter properly serializes a Network to binary") {
     val net = createDummyNetwork()
 
     adapter.toBinary(net).length should be > 0
   }
 
-  test("Adapter round-trip (serialize -> deserialize) preserves the Network") {
+  test("Adapter round-trip preserves the Network") {
     val originalNet = createDummyNetwork()
 
     val bytes = adapter.toBinary(originalNet)
-    val restoredObj = adapter.fromBinary(bytes, Some(classOf[Network]))
+    val restoredObj = adapter.fromBinary(bytes, AkkaSerializerAdapter.ManifestNetwork)
 
     restoredObj shouldBe originalNet
   }
 
-  test("Adapter throws exception when serializing unsupported types") {
+  test("Adapter throws exception when asked for manifest of unsupported type") {
     an[IllegalArgumentException] should be thrownBy {
-      adapter.toBinary("I am not a neural network")
+      adapter.manifest("I am just a String")
+    }
+  }
+
+  test("Adapter throws exception when serializing unsupported types") {
+    val unsupportedObject = List.fill(1, 2, 3, 4)
+
+    an[IllegalArgumentException] should be thrownBy {
+      adapter.toBinary(unsupportedObject)
     }
   }
 
   test("Adapter should throw exception when deserializing with unknown manifest") {
     val dummyBytes = Array[Byte](1, 2, 3)
+    val unknownManifest = "UNKNOWN_TYPE"
 
     an [IllegalArgumentException] should be thrownBy {
-      adapter.fromBinary(dummyBytes, Some(classOf[String]))
+      adapter.fromBinary(dummyBytes, unknownManifest)
     }
   }
 
@@ -56,6 +75,14 @@ class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
 
     an [IllegalArgumentException] should be thrownBy {
       adapter.fromBinary(dummyBytes, None)
+    }
+  }
+
+  test("Adapter throws exception when deserialization fails due to corrupted bytes") {
+    val corruptedBytes = Array[Byte](0, 0, 0, 1)
+
+    an[IllegalArgumentException] should be thrownBy {
+      adapter.fromBinary(corruptedBytes, AkkaSerializerAdapter.ManifestNetwork)
     }
   }
 }

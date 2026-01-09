@@ -1,7 +1,7 @@
 package domain.serialization
 
 import scala.util.{Failure, Success}
-import akka.serialization.Serializer
+import akka.serialization.SerializerWithStringManifest
 
 import domain.network.Network
 import domain.network.Activations.given
@@ -9,37 +9,53 @@ import domain.serialization.NetworkSerializers.given
 import domain.serialization.LinearAlgebraSerializers.given
 import domain.serialization.Serializer as DomainSerializer
 
-class AkkaSerializerAdapter extends Serializer {
+object AkkaSerializerAdapter:
+
+  final val ManifestNetwork = "N"
+  final val ManifestDataset = "D"
+
+  private case class TypeBinding[T](
+    manifest: String,
+    clss: Class[T],
+    serializer: DomainSerializer[T]
+  )
+
+  private val registry: List[TypeBinding[?]] = List(
+    TypeBinding(ManifestNetwork, classOf[Network], summon[DomainSerializer[Network]])
+  )
+
+class AkkaSerializerAdapter extends SerializerWithStringManifest:
+  import AkkaSerializerAdapter.registry
+  import AkkaSerializerAdapter.TypeBinding
 
   override def identifier: Int = 99999
 
-  override def includeManifest: Boolean = true
+  private val manifestToBinding: Map[String, TypeBinding[?]] =
+    registry.map(b => b.manifest -> b).toMap
 
-  override def toBinary(o: AnyRef): Array[Byte] = o match {
-    case n: Network =>
-      summon[DomainSerializer[Network]].serialize(n)
+  private val classToBinding: Map[Class[?], TypeBinding[?]] =
+    registry.map(b => b.clss -> b).toMap
 
-    case _ =>
-      throw new IllegalArgumentException(s"AkkaSerializerAdapter cannot serialize object of type: ${o.getClass.getName}")
-  }
 
-  override def fromBinary(bytes: Array[Byte], manifest: Option[Class[?]]): AnyRef = {
-    manifest match {
-      case Some(c) if c == classOf[Network] =>
-        deserializeNetwork(bytes)
-
-      case Some(c) =>
-        throw new IllegalArgumentException(s"Unknown manifest class: ${c.getName}")
-
+  override def manifest(o: AnyRef): String =
+    classToBinding.get(o.getClass) match
+      case Some(binding) => binding.manifest
       case None =>
-        throw new IllegalArgumentException("Manifest is required but missing")
-    }
-  }
+        throw new IllegalArgumentException(s"Type not supported by AkkaSerializerAdapter: ${o.getClass.getName}")
 
-  private def deserializeNetwork(bytes: Array[Byte]): Network = {
-    summon[DomainSerializer[Network]].deserialize(bytes) match {
-      case Success(net) => net
-      case Failure(ex)  => throw new IllegalArgumentException("Failed to deserialize Network", ex)
-    }
-  }
-}
+  override def toBinary(o: AnyRef): Array[Byte] =
+    classToBinding.get(o.getClass) match
+      case Some(binding) =>
+        binding.asInstanceOf[TypeBinding[AnyRef]].serializer.serialize(o)
+      case None =>
+        throw new IllegalArgumentException(s"Serializer not found for type: ${o.getClass.getName}")
+
+  override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
+    manifestToBinding.get(manifest) match
+      case Some(binding) =>
+        binding.serializer.deserialize(bytes) match
+          case Success(obj) => obj.asInstanceOf[AnyRef]
+          case Failure(ex)  =>
+            throw new IllegalArgumentException(s"Deserialization failed for manifest '$manifest'", ex)
+      case None =>
+        throw new IllegalArgumentException(s"Unknown manifest: $manifest")
