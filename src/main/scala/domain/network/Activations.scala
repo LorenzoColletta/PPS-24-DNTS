@@ -6,32 +6,44 @@ trait Activation:
   def derivative(x: Double): Double
   def standardDeviation(nIn: Int, nOut: Int): Double
 
+
+enum Activations extends Activation:
+  case Sigmoid
+  case Relu
+  case LeakyRelu
+  case Tanh
+
+  override def name: String = this.toString
+
+  override def apply(x: Double): Double =
+    this match
+      case Sigmoid   => 1.0 / (1.0 + Math.exp(-x))
+      case Relu      => Math.max(0, x)
+      case LeakyRelu => if x > 0 then x else 0.01 * x
+      case Tanh      => Math.tanh(x)
+
+  override def derivative(x: Double): Double =
+    this match
+      case Sigmoid =>
+        val s = apply(x)
+        s * (1.0 - s)
+      case Relu =>
+        if x > 0 then 1.0 else 0.0
+      case LeakyRelu =>
+        if x > 0 then 1.0 else 0.01
+      case Tanh =>
+        val t = apply(x)
+        1.0 - (t * t)
+
+  override def standardDeviation(nIn: Int, nOut: Int): Double =
+    this match
+      case Sigmoid | Tanh => Math.sqrt(1.0 / ((nIn + nOut) / 2.0))
+      case Relu | LeakyRelu => Math.sqrt(2.0 / nIn)
+
+
 object Activations:
-  given sigmoid: Activation with
-    def name = "Sigmoid"
-    def apply(x: Double): Double = 1.0 / (1.0 + Math.exp(-x))
-    def derivative(x: Double): Double =
-      val s = apply(x)
-      s * (1.0 - s)
-    def standardDeviation(nIn: Int, nOut: Int): Double = Math.sqrt(1.0 / ((nIn + nOut) / 2))
 
-  given relu: Activation with
-    def name = "ReLU"
-    def apply(x: Double): Double = Math.max(0, x)
-    def derivative(x: Double): Double = if x > 0 then 1.0 else 0.0
-    def standardDeviation(nIn: Int, nOut: Int): Double = Math.sqrt(2.0 / nIn)
+  given registry: Map[String, Activation] =
+    Activations.values.map(a => a.name.toLowerCase -> a).toMap
 
-  given leakyRelu: Activation with
-    def name = "LeakyReLU"
-    def apply(x: Double): Double = if x > 0 then x else 0.01 * x
-    def derivative(x: Double): Double = if x > 0 then 1.0 else 0.01
-    def standardDeviation(nIn: Int, nOut: Int): Double = Math.sqrt(2.0 / nIn)
-
-  given tanh: Activation with
-    def name = "Tanh"
-    def apply(x: Double): Double = Math.tanh(x)
-    def derivative(x: Double): Double =
-      val t = apply(x)
-      1.0 - (t * t)
-    def standardDeviation(nIn: Int, nOut: Int): Double = Math.sqrt(1.0 / ((nIn + nOut) / 2))
-
+  def available: List[Activation] = Activations.values.toList

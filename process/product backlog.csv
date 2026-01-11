@@ -7,7 +7,7 @@ Core Math Engine;testing Mob Code;Fantilli;2;0;0;0;0;0;0
 ;SGD & integration;Fantilli;3;3;2;0;0;0;0
 Data Engineering & Persistence;dataset generator;Colletta;5;;;;;;
 ;data spilt and batching;Colletta;5;;;;;;
-;serialization and export;Colletta;5;;;;;;
+;serialization and export;Fantilli;5;5;5;5;4;2;0
 Actor System Skeleton;actor protocol;Giacobbi;5;;;;;;
 ;Model Actor;Giacobbi;5;;;;;;
 ;Trainer & CM Skeleton;Giacobbi;5;;;;;;
