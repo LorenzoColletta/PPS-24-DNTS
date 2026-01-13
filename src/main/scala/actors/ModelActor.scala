@@ -2,9 +2,11 @@ package actors
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
-import domain.network.{Network, Model}
+
+import domain.network.{Model, Network}
 import domain.training.{NetworkGradient, Optimizer}
 import domain.training.ModelTasks
+import actors.MonitorActor.MonitorCommand
 
 object ModelActor:
 
@@ -13,6 +15,7 @@ object ModelActor:
     case GetModel(replyTo: ActorRef[Network])
     case SyncModel(remoteModel: Network)
     case TrainingCompleted(updatedModel: Model)
+    case GetMetrics(replyTo: ActorRef[MonitorCommand.MetricsResponse])
 
 
   def apply(initialNetwork: Network, optimizer: Optimizer): Behavior[ModelCommand] =
