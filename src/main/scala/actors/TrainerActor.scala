@@ -6,29 +6,32 @@ import akka.util.Timeout
 import scala.concurrent.duration.*
 import scala.util.{Random, Success, Failure}
 
-import domain.network.{Network, Feature, HyperParams, Model}
+import domain.network.{Network, Feature, HyperParams}
 import domain.data.LabeledPoint2D
 import domain.training.TrainingCore
-import domain.training.{NetworkGradient, LossFunction}
-
-case class TrainingConfig(
-  dataset: List[LabeledPoint2D],
-  features: List[Feature],
-  hp: HyperParams,
-  epochs: Int,
-  batchSize: Int,
-  seed: Option[Long] = None
-)
-
-enum TrainerCommand:
-  case Start(config: TrainingConfig)
-  case Pause
-  case Resume
-  case Stop
-  case NextBatch(epoch: Int, index: Int)
-  case ComputeGradients(net: Network, batch: List[LabeledPoint2D], epoch: Int, index: Int)
+import domain.training.LossFunction
+import actors.ModelActor.ModelCommand
 
 object TrainerActor:
+
+  case class TrainingConfig(
+    dataset: List[LabeledPoint2D],
+    features: List[Feature],
+    hp: HyperParams,
+    epochs: Int,
+    batchSize: Int,
+    seed: Option[Long] = None
+  )
+
+  enum TrainerCommand:
+    case Start(config: TrainingConfig)
+    case Pause
+    case Resume
+    case Stop
+    case NextBatch(epoch: Int, index: Int)
+    case ComputeGradients(net: Network, batch: List[LabeledPoint2D], epoch: Int, index: Int)
+
+
   private final val BatchInterval = 10.millis
 
   def apply(modelActor: ActorRef[ModelCommand])(using LossFunction): Behavior[TrainerCommand] =

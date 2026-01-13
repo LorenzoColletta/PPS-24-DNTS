@@ -1,6 +1,6 @@
 package actors
 
-import akka.actor.testkit.typed.scaladsl.{ScalaTestWithActorTestKit, TestProbe}
+import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration.*
@@ -8,8 +8,9 @@ import scala.concurrent.duration.*
 import domain.network.{Network, Layer, Activations, HyperParams, Regularization, Feature}
 import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.data.{LabeledPoint2D, Label, Point2D}
-import domain.training.LossFunction
 import domain.training.Strategies.Losses.mse
+import actors.TrainerActor.{TrainingConfig, TrainerCommand}
+import actors.ModelActor.ModelCommand
 
 class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 

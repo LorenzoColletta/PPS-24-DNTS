@@ -3,6 +3,7 @@ package actors
 import akka.actor.typed.{Behavior, ActorRef}
 import akka.actor.typed.scaladsl.Behaviors
 import domain.network.Model
+import actors.ModelActor.ModelCommand
 
 //inserire timer
 

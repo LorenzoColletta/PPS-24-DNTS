@@ -6,13 +6,15 @@ import domain.network.{Network, Model}
 import domain.training.{NetworkGradient, Optimizer}
 import domain.training.ModelTasks
 
-enum ModelCommand:
-  case ApplyGradients(grads: NetworkGradient)
-  case GetModel(replyTo: ActorRef[Network])
-  case SyncModel(remoteModel: Network)
-  case TrainingCompleted(updatedModel: Model)
-
 object ModelActor:
+
+  enum ModelCommand:
+    case ApplyGradients(grads: NetworkGradient)
+    case GetModel(replyTo: ActorRef[Network])
+    case SyncModel(remoteModel: Network)
+    case TrainingCompleted(updatedModel: Model)
+
+
   def apply(initialNetwork: Network, optimizer: Optimizer): Behavior[ModelCommand] =
     Behaviors.setup: ctx =>
       given Optimizer = optimizer
