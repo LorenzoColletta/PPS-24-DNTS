@@ -2,6 +2,7 @@ package domain.training
 
 import domain.common.States.State
 import domain.network.Network
+import domain.training.Consensus.averageWith
 
 object ModelTasks:
 
@@ -13,6 +14,6 @@ object ModelTasks:
 
   def mergeWith(remoteNet: Network): State[Network, Unit] =
     State { localNet =>
-      val averagedNet = localNet.averageWith(remoteNet)
+      val averagedNet = localNet averageWith remoteNet
       (averagedNet, ())
     }
