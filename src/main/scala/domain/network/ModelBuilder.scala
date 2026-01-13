@@ -5,7 +5,7 @@ import scala.util.Random
 
 case class LayerConf(neurons: Int, activation: Activation)
 
-object NetworkBuilder:
+object ModelBuilder:
 
   def fromInputs(features: Feature*): Builder =
     Builder(features.toList, List.empty)

@@ -6,20 +6,20 @@ import org.scalatest.matchers.should.Matchers
 import domain.data.Point2D
 import domain.network.Activations
 
-class NetworkBuilderTest extends AnyFunSuite with Matchers {
+class ModelBuilderTest extends AnyFunSuite with Matchers {
 
   test("Builder correctly stores input features") {
-    NetworkBuilder.fromInputs(Feature.X, Feature.Y).features shouldBe List(Feature.X, Feature.Y)
+    ModelBuilder.fromInputs(Feature.X, Feature.Y).features shouldBe List(Feature.X, Feature.Y)
   }
 
   test("Builder accumulates layer configurations with correct activations") {
-    NetworkBuilder.fromInputs(Feature.X)
+    ModelBuilder.fromInputs(Feature.X)
       .addLayer(10, Activations.Relu)
       .hiddenLayers.head.activation.name shouldBe "Relu"
   }
 
   test("Build generates a Model with input dimension matching feature count") {
-    val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y, Feature.ProductXY)
+    val model = ModelBuilder.fromInputs(Feature.X, Feature.Y, Feature.ProductXY)
       .addLayer(5, Activations.Tanh)
       .build()
 
@@ -27,7 +27,7 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
   }
 
   test("Build forces Sigmoid activation on the output layer") {
-    val model = NetworkBuilder.fromInputs(Feature.X)
+    val model = ModelBuilder.fromInputs(Feature.X)
       .addLayer(5, Activations.Relu)
       .build()
 
@@ -35,7 +35,7 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
   }
 
   test("Model incorporates Feature transformation in prediction pipeline") {
-    val model = NetworkBuilder.fromInputs(Feature.X, Feature.Y)
+    val model = ModelBuilder.fromInputs(Feature.X, Feature.Y)
       .addLayer(2, Activations.Sigmoid)
       .build()
 
@@ -43,7 +43,7 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
   }
 
   test("Built network propagates forward pass without runtime errors") {
-    val model = NetworkBuilder.fromInputs(Feature.X)
+    val model = ModelBuilder.fromInputs(Feature.X)
       .addLayer(10, Activations.Relu)
       .addLayer(10, Activations.Tanh)
       .build()
@@ -54,13 +54,13 @@ class NetworkBuilderTest extends AnyFunSuite with Matchers {
   test("Builder with same seed should produce identical weights") {
     val seed = 12345L
 
-    val net1 = NetworkBuilder.fromInputs(Feature.X)
+    val net1 = ModelBuilder.fromInputs(Feature.X)
       .addLayer(2, Activations.Sigmoid)
       .withSeed(seed)
       .build()
       .network
 
-    val net2 = NetworkBuilder.fromInputs(Feature.X)
+    val net2 = ModelBuilder.fromInputs(Feature.X)
       .addLayer(2, Activations.Sigmoid)
       .withSeed(seed)
       .build()

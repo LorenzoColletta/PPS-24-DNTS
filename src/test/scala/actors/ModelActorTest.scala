@@ -2,13 +2,13 @@ package actors
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import domain.data.Point2D
-import domain.network.{Activations, Feature, Model, NetworkBuilder}
+import domain.network.{Activations, Feature, Model, ModelBuilder}
 import org.scalatest.wordspec.AnyWordSpecLike
 
 class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
   def createModel(seed: Long): Model =
-    NetworkBuilder.fromInputs(Feature.X, Feature.Y)
+    ModelBuilder.fromInputs(Feature.X, Feature.Y)
       .addLayer(2, Activations.Relu)
       .withSeed(seed)
       .build()
