@@ -59,6 +59,7 @@ object LinearAlgebra:
 
     def headOption: Option[Double] = v.headOption
 
+    @targetName("vectorApply")
     def apply(i: Int): Double = v(i)
 
   extension (m: Matrix)
@@ -94,3 +95,6 @@ object LinearAlgebra:
     def cols: Int = if m.isEmpty then 0 else m.head.size
 
     def toFlatList: List[Double] = m.flatMap(_.toList).toList
+
+    @targetName("matrixApply")
+    def apply(i: Int): Vector = m(i)
