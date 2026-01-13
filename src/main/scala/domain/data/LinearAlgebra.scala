@@ -62,6 +62,10 @@ object LinearAlgebra:
     def apply(i: Int): Double = v(i)
 
   extension (m: Matrix)
+    @targetName("matrixDivideScalar")
+    def /(scalar: Double): Matrix =
+      m.map(row => row / scalar)
+
     @targetName("matrixTimesVector")
     def *(v: Vector): Vector =
       require(m.head.length == v.length)

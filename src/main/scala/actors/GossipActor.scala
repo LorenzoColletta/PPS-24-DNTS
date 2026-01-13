@@ -4,6 +4,9 @@ import akka.actor.typed.{Behavior, ActorRef}
 import akka.actor.typed.scaladsl.Behaviors
 import domain.network.Model
 
+//inserire timer
+
+
 enum GossipCommand:
   case ShareModel(model: Model)
   case RemoteUpdate(model: Model)
@@ -18,5 +21,5 @@ object GossipActor:
 
         case GossipCommand.RemoteUpdate(remoteModel) =>
           context.log.info("GossipActor: Received updated model from remote node")
-          modelActor ! ModelCommand.SyncGossipProtocol(remoteModel)
+          //modelActor ! ModelCommand.SyncGossipProtocol(remoteModel)
           Behaviors.same
