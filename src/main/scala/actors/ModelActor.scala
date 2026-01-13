@@ -1,21 +1,35 @@
 package actors
 
-import domain.network.Model
-
-import akka.actor.typed.Behavior
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+import domain.network.{Network, Model}
+import domain.training.{NetworkGradient, Optimizer}
+import domain.training.ModelTasks
 
 enum ModelCommand:
-  case TrainingCompleted(newModel: Model)
-  case SyncGossipProtocol(remoteModel: Model)
+  case ApplyGradients(grads: NetworkGradient)
+  case GetModel(replyTo: ActorRef[Network])
+  case SyncModel(remoteModel: Network)
+  case TrainingCompleted(updatedModel: Model)
 
 object ModelActor:
-  def apply(currentModel: Model): Behavior[ModelCommand] =
+
+  def apply(initialNetwork: Network, optimizer: Optimizer): Behavior[ModelCommand] =
+    Behaviors.setup: ctx =>
+      given Optimizer = optimizer
+      active(initialNetwork)
+
+  private def active(currentNetwork: Network)(using Optimizer): Behavior[ModelCommand] =
     Behaviors.receive: (context, message) =>
       message match
-        case ModelCommand.TrainingCompleted(newModel) =>
-          context.log.info("ModelActor: Completed Training")
-          apply(newModel)
-        case ModelCommand.SyncGossipProtocol(remoteModel: Model) =>
-          context.log.info("ModelActor: Remote Model")
-          apply(remoteModel)
+        case ModelCommand.ApplyGradients(grads) =>
+          val (newNetwork, _) = ModelTasks.applyGradients(grads).run(currentNetwork)
+          active(newNetwork)
+        case ModelCommand.SyncModel(remoteModel) =>
+          val (newNetwork, _) = ModelTasks.mergeWith(remoteModel).run(currentNetwork)
+          active(newNetwork)
+        case ModelCommand.GetModel(replyTo) =>
+          replyTo ! currentNetwork
+          Behaviors.same
+        case ModelCommand.TrainingCompleted(model) =>
+          Behaviors.same
