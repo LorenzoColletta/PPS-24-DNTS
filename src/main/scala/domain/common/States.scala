@@ -21,4 +21,3 @@ object States:
         override def flatMap[B](f: A => State[S, B]): State[S, B] =
           State(s => m.apply(s) match
             case (s2, a) => f(a).apply(s2)
-          )
