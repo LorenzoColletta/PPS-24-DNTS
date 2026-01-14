@@ -26,10 +26,6 @@ case class Network(layers: List[Layer]):
       val z = (layer.weights * x) + layer.biases
       z.map(layer.activation.apply)
     }
-    
-object Network:
-    def empty: Network = Network(Nil)
-
 
 case class Model(network: Network, features: List[Feature]):
   def predict(input: Point2D): Double =
