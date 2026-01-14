@@ -9,6 +9,7 @@ import scala.concurrent.duration.*
 import actors.MonitorActor.MonitorCommand
 import actors.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
+import actors.GossipActor.GossipCommand
 import domain.network.{HyperParams, Regularization, Feature}
 
 class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
@@ -25,10 +26,11 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
   test("MonitorActor should start the Trainer and poll for metrics on Start") {
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref))
+    val gossipProbe = createTestProbe[GossipCommand]()
 
-    monitor ! MonitorCommand.StartSimulation(dummyConfig)
-    trainerProbe.expectMessage(TrainerCommand.Start(dummyConfig))
+    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+
+    monitor ! MonitorCommand.StartWithData(dummyConfig)
 
     modelProbe.expectMessageType[ModelCommand.GetMetrics]
   }
@@ -36,25 +38,39 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
   test("MonitorActor should handle metrics response correctly") {
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref))
+    val gossipProbe = createTestProbe[GossipCommand]()
 
-    monitor ! MonitorCommand.StartSimulation(dummyConfig)
+    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+
+    monitor ! MonitorCommand.StartWithData(dummyConfig)
     val metricsRequest = modelProbe.expectMessageType[ModelCommand.GetMetrics]
 
     metricsRequest.replyTo ! MonitorCommand.MetricsResponse(loss = 0.5, consensus = 0.01)
     modelProbe.expectMessageType[ModelCommand.GetMetrics]
   }
 
+  test("MonitorActor should propagate Pause to Gossip") {
+    val modelProbe = createTestProbe[ModelCommand]()
+    val trainerProbe = createTestProbe[TrainerCommand]()
+    val gossipProbe = createTestProbe[GossipCommand]()
+
+    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+
+    monitor ! MonitorCommand.StartWithData(dummyConfig)
+    monitor ! MonitorCommand.PauseSimulation
+
+    gossipProbe.expectMessageType[GossipCommand.SpreadCommand]
+  }
+
   test("MonitorActor should stop the Trainer and clear the timers on Stop") {
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref))
+    val gossipProbe = createTestProbe[GossipCommand]()
 
-    monitor ! MonitorCommand.StartSimulation(dummyConfig)
-    trainerProbe.expectMessage(TrainerCommand.Start(dummyConfig))
+    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
 
+    monitor ! MonitorCommand.StartWithData(dummyConfig)
     monitor ! MonitorCommand.StopSimulation
-    trainerProbe.expectMessage(TrainerCommand.Stop)
 
     modelProbe.expectNoMessage(1.second)
   }

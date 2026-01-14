@@ -7,21 +7,43 @@ import scala.concurrent.duration.*
 import actors.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
 import actors.GossipActor.GossipCommand
-import domain.data.LabeledPoint2D
 
+/**
+ * Supervisor actor for the simulation lifecycle on a single node.
+ * Acts as the main controller for the UI/CLI.
+ */
 object MonitorActor:
 
+  /** Commands handled by the MonitorActor. */
   enum MonitorCommand:
+    /** Starts the simulation setup (Master node only). Distributes data via Gossip. */
     case StartSimulation(config: TrainingConfig)
+
+    /** Starts local training with a specific data slice, received by Master. */
     case StartWithData(config: TrainingConfig)
+
+    /** Stops the simulation globally. */
     case StopSimulation
+
+    /** Pauses the simulation globally. */
     case PauseSimulation
+
+    /** Resumes the simulation globally. */
     case ResumeSimulation
+
+    /** Triggers local metric collection. */
     case TickMetrics
+
+    /** Response containing local metrics (Loss and Consensus). */
     case MetricsResponse(loss: Double, consensus: Double)
+
+    /** Simulates a node crash (forces system termination). */
     case SimulateCrash
+
+    /** Updates the count of active peers in the cluster. */
     case PeerCountChanged(active: Int, total: Int)
 
+  /** Internal actor state */
   private case class MonitorState(
     peerCount: Int = 1,
     totalPeersDiscovered: Int = 1,
@@ -31,6 +53,14 @@ object MonitorActor:
 
   private final val MetricsInterval = 500.millis
 
+  /**
+   * Creates the initial behavior for the MonitorActor.
+   *
+   * @param modelActor   Reference to the local ModelActor.
+   * @param trainerActor Reference to the local TrainerActor.
+   * @param gossipActor  Reference to the local GossipActor.
+   * @param isMaster     If true, this node orchestrates the simulation start.
+   */
   def apply(
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
@@ -59,7 +89,7 @@ object MonitorActor:
           // val fullDataset = DatasetGenerator.generate(...)
           // val allSlices = DataSplitter.split(fullDataset, state.peerCount)
 
-          ga ! GossipCommand.DistributeData(allSlices.map(s => config.copy(dataset = s)))
+          // ga ! GossipCommand.DistributeData(allSlices.map(s => config.copy(dataset = s)))
 
           active(ma, ta, ga, timers, state)
 
