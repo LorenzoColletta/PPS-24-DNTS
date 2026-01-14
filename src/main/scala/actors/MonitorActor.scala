@@ -13,9 +13,10 @@ object MonitorActor:
 
   enum MonitorCommand:
     case StartSimulation(config: TrainingConfig)
-    case StartWithData(config: TrainingConfig, dataSlice: List[LabeledPoint2D])
+    case StartWithData(config: TrainingConfig)
     case StopSimulation
     case PauseSimulation
+    case ResumeSimulation
     case TickMetrics
     case MetricsResponse(loss: Double, consensus: Double)
     case SimulateCrash
@@ -52,22 +53,23 @@ object MonitorActor:
 
     Behaviors.receive: (context, message) =>
       message match
-        case MonitorCommand.StartSimulation(config) =>
+        case MonitorCommand.StartSimulation(config) if state.isMaster =>
           context.log.info("Monitor: Starting configured simulation...")
 
-          // TODO: In una implementazione reale, qui si chiamerebbe il DatasetGenerator
-          //       e si invierebbero i messaggi StartWithData tramite il GossipActor
-          ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalStart(config))
+          // val fullDataset = DatasetGenerator.generate(...)
+          // val allSlices = DataSplitter.split(fullDataset, state.peerCount)
 
-          timers.startTimerAtFixedRate(MonitorCommand.TickMetrics, MetricsInterval)
+          ga ! GossipCommand.DistributeData(allSlices.map(s => config.copy(dataset = s)))
+
           active(ma, ta, ga, timers, state)
 
-        case MonitorCommand.StartWithData(config, slice) =>
-          context.log.info(s"Monitor: Received subsection of ${slice.size} points. Start training...")
-          
-          ta ! TrainerCommand.Start(config.copy(dataset = slice))
-          
+        case MonitorCommand.StartWithData(config) =>
+          context.log.info(s"Monitor: Received subsection of ${config.dataset.size} points. Start training...")
+
+          ta ! TrainerCommand.Start(config)
+
           timers.startTimerAtFixedRate(MonitorCommand.TickMetrics, MetricsInterval)
+          
           active(ma, ta, ga, timers, state)
 
         case MonitorCommand.PeerCountChanged(active, total) =>
@@ -99,8 +101,13 @@ object MonitorActor:
           Behaviors.same
 
         case MonitorCommand.PauseSimulation =>
-          ta ! TrainerCommand.Pause
+          context.log.info("Monitor: User requested PAUSE. Propagating...")
           ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalPause)
+          Behaviors.same
+
+        case MonitorCommand.ResumeSimulation =>
+          context.log.info("Monitor: User requested RESUME. Propagating...")
+          ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalResume)
           Behaviors.same
 
         case MonitorCommand.SimulateCrash =>
@@ -112,11 +119,14 @@ object MonitorActor:
           Behaviors.stopped
 
         case MonitorCommand.StopSimulation =>
-          context.log.info("Monitor: Stopping the simulation.")
-
-          ta ! TrainerCommand.Stop
+          context.log.info("Monitor: User requested RESUME. Propagating...")
+          ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalStop)
 
           timers.cancelAll()
           waiting(ma, ta, ga, timers, state)
+
+        case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
+          // TODO: GUI.updatePeerDisplay(activePeers, totalPeers)
+          active(ma, ta, ga, timers, state.copy(peerCount = activePeers, totalPeersDiscovered = totalPeers))
 
         case _ => Behaviors.unhandled
