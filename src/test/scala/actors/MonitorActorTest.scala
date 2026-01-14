@@ -45,7 +45,7 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     monitor ! MonitorCommand.StartWithData(dummyConfig)
     val metricsRequest = modelProbe.expectMessageType[ModelCommand.GetMetrics]
 
-    metricsRequest.replyTo ! MonitorCommand.MetricsResponse(loss = 0.5, consensus = 0.01)
+    metricsRequest.replyTo ! MonitorCommand.MetricsResponse(trainLoss = 0.5, testLoss = 0.6, consensus = 0.01)
     modelProbe.expectMessageType[ModelCommand.GetMetrics]
   }
 

@@ -34,8 +34,8 @@ object MonitorActor:
     /** Triggers local metric collection. */
     case TickMetrics
 
-    /** Response containing local metrics (Loss and Consensus). */
-    case MetricsResponse(loss: Double, consensus: Double)
+    /** Response containing local metrics (Train Loss, Test Loss, and Consensus). */
+    case MetricsResponse(trainLoss: Double, testLoss: Double, consensus: Double)
 
     /** Simulates a node crash (forces system termination). */
     case SimulateCrash
@@ -124,10 +124,10 @@ object MonitorActor:
           ma ! ModelCommand.GetMetrics(replyTo = context.self)
           Behaviors.same
 
-        case MonitorCommand.MetricsResponse(loss, consensus) =>
-          context.log.info(s"Monitor Update - Loss: $loss, Consensus Metric: $consensus")
+        case MonitorCommand.MetricsResponse(trainLoss, testLoss, consensus) =>
+          context.log.info(s"Monitor Update - Train Loss: $trainLoss, Test Loss: $testLoss, Consensus Metric: $consensus")
 
-          // TODO: GUI.plot(loss, consensus)
+          // TODO: GUI.plot(trainLoss, testLoss, consensus)
           Behaviors.same
 
         case MonitorCommand.PauseSimulation =>
