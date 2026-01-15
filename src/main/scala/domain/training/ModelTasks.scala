@@ -1,19 +1,19 @@
 package domain.training
 
 import domain.common.States.State
-import domain.network.Network
 import domain.training.Consensus.averageWith
+import domain.network.{Model, Network}
 
 object ModelTasks:
 
-  def applyGradients(grads: NetworkGradient)(using opt: Optimizer): State[Network, Unit] =
-    State { net =>
-      val updatedNet = opt.updateWeights(net, grads)
-      (updatedNet, ())
+  def applyGradients(grads: NetworkGradient)(using opt: Optimizer): State[Model, Unit] =
+    State { model =>
+      val updatedNet = opt.updateWeights(model.network, grads)
+      (model.copy(network = updatedNet), ())
     }
 
-  def mergeWith(remoteNet: Network): State[Network, Unit] =
-    State { localNet =>
-      val averagedNet = localNet averageWith remoteNet
-      (averagedNet, ())
+  def mergeWith(remoteModel: Model): State[Model, Unit] =
+    State { localModel =>
+      val newNet = localModel.network averageWith remoteModel.network
+      (localModel.copy(network = newNet), ())
     }
