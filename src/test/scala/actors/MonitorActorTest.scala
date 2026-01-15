@@ -11,9 +11,24 @@ import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
 import actors.GossipActor.GossipCommand
 import actors.monitor.MonitorActor
-import domain.network.{Feature, HyperParams, Regularization}
+import domain.network.{Feature, HyperParams, Regularization, Model, Network}
+import view.{ViewBoundary, ViewStateSnapshot}
+import config.{AppConfig, ProductionConfig}
 
 class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
+
+  given AppConfig = ProductionConfig
+
+  private final val dummyBoundary = new ViewBoundary:
+    override def showInitialScreen(snapshot: ViewStateSnapshot, isMaster: Boolean): Unit = ()
+    override def showInitialError(reason: String): Unit = ()
+    override def startSimulation(snapshot: ViewStateSnapshot): Unit = ()
+    override def updatePeerDisplay(active: Int, total: Int): Unit = ()
+    override def plotMetrics(epoch: Int, trainLoss: Double, testLoss: Double, consensus: Double): Unit = ()
+    override def plotDecisionBoundary(model: Model): Unit = ()
+    override def setPausedState(paused: Boolean): Unit = ()
+    override def showCrashMessage(): Unit = ()
+    override def stopSimulation(): Unit = ()
 
   private val dummyConfig = TrainingConfig(
     dataset = Nil,
@@ -29,7 +44,12 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
 
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+    val monitor = spawn(MonitorActor(
+      modelProbe.ref,
+      trainerProbe.ref,
+      gossipProbe.ref,
+      dummyBoundary,
+    ))
 
     monitor ! MonitorCommand.StartWithData(dummyConfig)
 
@@ -41,12 +61,24 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
 
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+    val monitor = spawn(MonitorActor(
+      modelProbe.ref,
+      trainerProbe.ref,
+      gossipProbe.ref,
+      dummyBoundary,
+    ))
 
     monitor ! MonitorCommand.StartWithData(dummyConfig)
     val metricsRequest = modelProbe.expectMessageType[ModelCommand.GetMetrics]
 
-    metricsRequest.replyTo ! MonitorCommand.MetricsResponse(trainLoss = 0.5, testLoss = 0.6, consensus = 0.01)
+    metricsRequest.replyTo !
+      MonitorCommand.ViewUpdateResponse(
+        epoch = 1,
+        model = Model(Network(List.empty), List.empty),
+        trainLoss = 0.5,
+        testLoss = 0.6,
+        consensus = 0.01
+      )
     modelProbe.expectMessageType[ModelCommand.GetMetrics]
   }
 
@@ -55,7 +87,12 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
 
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+    val monitor = spawn(MonitorActor(
+      modelProbe.ref,
+      trainerProbe.ref,
+      gossipProbe.ref,
+      dummyBoundary,
+    ))
 
     monitor ! MonitorCommand.StartWithData(dummyConfig)
     monitor ! MonitorCommand.PauseSimulation
@@ -68,10 +105,15 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
 
-    val monitor = spawn(MonitorActor(modelProbe.ref, trainerProbe.ref, gossipProbe.ref))
+    val monitor = spawn(MonitorActor(
+      modelProbe.ref,
+      trainerProbe.ref,
+      gossipProbe.ref,
+      dummyBoundary,
+    ))
 
     monitor ! MonitorCommand.StartWithData(dummyConfig)
-    monitor ! MonitorCommand.StopSimulation
+    monitor ! MonitorCommand.InternalStop
 
     modelProbe.expectNoMessage(1.second)
   }

@@ -12,9 +12,12 @@ import domain.training.Strategies.Losses.mse
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
 import actors.trainer.TrainerActor
+import config.{AppConfig, ProductionConfig}
 
 class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
+  given AppConfig = ProductionConfig
+  
   private final val dummyLayer = Layer(
     Matrix.fill(1, 1)(0.5),
     Vector.fromList(List.fill(1)(0.1)),
