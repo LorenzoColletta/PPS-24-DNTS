@@ -3,14 +3,15 @@ package actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.util.Timeout
-import scala.concurrent.duration.*
-import scala.util.{Random, Success, Failure}
 
-import domain.network.{Network, Feature, HyperParams}
+import scala.concurrent.duration.*
+import scala.util.{Failure, Random, Success}
+import domain.network.{Feature, HyperParams, Network}
 import domain.data.LabeledPoint2D
 import domain.training.TrainingCore
 import domain.training.LossFunction
 import actors.ModelActor.ModelCommand
+import config.AppConfig
 
 /**
  * Actor responsible for the actual training loop logic.
@@ -59,18 +60,19 @@ object TrainerActor:
     private[TrainerActor] case NextBatch(epoch: Int, index: Int)
 
 
-  private final val BatchInterval = 10.millis
-
   /**
    * Creates the TrainerActor behavior.
    *
    * @param modelActor   Reference to the ModelActor (holds the shared state).
    * @param lossFunction Implicit loss function used for gradient calculation.
+   * @param config       Implicit application configuration.
    */
-  def apply(modelActor: ActorRef[ModelCommand])(using LossFunction): Behavior[TrainerCommand] =
+  def apply(modelActor: ActorRef[ModelCommand])
+           (using lossFunction: LossFunction, config: AppConfig): Behavior[TrainerCommand] =
     ready(modelActor)
 
-  private def ready(ma: ActorRef[ModelCommand])(using LossFunction): Behavior[TrainerCommand] =
+  private def ready(ma: ActorRef[ModelCommand])
+                   (using LossFunction, AppConfig): Behavior[TrainerCommand] =
     Behaviors.receive: (ctx, msg) =>
       msg match
         case TrainerCommand.Start(cfg) =>
@@ -94,7 +96,7 @@ object TrainerActor:
     rand: Random,
     currentEpoch: Int,
     currentIdx: Int
-  )(using lf: LossFunction): Behavior[TrainerCommand] =
+  )(using lf: LossFunction, config: AppConfig): Behavior[TrainerCommand] =
 
     implicit val timeout: Timeout = 3.seconds
 
@@ -126,7 +128,7 @@ object TrainerActor:
             ma ! ModelCommand.ApplyGradients(grads)
 
             val nextIdx = idx + cfg.batchSize
-            timers.startSingleTimer(TrainerCommand.NextBatch(epoch, nextIdx), BatchInterval)
+            timers.startSingleTimer(TrainerCommand.NextBatch(epoch, nextIdx), config.batchInterval)
             training(ma, cfg, currentDataset, rand, epoch, nextIdx)
 
           case TrainerCommand.Pause =>
@@ -146,7 +148,7 @@ object TrainerActor:
     currentDataset: List[LabeledPoint2D],
     rand: Random,
     resumePos: (Int, Int)
-  )(using LossFunction): Behavior[TrainerCommand] =
+  )(using LossFunction, AppConfig): Behavior[TrainerCommand] =
 
     Behaviors.receive: (ctx, msg) =>
       msg match

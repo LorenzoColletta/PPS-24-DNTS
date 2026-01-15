@@ -3,10 +3,10 @@ package actors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 
-import scala.concurrent.duration.*
 import actors.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
 import actors.GossipActor.GossipCommand
+import config.AppConfig
 
 /**
  * Supervisor actor for the simulation lifecycle on a single node.
@@ -51,8 +51,6 @@ object MonitorActor:
   )
 
 
-  private final val MetricsInterval = 500.millis
-
   /**
    * Creates the initial behavior for the MonitorActor.
    *
@@ -60,13 +58,14 @@ object MonitorActor:
    * @param trainerActor Reference to the local TrainerActor.
    * @param gossipActor  Reference to the local GossipActor.
    * @param isMaster     If true, this node orchestrates the simulation start.
+   * @param appConfig    Implicit application configuration.
    */
   def apply(
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
     gossipActor: ActorRef[GossipCommand],
     isMaster: Boolean = false
-  ): Behavior[MonitorCommand] =
+  )(using appConfig: AppConfig): Behavior[MonitorCommand] =
 
     Behaviors.setup: context =>
       Behaviors.withTimers: timers =>
@@ -79,7 +78,7 @@ object MonitorActor:
     ga: ActorRef[GossipCommand],
     timers: TimerScheduler[MonitorCommand],
     state: MonitorState
-  ): Behavior[MonitorCommand] =
+  )(using appConfig: AppConfig): Behavior[MonitorCommand] =
 
     Behaviors.receive: (context, message) =>
       message match
@@ -98,7 +97,7 @@ object MonitorActor:
 
           ta ! TrainerCommand.Start(config)
 
-          timers.startTimerAtFixedRate(MonitorCommand.TickMetrics, MetricsInterval)
+          timers.startTimerAtFixedRate(MonitorCommand.TickMetrics, appConfig.metricsInterval)
           
           active(ma, ta, ga, timers, state)
 
@@ -116,7 +115,7 @@ object MonitorActor:
     ga: ActorRef[GossipCommand],
     timers: TimerScheduler[MonitorCommand],
     state: MonitorState
-  ): Behavior[MonitorCommand] =
+  )(using AppConfig): Behavior[MonitorCommand] =
 
     Behaviors.receive: (context, message) =>
       message match
