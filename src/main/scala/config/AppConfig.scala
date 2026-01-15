@@ -1,6 +1,8 @@
 package config
 
 import scala.concurrent.duration.*
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 /**
  * Defines the configuration contract for the system.
@@ -22,4 +24,9 @@ trait AppConfig:
 object ProductionConfig extends AppConfig:
   override final val metricsInterval: FiniteDuration = 500.millis
   override final val batchInterval: FiniteDuration = 10.millis
-  override final val netLogFileName: String = "node_network.log"
+
+  override final val netLogFileName: String =
+    val now = LocalDateTime.now()
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
+    val timestamp = now.format(formatter)
+    s"node_network_$timestamp.log"
