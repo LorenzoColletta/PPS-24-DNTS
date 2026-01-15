@@ -4,13 +4,14 @@ import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import akka.actor.typed.ActorRef
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
-import scala.concurrent.duration.*
 
-import actors.MonitorActor.MonitorCommand
-import actors.TrainerActor.{TrainerCommand, TrainingConfig}
+import scala.concurrent.duration.*
+import actors.monitor.MonitorActor.MonitorCommand
+import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
 import actors.GossipActor.GossipCommand
-import domain.network.{HyperParams, Regularization, Feature}
+import actors.monitor.MonitorActor
+import domain.network.{Feature, HyperParams, Regularization}
 
 class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
