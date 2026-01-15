@@ -1,31 +1,31 @@
-DISTRIBUTED NEURAL TRAINING SIMULATION (DNTS) - PRODUCT BACKLOG;;;;;;;;;
-;;;;;;;;;
->>> SPRINT 1: 05-11 Gennaio;;;;;;;;;
-Product Backlog Item;Sprint Task;Volunteer;Initial Estimate of Effort;1;2;3;4;5;6
-Core Math Engine;testing Mob Code;Fantilli;2;0;0;0;0;0;0
-;implementation Loss & Backprop;Fantilli;5;5;3;0;0;0;0
-;SGD & integration;Fantilli;3;3;2;0;0;0;0
-Data Engineering & Persistence;dataset generator;Colletta;5;;;;;;
-;data spilt and batching;Colletta;5;;;;;;
-;serialization and export;Fantilli;5;5;5;5;4;2;0
-Actor System Skeleton;actor protocol;Giacobbi;5;;;;;;
-;Model Actor;Giacobbi;5;;;;;;
-;Trainer & CM Skeleton;Giacobbi;5;;;;;;
-;;;;;;;;;
-;;;;;;;;;
-;;;;;;;;;
->>> SPRINT 2: 12-18 Gennaio;;;;;;;;;
-Product Backlog Item;Sprint Task;Volunteer;Initial Estimate of Effort;1;2;3;4;5;6
-Trainer Actor;impl. Trainer actor;Fantilli;5;3;3;0;0;0;0
-;refactor training func. to actor pattern;Fantilli;5;3;0;0;0;0;0
-;metrics and consensus utilities;Fantilli;3;3;0;0;0;0;0
-Monitor Actor;design Monitor actor and app behaviour;Fantilli;2;2;2;2;0;0;0
-Model Actor;impl. Model actor;Giacobbi;3;;;;;;
-;train integration;Giacobbi;1;;;;;;
-;gossip integration;Giacobbi;1;;;;;;
-Gossip Actor;impl. Gossip actor;Giacobbi;4;;;;;;
-;gossip protocol with akka;Giacobbi;3;;;;;;
-;app. global commad;Giacobbi;3;;;;;;
-Cluster Manager;impl. Cluster manager actor ;Colletta;6;;;;;;
-;read of app configuration;Colletta;6;;;;;;
-;main function;Colletta;3;;;;;;
+DISTRIBUTED NEURAL TRAINING SIMULATION (DNTS) - PRODUCT BACKLOG,,,,,,,,,
+,,,,,,,,,
+>>> SPRINT 1: 05-11 Gennaio,,,,,,,,,
+Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
+Core Math Engine,testing Mob Code,Fantilli,2,0,0,0,0,0,0
+,implementation Loss & Backprop,Fantilli,5,5,3,0,0,0,0
+,SGD & integration,Fantilli,3,3,2,0,0,0,0
+Data Engineering & Persistence,dataset generator,Colletta,5,,,,,,
+,data spilt and batching,Colletta,5,,,,,,
+,serialization and export,Fantilli,5,5,5,5,4,2,0
+Actor System Skeleton,actor protocol,Giacobbi,5,5,5,0,0,0,0
+,Model Actor,Giacobbi,5,0,0,5,1,0,0
+,Trainer & CM Skeleton,Giacobbi,5,0,0,0,1,1,5
+,,,,,,,,,
+,,,,,,,,,1
+,,,,,,,,,
+>>> SPRINT 2: 12-18 Gennaio,,,,,,,,,
+Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
+Trainer Actor,impl. Trainer actor,Fantilli,5,3,3,0,0,0,0
+,refactor training func. to actor pattern,Fantilli,5,3,0,0,0,0,0
+,metrics and consensus utilities,Fantilli,3,3,0,0,0,0,0
+Monitor Actor,design Monitor actor and app behaviour,Fantilli,2,2,2,2,0,0,0
+Model Actor,impl. Model actor,Giacobbi,3,,,,,,
+,train integration,Giacobbi,1,,,,,,
+,gossip integration,Giacobbi,1,,,,,,
+Gossip Actor,impl. Gossip actor,Giacobbi,4,,,,,,
+,gossip protocol with akka,Giacobbi,3,,,,,,
+,app. global commad,Giacobbi,3,,,,,,
+Cluster Manager,impl. Cluster manager actor,Colletta,6,,,,,,
+,read of app configuration,Colletta,6,,,,,,
+,main function,Colletta,3,,,,,,
