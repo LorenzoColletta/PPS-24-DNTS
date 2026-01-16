@@ -1,12 +1,11 @@
 package actors
 
-import actors.MonitorActor.MonitorCommand
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
 import domain.network.Model
 import domain.model.ModelTasks
 import domain.training.{NetworkGradient, Optimizer}
-
+import actors.MonitorActor.MonitorCommand
+import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.{ActorRef, Behavior}
 object ModelActor:
   enum ModelCommand:
     case ApplyGradients(grads: NetworkGradient)
