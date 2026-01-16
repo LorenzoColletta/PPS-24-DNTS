@@ -1,20 +1,3 @@
-package actors
-
-import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.Behaviors
-
-import domain.network.{Model, Network}
-import domain.training.{NetworkGradient, Optimizer}
-import domain.training.ModelTasks
-import actors.MonitorActor.MonitorCommand
-
-enum ModelCommand:
-  case ApplyGradients(grads: NetworkGradient)
-  case GetModel(replyTo: ActorRef[Model])
-  case SyncModel(remoteModel: Model)
-  case TrainingCompleted(updatedModel: Model)
-  case GetMetrics(replyTo: ActorRef[MonitorCommand.MetricsResponse])
-
 object ModelActor:
 
   def apply(initialModel: Model, optimizer: Optimizer): Behavior[ModelCommand] =
