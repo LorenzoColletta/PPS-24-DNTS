@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import config.AppConfig
 import domain.data.LabeledPoint2D
-import domain.network.{Feature, HyperParams, Network}
+import domain.network.{Feature, HyperParams, Model}
 import domain.training.{LossFunction, TrainingCore}
 
 import scala.concurrent.duration.*
@@ -78,14 +78,14 @@ object TrainerActor:
                 ctx.self ! TrainerCommand.NextBatch(nextEpoch, 0)
                 training(ma, cfg, nextShuffled, rand, nextEpoch, 0)
               else
-                ctx.ask[ModelCommand, Network](ma, ref => ModelCommand.GetModel(ref)) {
-                  case Success(net) => TrainerCommand.ComputeGradients(net, batch, epoch, idx)
+                ctx.ask[ModelCommand, Model](ma, ref => ModelCommand.GetModel(ref)) {
+                  case Success(model) => TrainerCommand.ComputeGradients(model, batch, epoch, idx)
                   case Failure(_) => TrainerCommand.Stop
                 }
                 Behaviors.same
 
-          case TrainerCommand.ComputeGradients(network, batch, epoch, idx) =>
-            val (grads, loss) = TrainingCore.computeBatchGradients(network, batch, cfg.features)
+          case TrainerCommand.ComputeGradients(model, batch, epoch, idx) =>
+            val (grads, loss) = TrainingCore.computeBatchGradients(model, batch)
             ma ! ModelCommand.ApplyGradients(grads)
 
             val nextIdx = idx + cfg.batchSize

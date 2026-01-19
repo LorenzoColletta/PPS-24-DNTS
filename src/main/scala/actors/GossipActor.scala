@@ -8,11 +8,13 @@ import actors.ModelActor.ModelCommand
 //inserire timer
 
 
-enum GossipCommand:
-  case ShareModel(model: Model)
-  case RemoteUpdate(model: Model)
-
 object GossipActor:
+  enum GossipCommand:
+    case ShareModel(model: Model)
+    case RemoteUpdate(model: Model)
+    case SpreadCommand(command: GossipCommand)
+    case GlobalStop, GlobalPause, GlobalResume
+
   def apply(modelActor: ActorRef[ModelCommand]): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
