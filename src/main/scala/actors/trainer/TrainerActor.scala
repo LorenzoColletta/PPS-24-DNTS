@@ -4,13 +4,14 @@ import actors.ModelActor.ModelCommand
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
-import config.AppConfig
-import domain.data.LabeledPoint2D
-import domain.network.{Feature, HyperParams, Model}
-import domain.training.{LossFunction, TrainingCore}
-
 import scala.concurrent.duration.*
 import scala.util.{Failure, Random, Success}
+
+import config.AppConfig
+import domain.data.LabeledPoint2D
+import domain.network.Model
+import domain.training.{LossFunction, TrainingCore}
+
 
 /**
  * Actor responsible for the actual training loop logic.
