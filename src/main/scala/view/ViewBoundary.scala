@@ -3,7 +3,9 @@ package view
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
 
-/** Internal actor state */
+/**
+ * Data recap for initial screen and live monitoring
+ */
 case class ViewStateSnapshot(
   epoch: Int = 0,
   model: Option[Model] = None,

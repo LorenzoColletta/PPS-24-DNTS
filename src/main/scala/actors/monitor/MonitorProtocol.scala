@@ -79,15 +79,11 @@ object MonitorProtocol:
      * @param seed        The seed address of the cluster.
      * @param model       The simulation model structure.
      * @param config      The training configuration.
-     * @param activePeers The number of peers currently active.
-     * @param totalPeers  The total number of peers.
      */
     case Initialize(
       seed: String,
       model: Model,
       config: TrainingConfig,
-      activePeers: Int,
-      totalPeers: Int
     )
 
     /**

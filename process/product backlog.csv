@@ -12,7 +12,7 @@ Actor System Skeleton,actor protocol,Giacobbi,5,5,5,0,0,0,0
 ,Model Actor,Giacobbi,5,0,0,5,1,0,0
 ,Trainer & CM Skeleton,Giacobbi,5,0,0,0,1,1,5
 ,,,,,,,,,
-,,,,,,,,,1
+,,,,,,,,,
 ,,,,,,,,,
 >>> SPRINT 2: 12-18 Gennaio,,,,,,,,,
 Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
@@ -29,3 +29,11 @@ Gossip Actor,impl. Gossip actor,Giacobbi,4,,,,,,
 Cluster Manager,impl. Cluster manager actor,Colletta,6,,,,,,
 ,read of app configuration,Colletta,6,,,,,,
 ,main function,Colletta,3,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+>>> SPRINT 3: 19-25 Gennaio,,,,,,,,,
+Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
+Application Bootstrap,main function,Fantilli,3,0,0,0,0,0,0
+,network configuration and building,Fantilli,6,0,0,0,0,0,0
+,dataset generation,Fantilli,4,0,0,0,0,0,0
