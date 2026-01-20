@@ -5,6 +5,7 @@ import actors.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
+
 import config.AppConfig
 import view.{ViewBoundary, ViewStateSnapshot}
 
@@ -16,7 +17,6 @@ object MonitorActor:
 
   export MonitorProtocol.*
 
-  /** Internal actor state */
   private case class MonitorState(
     snapshot: ViewStateSnapshot = ViewStateSnapshot(),
     isMaster: Boolean,
@@ -63,7 +63,7 @@ object MonitorActor:
 
     Behaviors.receive: (context, message) =>
       message match
-        case MonitorCommand.Initialize(seed, model, config, activePeers, totalPeers) =>
+        case MonitorCommand.Initialize(seed, model, config) =>
           context.log.info(s"Monitor: Cluster successful created on seed: $seed")
 
           val newState = state.copy(
@@ -71,8 +71,6 @@ object MonitorActor:
               clusterSeed = Some(seed),
               model = Some(model),
               config = Some(config),
-              activePeers = activePeers,
-              totalPeers = totalPeers,
             )
           )
           boundary.showInitialScreen(newState.snapshot, state.isMaster)

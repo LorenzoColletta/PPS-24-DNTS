@@ -1,6 +1,7 @@
 package domain.training
 
-import domain.network.{Network, Feature, FeatureTransformer}
+import domain.data.LinearAlgebra.Vector
+import domain.network.Model
 import domain.data.{LabeledPoint2D, toVector}
 import domain.training.{LossFunction, NetworkGradient}
 import domain.training.Consensus.averageGradients
@@ -8,22 +9,21 @@ import domain.training.Consensus.averageGradients
 object TrainingCore:
 
   def computeBatchGradients(
-    net: Network,
+    model: Model,
     batch: List[LabeledPoint2D],
-    features: List[Feature]
   )(using lossFn: LossFunction): (NetworkGradient, Double) =
 
     val results = batch.map { ex =>
-      val grads = Backpropagation.computeGradients(net, ex, features)
+      val grads = Backpropagation.computeGradients(model.network, ex, model.features)
 
-      val out = net.forward(FeatureTransformer.transform(ex.point, features))
+      val out = Vector(model.predict(ex.point))
       val loss = lossFn.compute(out, ex.label.toVector)
 
       (NetworkGradient(grads), loss)
     }
     val (gradsList, lossList) = results.unzip
 
-    val avgGrad = averageGradients(gradsList)
-    val avgLoss = lossList.sum / batch.size.toDouble
+    val avgGrad = if (batch.isEmpty) NetworkGradient(Nil) else averageGradients(gradsList)
+    val avgLoss = if (batch.isEmpty) 0.0 else lossList.sum / batch.size.toDouble
 
     (avgGrad, avgLoss)

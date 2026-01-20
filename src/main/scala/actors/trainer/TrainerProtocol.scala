@@ -1,7 +1,7 @@
 package actors.trainer
 
 import domain.data.LabeledPoint2D
-import domain.network.{Feature, HyperParams, Network}
+import domain.network.{Feature, HyperParams, Model}
 
 /**
  * Defines the public API and Data Structures for the Trainer component.
@@ -43,7 +43,7 @@ object TrainerProtocol:
     case Stop
 
     /** Internal: Carries the current network state to compute gradients against. */
-    case ComputeGradients(net: Network, batch: List[LabeledPoint2D], epoch: Int, index: Int)
+    case ComputeGradients(model: Model, batch: List[LabeledPoint2D], epoch: Int, index: Int)
 
     /** Internal: Triggers processing of the next batch. */
     private[trainer] case NextBatch(epoch: Int, index: Int)

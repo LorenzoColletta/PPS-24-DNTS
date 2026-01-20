@@ -3,26 +3,25 @@ package actors
 import domain.network.Model
 import domain.model.ModelTasks
 import domain.training.{NetworkGradient, Optimizer}
-import monitor.MonitorProtocol.MonitorCommand
+import actors.monitor.MonitorActor.MonitorCommand
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 
 object ModelActor:
-
+  
   enum ModelCommand:
     case ApplyGradients(grads: NetworkGradient)
     case GetModel(replyTo: ActorRef[Model])
     case SyncModel(remoteModel: Model)
     case TrainingCompleted(updatedModel: Model)
-    case GetMetrics(replyTo: ActorRef[MonitorCommand.MetricsResponse])
-
+    case GetMetrics(replyTo: ActorRef[MonitorCommand.ViewUpdateResponse])
+    case ExportToFile()
+    
   def apply(initialModel: Model, optimizer: Optimizer): Behavior[ModelCommand] =
     Behaviors.setup: ctx =>
       given Optimizer = optimizer
       active(initialModel)
-      
   
-
   private def active(currentModel: Model)(using Optimizer): Behavior[ModelCommand] =
     Behaviors.receive: (context, message) =>
       message match
