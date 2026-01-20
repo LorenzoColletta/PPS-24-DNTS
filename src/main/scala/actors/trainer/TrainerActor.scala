@@ -41,10 +41,14 @@ object TrainerActor:
           ctx.log.info(s"Trainer: Starting with seed ${cfg.seed}...")
 
           val rand = cfg.seed.map(s => new Random(s)).getOrElse(new Random())
-          val shuffledDataset = rand.shuffle(cfg.dataset)
+          val shuffledDataset = rand.shuffle(cfg.trainSet)
 
           ctx.self ! TrainerCommand.NextBatch(1, 0)
           training(ma, cfg, shuffledDataset, rand, 1, 0)
+
+        case TrainerCommand.CalculateMetrics(model, replyTo) =>
+          replyTo ! MetricsCalculated(0.0, 0.0)
+          Behaviors.same
 
         case TrainerCommand.Stop =>
           Behaviors.stopped
@@ -74,7 +78,7 @@ object TrainerActor:
 
               if batch.isEmpty then
                 val nextEpoch = epoch + 1
-                val nextShuffled = rand.shuffle(cfg.dataset)
+                val nextShuffled = rand.shuffle(cfg.trainSet)
 
                 ctx.self ! TrainerCommand.NextBatch(nextEpoch, 0)
                 training(ma, cfg, nextShuffled, rand, nextEpoch, 0)
@@ -86,12 +90,19 @@ object TrainerActor:
                 Behaviors.same
 
           case TrainerCommand.ComputeGradients(model, batch, epoch, idx) =>
-            val (grads, loss) = TrainingCore.computeBatchGradients(model, batch)
+            val (grads, _) = TrainingCore.computeBatchGradients(model, batch)
             ma ! ModelCommand.ApplyGradients(grads)
 
             val nextIdx = idx + cfg.batchSize
             timers.startSingleTimer(TrainerCommand.NextBatch(epoch, nextIdx), config.batchInterval)
             training(ma, cfg, currentDataset, rand, epoch, nextIdx)
+
+          case TrainerCommand.CalculateMetrics(model, replyTo) =>
+            val trainLoss = TrainingCore.computeDatasetLoss(model, cfg.trainSet)
+            val testLoss = TrainingCore.computeDatasetLoss(model, cfg.testSet)
+
+            replyTo ! MetricsCalculated(trainLoss, testLoss)
+            Behaviors.same
 
           case TrainerCommand.Pause =>
             ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
@@ -118,6 +129,13 @@ object TrainerActor:
           ctx.log.info(s"Trainer: Resuming from Epoch ${resumePos._1}, Index ${resumePos._2}")
           ctx.self ! TrainerCommand.NextBatch(resumePos._1, resumePos._2)
           training(ma, cfg, currentDataset, rand, resumePos._1, resumePos._2)
+
+        case TrainerCommand.CalculateMetrics(model, replyTo) =>
+          val trainLoss = TrainingCore.computeDatasetLoss(model, cfg.trainSet)
+          val testLoss = TrainingCore.computeDatasetLoss(model, cfg.testSet)
+
+          replyTo ! MetricsCalculated(trainLoss, testLoss)
+          Behaviors.same
 
         case TrainerCommand.Stop =>
           Behaviors.stopped
