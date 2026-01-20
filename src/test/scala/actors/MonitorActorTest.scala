@@ -31,7 +31,8 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     override def stopSimulation(): Unit = ()
 
   private val dummyConfig = TrainingConfig(
-    dataset = Nil,
+    trainSet = Nil,
+    testSet = Nil,
     features = List(Feature.X),
     hp = HyperParams(0.1, Regularization.None),
     epochs = 1,
