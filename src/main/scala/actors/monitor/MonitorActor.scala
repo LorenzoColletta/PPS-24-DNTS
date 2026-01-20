@@ -1,6 +1,6 @@
 package actors.monitor
 
-import actors.GossipActor.GossipCommand
+import .GossipCommand
 import actors.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
