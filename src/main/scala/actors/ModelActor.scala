@@ -20,6 +20,8 @@ object ModelActor:
     Behaviors.setup: ctx =>
       given Optimizer = optimizer
       active(initialModel)
+      
+  
 
   private def active(currentModel: Model)(using Optimizer): Behavior[ModelCommand] =
     Behaviors.receive: (context, message) =>

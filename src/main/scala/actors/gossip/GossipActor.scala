@@ -39,22 +39,20 @@ object GossipActor:
           if remotePeers.nonEmpty then
             val target = Random.shuffle(remotePeers).head
             modelActor ! ModelActor.ModelCommand.GetModel(
-              context.messageAdapter(model =>
-                target ! GossipCommand.HandleRemoteModel(model)
-                GossipCommand.UpdatePeers(peers)
-              )
+              context.messageAdapter(model => target ! GossipCommand.HandleRemoteModel(model))
             )
           Behaviors.same
-
         case GossipCommand.HandleRemoteModel(remoteModel) =>
           context.log.info("Gossip: Received remote model. Triggering synchronization.")
           modelActor ! ModelActor.ModelCommand.SyncModel(remoteModel)
           Behaviors.same
-
+        //New node trigger Inizialize
+        //GossipCommand.Inizialize
+        //peer UP
+        
         case GossipCommand.UpdatePeers(newPeers) =>
           context.log.debug(s"Gossip: Peer list updated. Knowledge base: ${newPeers.size} nodes.")
           active(modelActor, monitorActor, trainerActor, newPeers)
-
         case GossipCommand.SpreadCommand(cmd) =>
           context.log.info(s"Gossip: Broadcasting control signal $cmd to all known peers.")
           peers.foreach(_ ! GossipCommand.HandleControlCommand(cmd))
@@ -63,6 +61,8 @@ object GossipActor:
         case GossipCommand.HandleControlCommand(cmd) =>
           context.log.info(s"Gossip: Executing remote control command: $cmd")
           cmd match
+            case ControlCommand.Start  => //
+
             case ControlCommand.GlobalPause  => 
               monitorActor ! MonitorCommand.InternalPause
               trainerActor ! TrainerCommand.Pause
@@ -75,3 +75,5 @@ object GossipActor:
           Behaviors.same
 
         case _ => Behaviors.unhandled
+        
+        //metrics consensus
