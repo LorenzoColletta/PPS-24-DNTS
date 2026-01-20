@@ -2,6 +2,7 @@ package actors.monitor
 
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
+import domain.data.LabeledPoint2D
 
 /**
  * Defines the public API for the Monitor component.
@@ -20,9 +21,10 @@ object MonitorProtocol:
     /**
      * Starts local training with a specific data slice, received by Master.
      *
-     * @param config The configuration containing the local dataset slice for this node.
+     * @param trainSet  The local training set slice for this node.
+     * @param testSet   The local test set slice for this node.
      */
-    case StartWithData(config: TrainingConfig)
+    case StartWithData(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D])
 
     /** Initiates a global stop request from the user. */
     case StopSimulation

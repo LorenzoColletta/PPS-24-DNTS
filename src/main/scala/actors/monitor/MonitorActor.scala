@@ -5,8 +5,8 @@ import actors.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-
 import config.AppConfig
+import domain.data.LabeledPoint2D
 import view.{ViewBoundary, ViewStateSnapshot}
 
 /**
@@ -92,10 +92,19 @@ object MonitorActor:
 
           active(ma, ta, ga, timers, boundary, state)
 
-        case MonitorCommand.StartWithData(config) =>
-          context.log.info(s"Monitor: Received subsection of ${config.dataset.size} points. Start training...")
+        case MonitorCommand.StartWithData(trainSet, testSet) =>
+          context.log.info(s"Monitor: Received subsection of ${trainSet.size + testSet.size} points. Start training...")
 
-          val newState = state.copy(snapshot = state.snapshot.copy(config = Some(config)))
+          val newState = state.copy(
+            snapshot = state.snapshot.copy(
+              config = Some(
+                  state.snapshot.config.get.copy(
+                  trainSet = trainSet,
+                  testSet = testSet,
+                )
+              )
+            )
+          )
           boundary.startSimulation(newState.snapshot)
 
           timers.startTimerAtFixedRate(MonitorCommand.TickMetrics, appConfig.metricsInterval)
