@@ -3,11 +3,6 @@ package domain.network
 import domain.data.Point2D
 import domain.data.LinearAlgebra.*
 
-enum Regularization:
-  case None
-  case L1(rate: Double)
-  case L2(rate: Double)
-  case ElasticNet(l1Rate: Double, l2Rate: Double)
 
 case class HyperParams(
   learningRate: Double,
