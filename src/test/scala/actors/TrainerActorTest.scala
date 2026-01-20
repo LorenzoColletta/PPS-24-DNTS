@@ -5,7 +5,7 @@ import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.*
-import domain.network.{Activations, Feature, HyperParams, Layer, Network, Regularization}
+import domain.network.{Activations, Feature, HyperParams, Layer, Network, Regularization, Model}
 import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.training.Strategies.Losses.mse
@@ -31,6 +31,9 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
   )
 
   private final val dummyFeatures = List(Feature.X)
+
+
+  private final val dummyModel = Model(dummyNetwork, dummyFeatures)
 
   private final val dummyConfig = TrainingConfig(
     dataset = dummyData,
@@ -58,7 +61,7 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     trainer ! TrainerCommand.Start(dummyConfig)
 
     val askMsg = modelProbe.expectMessageType[ModelCommand.GetModel]
-    askMsg.replyTo ! dummyNetwork
+    askMsg.replyTo ! dummyModel
 
     val msg = modelProbe.expectMessageType[ModelCommand.ApplyGradients]
 
@@ -84,7 +87,7 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     trainer ! TrainerCommand.Start(dummyConfig)
 
     val askMsg = modelProbe.expectMessageType[ModelCommand.GetModel]
-    askMsg.replyTo ! dummyNetwork
+    askMsg.replyTo ! dummyModel
     modelProbe.expectMessageType[ModelCommand.ApplyGradients]
 
     trainer ! TrainerCommand.Pause

@@ -35,4 +35,4 @@ object ModelActor:
           replyTo ! currentModel
           Behaviors.same
         case ModelCommand.TrainingCompleted(model) =>
-          Behaviors.same
+          active(model)

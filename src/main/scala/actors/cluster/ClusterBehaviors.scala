@@ -1,7 +1,7 @@
 package actors.cluster
 
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipProtocol.GossipCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*

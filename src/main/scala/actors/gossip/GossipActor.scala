@@ -2,8 +2,7 @@ package actors.gossip
 
 import actors.ModelActor
 import actors.ModelActor.ModelCommand
-import actors.gossip.GossipProtocol.ControlCommand
-import actors.gossip.GossipProtocol.GossipCommand
+import actors.gossip.GossipProtocol.*
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.{ActorRef, Behavior}
@@ -21,7 +20,9 @@ object GossipActor:
            )(using config: AppConfig): Behavior[GossipCommand] =
     Behaviors.setup: context =>
       Behaviors.withTimers: timers =>
-        timers.startTimerWithFixedDelay(GossipCommand.TickGossip, GossipCommand.TickGossip, config.gossipInterval)
+        timers.startTimerWithFixedDelay(GossipCommand.TickGossip,
+                                        GossipCommand.TickGossip,
+                                        config.gossipInterval)
         context.log.info("GossipActor started: Peer-to-peer synchronization active.")
         active(modelActor, monitorActor, trainerActor, Set.empty)
 
@@ -29,7 +30,7 @@ object GossipActor:
                       modelActor: ActorRef[ModelCommand],
                       monitorActor: ActorRef[MonitorCommand],
                       trainerActor: ActorRef[TrainerCommand],
-                      peers: Set[ActorRef[GossipCommand]]
+                      peers: Set[ActorRef[GossipCommand]],
                     ): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
@@ -39,13 +40,17 @@ object GossipActor:
           if remotePeers.nonEmpty then
             val target = Random.shuffle(remotePeers).head
             modelActor ! ModelActor.ModelCommand.GetModel(
-              context.messageAdapter(model => target ! GossipCommand.HandleRemoteModel(model))
+              context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
             )
+          Behaviors.same
+        case GossipCommand.SendModelToPeer(model, target) =>
+          target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
         case GossipCommand.HandleRemoteModel(remoteModel) =>
           context.log.info("Gossip: Received remote model. Triggering synchronization.")
           modelActor ! ModelActor.ModelCommand.SyncModel(remoteModel)
           Behaviors.same
+
         //New node trigger Inizialize
         //GossipCommand.Inizialize
         //peer UP
@@ -61,8 +66,6 @@ object GossipActor:
         case GossipCommand.HandleControlCommand(cmd) =>
           context.log.info(s"Gossip: Executing remote control command: $cmd")
           cmd match
-            case ControlCommand.Start  => //
-
             case ControlCommand.GlobalPause  => 
               monitorActor ! MonitorCommand.InternalPause
               trainerActor ! TrainerCommand.Pause

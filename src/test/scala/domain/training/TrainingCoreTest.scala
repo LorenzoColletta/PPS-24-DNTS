@@ -3,7 +3,7 @@ package domain.training
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import domain.network.{Network, Layer, Activations, Feature}
+import domain.network.{Network, Layer, Activations, Feature, Model}
 import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.data.{LabeledPoint2D, Label, Point2D}
 import domain.training.Strategies.Losses.mse
@@ -24,20 +24,22 @@ class TrainingCoreTest extends AnyFunSuite with Matchers {
 
   private final val dummyFeatures = List(Feature.X)
 
+  private final val dummyModel = Model(dummyNetwork, dummyFeatures)
+
   test("computeBatchGradients should return a gradient with the same topology as the network") {
-    val (avgGrad, avgLoss) = TrainingCore.computeBatchGradients(dummyNetwork, dummyBatch, dummyFeatures)
+    val (avgGrad, avgLoss) = TrainingCore.computeBatchGradients(dummyModel, dummyBatch)
 
     avgGrad.layers.length shouldBe dummyNetwork.layers.length
   }
 
   test("computeBatchGradients should return a valid non-negative loss value") {
-    val (_, avgLoss) = TrainingCore.computeBatchGradients(dummyNetwork, dummyBatch, dummyFeatures)
+    val (_, avgLoss) = TrainingCore.computeBatchGradients(dummyModel, dummyBatch)
 
     avgLoss should be >= 0.0
   }
 
   test("computeBatchGradients should produce non-zero gradients for learning") {
-    val (avgGrad, _) = TrainingCore.computeBatchGradients(dummyNetwork, dummyBatch, dummyFeatures)
+    val (avgGrad, _) = TrainingCore.computeBatchGradients(dummyModel, dummyBatch)
     val totalGradMagnitude = avgGrad.layers.map(_.wGrad.map(math.abs).toFlatList.sum).sum
 
     totalGradMagnitude should be > 0.0

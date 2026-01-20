@@ -1,6 +1,7 @@
 package actors.monitor
 
-import .GossipCommand
+
+import actors.gossip.GossipProtocol.*
 import actors.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
@@ -154,7 +155,7 @@ object MonitorActor:
 
         case MonitorCommand.PauseSimulation =>
           context.log.info("Monitor: User requested PAUSE. Propagating...")
-          ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalPause)
+          ga ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
           Behaviors.same
 
         case MonitorCommand.InternalPause =>
@@ -164,7 +165,7 @@ object MonitorActor:
 
         case MonitorCommand.ResumeSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalResume)
+          ga ! GossipCommand.SpreadCommand(ControlCommand.GlobalResume)
           Behaviors.same
 
         case MonitorCommand.InternalResume =>
@@ -183,7 +184,7 @@ object MonitorActor:
         case MonitorCommand.StopSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
 
-          ga ! GossipCommand.SpreadCommand(GossipCommand.GlobalStop)
+          ga ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
 
           Behaviors.same
 

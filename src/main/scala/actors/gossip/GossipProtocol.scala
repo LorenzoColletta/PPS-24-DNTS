@@ -23,8 +23,11 @@ object GossipProtocol:
     /** Updates the local list of available gossip peers. */
     case UpdatePeers(peers: Set[ActorRef[GossipCommand]])
 
+    case SendModelToPeer(model: Model, target: ActorRef[GossipCommand])
+
   /** Global simulation control signals. */
   enum ControlCommand:
+    case GlobalStart
     case GlobalPause
     case GlobalResume
     case GlobalStop

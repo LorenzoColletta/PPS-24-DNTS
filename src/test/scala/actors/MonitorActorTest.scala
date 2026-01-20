@@ -9,8 +9,10 @@ import scala.concurrent.duration.*
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
-import .GossipCommand
+import actors.monitor.MonitorProtocol.*
 import actors.monitor.MonitorActor
+import actors.gossip.GossipProtocol.*
+import actors.ModelActor
 import domain.network.{Feature, HyperParams, Regularization, Model, Network}
 import view.{ViewBoundary, ViewStateSnapshot}
 import config.{AppConfig, ProductionConfig}
