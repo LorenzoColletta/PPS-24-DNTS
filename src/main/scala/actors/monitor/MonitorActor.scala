@@ -6,7 +6,6 @@ import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import config.AppConfig
-import domain.data.LabeledPoint2D
 import view.{ViewBoundary, ViewStateSnapshot}
 
 /**
@@ -42,8 +41,8 @@ object MonitorActor:
 
     Behaviors.setup: context =>
       Behaviors.withTimers: timers =>
-        context.log.info("Monitor: Initialized and waiting for user commands.")
-        waiting(
+        context.log.info("Monitor: Initialized. Waiting for Cluster/Config...")
+        connecting(
           modelActor,
           trainerActor,
           gossipActor,
@@ -52,7 +51,49 @@ object MonitorActor:
           MonitorState(isMaster = isMaster)
         )
 
-  private def waiting(
+  private def connecting(
+    ma: ActorRef[ModelCommand],
+    ta: ActorRef[TrainerCommand],
+    ga: ActorRef[GossipCommand],
+    timers: TimerScheduler[MonitorCommand],
+    boundary: ViewBoundary,
+    state: MonitorState
+  )(using appConfig: AppConfig): Behavior[MonitorCommand] =
+
+    Behaviors.receive: (context, message) =>
+      message match
+        case MonitorCommand.Initialize(seed, model, config) =>
+          context.log.info(s"Monitor: System Initialized. Seed: $seed")
+
+          val newState = state.copy(
+            snapshot = state.snapshot.copy(
+              clusterSeed = Some(seed),
+              model = Some(model),
+              config = Some(config),
+            )
+          )
+          boundary.showInitialScreen(newState.snapshot, state.isMaster)
+          idle(ma, ta, ga, timers, boundary, newState)
+
+        case MonitorCommand.ConnectionFailed(reason) =>
+          context.log.info(s"Monitor: Critical connection failure: $reason")
+          boundary.showInitialError(reason)
+          Behaviors.stopped
+
+        case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
+          boundary.updatePeerDisplay(activePeers, totalPeers)
+          connecting(ma, ta, ga, timers, boundary,
+            state.copy(
+              snapshot = state.snapshot.copy(
+                activePeers = activePeers,
+                totalPeers = totalPeers
+              )
+            )
+          )
+
+        case _ => Behaviors.same
+
+  private def idle(
     ma: ActorRef[ModelCommand],
     ta: ActorRef[TrainerCommand],
     ga: ActorRef[GossipCommand],
@@ -63,27 +104,8 @@ object MonitorActor:
 
     Behaviors.receive: (context, message) =>
       message match
-        case MonitorCommand.Initialize(seed, model, config) =>
-          context.log.info(s"Monitor: Cluster successful created on seed: $seed")
-
-          val newState = state.copy(
-            snapshot = state.snapshot.copy(
-              clusterSeed = Some(seed),
-              model = Some(model),
-              config = Some(config),
-            )
-          )
-          boundary.showInitialScreen(newState.snapshot, state.isMaster)
-          waiting(ma, ta, ga, timers, boundary, newState)
-
-        case MonitorCommand.ConnectionFailed(reason) =>
-          context.log.info(s"Monitor: Connection error: $reason")
-
-          boundary.showInitialError(reason)
-          Behaviors.stopped
-
         case MonitorCommand.StartSimulation(config) if state.isMaster =>
-          context.log.info("Monitor: Starting configured simulation...")
+          context.log.info("Monitor: Master requested Simulation Start...")
 
           // val fullDataset = DatasetGenerator.generate(...)
           // val allSlices = DataSplitter.split(fullDataset, state.peerCount)
@@ -116,7 +138,7 @@ object MonitorActor:
 
           boundary.updatePeerDisplay(activePeers, totalPeers)
 
-          waiting(ma, ta, ga, timers, boundary,
+          idle(ma, ta, ga, timers, boundary,
             state.copy(
               snapshot = state.snapshot.copy(
                 activePeers = activePeers,
@@ -201,7 +223,7 @@ object MonitorActor:
           boundary.stopSimulation()
 
           timers.cancelAll()
-          waiting(ma, ta, ga, timers, boundary, state)
+          idle(ma, ta, ga, timers, boundary, state)
 
         case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
           boundary.updatePeerDisplay(activePeers, totalPeers)
