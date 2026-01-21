@@ -13,10 +13,8 @@ object MonitorProtocol:
   enum MonitorCommand:
     /**
      * Starts the simulation setup (Master node only). Distributes data via Gossip.
-     *
-     * @param config The global training configuration to be sliced and distributed.
      */
-    case StartSimulation(config: TrainingConfig)
+    case StartSimulation()
 
     /**
      * Starts local training with a specific data slice, received by Master.

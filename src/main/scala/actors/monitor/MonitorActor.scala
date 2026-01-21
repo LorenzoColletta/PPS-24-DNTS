@@ -2,6 +2,7 @@ package actors.monitor
 
 import actors.GossipActor.GossipCommand
 import actors.ModelActor.ModelCommand
+import actors.RootActor.RootCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
@@ -28,6 +29,7 @@ object MonitorActor:
    * @param modelActor   Reference to the local ModelActor.
    * @param trainerActor Reference to the local TrainerActor.
    * @param gossipActor  Reference to the local GossipActor.
+   * @param rootActor    Reference to the local RootActor.
    * @param isMaster     If true, this node orchestrates the simulation start.
    * @param appConfig    Implicit application configuration.
    */
@@ -35,6 +37,7 @@ object MonitorActor:
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
     gossipActor: ActorRef[GossipCommand],
+    rootActor: ActorRef[RootCommand],
     boundary: ViewBoundary,
     isMaster: Boolean = false
   )(using appConfig: AppConfig): Behavior[MonitorCommand] =
@@ -46,6 +49,7 @@ object MonitorActor:
           modelActor,
           trainerActor,
           gossipActor,
+          rootActor,
           timers,
           boundary,
           MonitorState(isMaster = isMaster)
@@ -55,6 +59,7 @@ object MonitorActor:
     ma: ActorRef[ModelCommand],
     ta: ActorRef[TrainerCommand],
     ga: ActorRef[GossipCommand],
+    ra: ActorRef[RootCommand],
     timers: TimerScheduler[MonitorCommand],
     boundary: ViewBoundary,
     state: MonitorState
@@ -73,7 +78,7 @@ object MonitorActor:
             )
           )
           boundary.showInitialScreen(newState.snapshot, state.isMaster)
-          idle(ma, ta, ga, timers, boundary, newState)
+          idle(ma, ta, ga, ra, timers, boundary, newState)
 
         case MonitorCommand.ConnectionFailed(reason) =>
           context.log.info(s"Monitor: Critical connection failure: $reason")
@@ -82,7 +87,7 @@ object MonitorActor:
 
         case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
           boundary.updatePeerDisplay(activePeers, totalPeers)
-          connecting(ma, ta, ga, timers, boundary,
+          connecting(ma, ta, ga, ra, timers, boundary,
             state.copy(
               snapshot = state.snapshot.copy(
                 activePeers = activePeers,
@@ -97,6 +102,7 @@ object MonitorActor:
     ma: ActorRef[ModelCommand],
     ta: ActorRef[TrainerCommand],
     ga: ActorRef[GossipCommand],
+    ra: ActorRef[RootCommand],
     timers: TimerScheduler[MonitorCommand],
     boundary: ViewBoundary,
     state: MonitorState,
@@ -104,15 +110,10 @@ object MonitorActor:
 
     Behaviors.receive: (context, message) =>
       message match
-        case MonitorCommand.StartSimulation(config) if state.isMaster =>
+        case MonitorCommand.StartSimulation() if state.isMaster =>
           context.log.info("Monitor: Master requested Simulation Start...")
-
-          // val fullDataset = DatasetGenerator.generate(...)
-          // val allSlices = DataSplitter.split(fullDataset, state.peerCount)
-
-          // ga ! GossipCommand.DistributeData(allSlices.map(s => config.copy(dataset = s)))
-
-          active(ma, ta, ga, timers, boundary, state)
+          ra ! RootCommand.SeedStartSimulation
+          active(ma, ta, ga, ra, timers, boundary, state)
 
         case MonitorCommand.StartWithData(trainSet, testSet) =>
           context.log.info(s"Monitor: Received subsection of ${trainSet.size + testSet.size} points. Start training...")
@@ -131,14 +132,14 @@ object MonitorActor:
 
           timers.startTimerAtFixedRate(MonitorCommand.TickMetrics, appConfig.metricsInterval)
           
-          active(ma, ta, ga, timers, boundary, newState)
+          active(ma, ta, ga, ra, timers, boundary, newState)
 
         case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
           context.log.info(s"Monitor: Cluster Status changed, $activePeers/$totalPeers connected peer.")
 
           boundary.updatePeerDisplay(activePeers, totalPeers)
 
-          idle(ma, ta, ga, timers, boundary,
+          idle(ma, ta, ga, ra, timers, boundary,
             state.copy(
               snapshot = state.snapshot.copy(
                 activePeers = activePeers,
@@ -153,6 +154,7 @@ object MonitorActor:
     ma: ActorRef[ModelCommand],
     ta: ActorRef[TrainerCommand],
     ga: ActorRef[GossipCommand],
+    ra: ActorRef[RootCommand],
     timers: TimerScheduler[MonitorCommand],
     boundary: ViewBoundary,
     state: MonitorState,
@@ -170,7 +172,7 @@ object MonitorActor:
           boundary.plotMetrics(epoch, trainLoss, testLoss, consensus)
           boundary.plotDecisionBoundary(model)
 
-          active(ma, ta, ga, timers, boundary,
+          active(ma, ta, ga, ra, timers, boundary,
             state.copy(
               snapshot = state.snapshot.copy(
                 epoch = epoch,
@@ -223,12 +225,12 @@ object MonitorActor:
           boundary.stopSimulation()
 
           timers.cancelAll()
-          idle(ma, ta, ga, timers, boundary, state)
+          idle(ma, ta, ga, ra, timers, boundary, state)
 
         case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
           boundary.updatePeerDisplay(activePeers, totalPeers)
 
-          active(ma, ta, ga, timers, boundary,
+          active(ma, ta, ga, ra, timers, boundary,
             state.copy(
               snapshot = state.snapshot.copy(
                 activePeers = activePeers,
