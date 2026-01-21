@@ -39,8 +39,13 @@ object TrainerProtocol:
 
   /** Protocol for the TrainerActor. */
   enum TrainerCommand:
-    /** Starts the training process with the provided configuration. */
-    case Start(config: TrainingConfig)
+    /** 
+     * Starts the training process with the provided datasets. 
+     *
+     * @param trainSet  The local training set slice for this node.
+     * @param testSet   The local test set slice for this node.
+     */
+    case Start(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D])
 
     /** Pauses the training loop. Keeps the current state (epoch/index). */
     case Pause
@@ -61,6 +66,13 @@ object TrainerProtocol:
      * @param replyTo The actor waiting for the results.
      */
     case CalculateMetrics(model: Model, replyTo: ActorRef[MetricsCalculated])
+
+    /**
+     * Set the configuration for the training phase.
+     *
+     * @param trainConfig The configuration.
+     */
+    case SetTrainConfig(trainConfig: TrainingConfig)
 
     /** Internal: Triggers processing of the next batch. */
     private[trainer] case NextBatch(epoch: Int, index: Int)

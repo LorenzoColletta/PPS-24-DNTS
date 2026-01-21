@@ -45,8 +45,9 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
-
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
+    
     modelProbe.expectMessageType[ModelCommand.GetModel]
   }
 
@@ -54,7 +55,8 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
 
     val askMsg = modelProbe.expectMessageType[ModelCommand.GetModel]
     askMsg.replyTo ! dummyModel
@@ -68,7 +70,9 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
+    
     modelProbe.expectMessageType[ModelCommand.GetModel]
 
     trainer ! TrainerCommand.Stop
@@ -80,7 +84,8 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
 
     val askMsg = modelProbe.expectMessageType[ModelCommand.GetModel]
     askMsg.replyTo ! dummyModel
