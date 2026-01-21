@@ -1,9 +1,10 @@
 package actors
 
-import akka.actor.typed.{Behavior, ActorRef}
+import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import domain.network.Model
 import actors.ModelActor.ModelCommand
+import domain.data.LabeledPoint2D
 
 //inserire timer
 
@@ -12,6 +13,7 @@ object GossipActor:
   enum GossipCommand:
     case ShareModel(model: Model)
     case RemoteUpdate(model: Model)
+    case DistributeData(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D])
     case SpreadCommand(command: GossipCommand)
     case GlobalStop, GlobalPause, GlobalResume
 
