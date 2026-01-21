@@ -10,6 +10,7 @@ import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
 import actors.ModelActor.ModelCommand
 import actors.GossipActor.GossipCommand
+import actors.RootActor.RootCommand
 import actors.monitor.MonitorActor
 import domain.network.{Feature, HyperParams, Activations, Regularization, Model, ModelBuilder}
 import view.{ViewBoundary, ViewStateSnapshot}
@@ -50,11 +51,13 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
+    val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
       trainerProbe.ref,
       gossipProbe.ref,
+      rootProbe.ref,
       dummyBoundary,
     ))
 
@@ -69,11 +72,13 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
+    val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
       trainerProbe.ref,
       gossipProbe.ref,
+      rootProbe.ref,
       dummyBoundary,
     ))
 
@@ -98,11 +103,13 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
+    val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
       trainerProbe.ref,
       gossipProbe.ref,
+      rootProbe.ref,
       dummyBoundary,
     ))
 
@@ -118,11 +125,13 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
+    val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
       trainerProbe.ref,
       gossipProbe.ref,
+      rootProbe.ref,
       dummyBoundary,
     ))
 

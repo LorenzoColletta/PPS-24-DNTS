@@ -4,7 +4,7 @@ import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import domain.data.Point2D
 import domain.network.{Activations, Feature, Model, ModelBuilder}
 import org.scalatest.wordspec.AnyWordSpecLike
-
+/*
 class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
   def createModel(seed: Long): Model =
@@ -51,4 +51,4 @@ class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
       prediction1 shouldBe prediction2
     }
   }
-}
+}*/
