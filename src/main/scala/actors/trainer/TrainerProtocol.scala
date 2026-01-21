@@ -33,31 +33,64 @@ object TrainerProtocol:
 
   /** 
    * Response carrying the calculated full-dataset metrics.
+   *
+   * @param trainLoss The loss value computed on the training set.
+   * @param testLoss  The loss value computed on the test set.
    */
-  case class MetricsCalculated(trainLoss: Double, testLoss: Double)
+  case class MetricsCalculated(
+    trainLoss: Double,
+    testLoss: Double
+  )
 
+
+  /**
+   * Root trait for all messages handled by the TrainerActor.
+   */
+  sealed trait TrainerMessage
+
+  
+  /**
+   * Trait for all public commands handled by the TrainerActor.
+   */
+  sealed trait TrainerCommand extends TrainerMessage
 
   /** Protocol for the TrainerActor. */
-  enum TrainerCommand:
+  object TrainerCommand:
+
     /** 
      * Starts the training process with the provided datasets. 
      *
      * @param trainSet  The local training set slice for this node.
      * @param testSet   The local test set slice for this node.
      */
-    case Start(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D])
+    final case class Start(
+      trainSet: List[LabeledPoint2D], 
+      testSet: List[LabeledPoint2D]
+    ) extends TrainerCommand
 
     /** Pauses the training loop. Keeps the current state (epoch/index). */
-    case Pause
+    case object Pause extends TrainerCommand
 
     /** Resumes training from the paused state. */
-    case Resume
+    case object Resume extends TrainerCommand
 
     /** Stops the training and terminates the actor. */
-    case Stop
+    case object Stop extends TrainerCommand
 
-    /** Internal: Carries the current network state to compute gradients against. */
-    case ComputeGradients(model: Model, batch: List[LabeledPoint2D], epoch: Int, index: Int)
+    /** 
+     * Carries the current network state to compute gradients against. 
+     * 
+     * @param model The current snapshot of the Neural Network weights.
+     * @param batch The subset of data points to calculate gradients on.
+     * @param epoch The current epoch number.
+     * @param index The batch index within the epoch.
+     */
+    final case class ComputeGradients(
+      model: Model, 
+      batch: List[LabeledPoint2D], 
+      epoch: Int, 
+      index: Int
+    ) extends TrainerCommand
 
     /**
      * Request to compute losses on train and test datasets.
@@ -65,15 +98,37 @@ object TrainerProtocol:
      * @param model   The model snapshot to evaluate.
      * @param replyTo The actor waiting for the results.
      */
-    case CalculateMetrics(model: Model, replyTo: ActorRef[MetricsCalculated])
+    final case class CalculateMetrics(
+      model: Model, 
+      replyTo: ActorRef[MetricsCalculated]
+    ) extends TrainerCommand
 
     /**
      * Set the configuration for the training phase.
      *
      * @param trainConfig The configuration.
      */
-    case SetTrainConfig(trainConfig: TrainingConfig)
+    final case class SetTrainConfig(
+      trainConfig: TrainingConfig
+    ) extends TrainerCommand
 
-    /** Internal: Triggers processing of the next batch. */
-    private[trainer] case NextBatch(epoch: Int, index: Int)
+
+  /**
+   * Trait for all private commands handled by the TrainerActor.
+   */
+  private[trainer] sealed trait PrivateTrainerCommand extends TrainerMessage
+
+  /** Private protocol for the TrainerActor. */
+  private[trainer] object PrivateTrainerCommand:
+
+    /** 
+     * Triggers processing of the next batch.
+     * 
+     * @param epoch The epoch that is about to be processed.
+     * @param index The index of the next batch to fetch from the dataset.
+     */
+    private[trainer] final case class NextBatch(
+       epoch: Int, 
+       index: Int
+    ) extends PrivateTrainerCommand
     
