@@ -1,9 +1,11 @@
 package config
 
-import com.typesafe.config.ConfigFactory
-import domain.network.{Activations, Feature, Regularization, HyperParams, LayerConf}
+import com.typesafe.config.{ConfigFactory, Config}
 import java.io.File
 import scala.jdk.CollectionConverters._
+
+import domain.network.{Activations, Feature, Regularization, HyperParams, LayerConf}
+import config.DatasetStrategyConfig.*
 
 
 /**
@@ -114,7 +116,7 @@ object ConfigLoader:
       LayerConf(c.getInt("neurons"), activation)
     }.toList
 
-    (seed, layers, features)
+    (layers, features)
 
   private def parseDataset(dsConf: Config): (DatasetStrategyConfig, String, Int, Double) =
     val typeName = dsConf.getString("type")

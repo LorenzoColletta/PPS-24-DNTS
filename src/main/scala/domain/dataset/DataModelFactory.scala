@@ -1,5 +1,13 @@
 package domain.dataset
 
+import config.DatasetStrategyConfig
+import config.DatasetStrategyConfig.*
+import domain.util.Space
+import domain.dataset.*
+import domain.sampling.*
+import domain.data.*
+import domain.pattern.*
+
 /**
  * Factory responsible for instantiating concrete [[LabeledDatasetModel]] implementations
  * based on the provided configuration strategy.

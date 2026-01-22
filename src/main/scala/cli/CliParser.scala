@@ -16,7 +16,7 @@ object ParseResult:
   final case class Success(options: CliOptions) extends ParseResult
 
   /** Indicates the user requested the help message (or provided empty args). */
-  final case object Help extends ParseResult
+  case object Help extends ParseResult
 
   /** 
    * Indicates an error occurred (e.g., unknown flag, invalid value). 
