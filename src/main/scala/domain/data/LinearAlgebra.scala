@@ -3,26 +3,57 @@ package domain.data
 import scala.annotation.targetName
 import scala.collection.immutable.Vector as ScalaVector
 
+/**
+ * Functional Linear Algebra primitives.
+ * Implements immutable Vectors and Matrices using Opaque Types.
+ */
 object LinearAlgebra:
 
+  /**
+   * Represents an immutable mathematical vector of Doubles.
+   */
   opaque type Vector = ScalaVector[Double]
+
+  /**
+   * Represents an immutable mathematical matrix of Doubles.
+   */
   opaque type Matrix = ScalaVector[ScalaVector[Double]]
 
+
+  /** Factory methods for constructing Vectors. */
   object Vector:
+    /** Creates a Vector from a variable number of arguments. */
     def apply(elems: Double*): Vector = ScalaVector(elems*)
+
+    /** Creates a Vector of a specific size filled with zeros. */
     def zeros(size: Int): Vector = ScalaVector.fill(size)(0.0)
+
+    /** Converts a standard Scala List into a Vector. */
     def fromList(list: List[Double]): Vector = list.toVector
 
+  /** Factory methods for constructing Matrices. */
   object Matrix:
+    /**
+     * Generates a Matrix by computing each element.
+     *
+     * @param gen A call-by-name parameter to generate values.
+     */
     def fill(rows: Int, cols: Int)(gen: => Double): Matrix =
       ScalaVector.fill(rows)(ScalaVector.fill(cols)(gen))
 
+    /** Creates a Matrix of specific dimensions filled with zeros. */
     def zeros(rows: Int, cols: Int): Matrix =
       ScalaVector.fill(rows)(ScalaVector.fill(cols)(0.0))
 
+    /**
+     * Constructs a Matrix from a flattened list of data.
+     * The list is sliced into chunks of size `cols` to form rows.
+     */
     def fromData(rows: Int, cols: Int, data: List[Double]): Matrix =
       val chunks = data.grouped(cols).toVector
       chunks.map(row => ScalaVector(row *))
+
+
 
   extension (v: Vector)
     def length: Int =
