@@ -1,33 +1,61 @@
 package app
 
-import scala.annotation.tailrec
-
 import akka.actor.typed.ActorSystem
+import config.{AppConfig, ProductionConfig}
+import actors.root.RootActor
+import cli.{CliParser, ParseResult}
 
-import config.ConfigLoader
-import actors.RootActor
-
-
+/**
+ * Application Entry Point.
+ *
+ * Responsible for bootstrapping the Akka Cluster node. It acts as the orchestration layer
+ * between Command Line Interface parsing, configuration loading, and the Akka Actor System startup.
+ */
 object Main:
 
-  private case class CliArgs(
-    role: String = "client", 
-    configFile: Option[String] = None
-  )
-
-  @tailrec
-  private def parseArgs(args: List[String], current: CliArgs = CliArgs()): CliArgs = args match
-    case "--role" :: "seed" :: tail => parseArgs(tail, current.copy(role = "seed"))
-    case "--role" :: "client" :: tail => parseArgs(tail, current.copy(role = "client"))
-    case "--config" :: path :: tail   => parseArgs(tail, current.copy(configFile = Some(path)))
-    case Nil => current
-    case _ =>
-      println("Usage: run --role [seed|client] [--config file]")
-      sys.exit(1)
-
+  /**
+   * The main execution method.
+   *
+   * It processes the raw command-line arguments to determine the node's role and configuration.
+   * Based on the parsing result, it either starts the [[ActorSystem]] or terminates the process.
+   *
+   * <h3>Exit Codes:</h3>
+   * <ul>
+   * <li>**0**: Successful execution (or Help message displayed).</li>
+   * <li>**1**: Configuration error or Invalid arguments.</li>
+   * </ul>
+   *
+   * @param args The variable argument list passed from the command line.
+   */
   @main def run(args: String*): Unit =
-    val cli = parseArgs(args.toList)
+    val parseResult = CliParser.parse(args.toList)
 
-    val rootBehavior = RootActor(cli.role, cli.configFile)
+    parseResult match
+      case ParseResult.Help =>
+        println(CliParser.getHelpText)
+        sys.exit(0)
 
-    ActorSystem(rootBehavior, "ClusterSystem")
+      case ParseResult.Failure(msg) =>
+        System.err.println(s"Error: $msg")
+        println(CliParser.getHelpText)
+        sys.exit(1)
+
+      case ParseResult.Success(options) =>
+        options.validate match
+          case Left(errorMsg) =>
+            System.err.println(s"Configuration Error: $errorMsg")
+            sys.exit(1)
+
+          case Right((role, configPath, clusterIp, clusterPort)) =>
+            println(s">>> Starting Node with Role: $role")
+
+            given appConfig: AppConfig = ProductionConfig
+
+            val rootBehavior = RootActor(
+              role = role,
+              configPath = configPath,
+              //clusterIp = clusterIp,
+              //clusterPort = clusterPort,
+            )
+
+            ActorSystem(rootBehavior, "ClusterSystem")
