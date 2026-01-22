@@ -14,13 +14,13 @@ object RootProtocol:
   enum NodeRole(val id: String):
     
     /**
-     * Represent the Seed Node within the cluster.
+     * Represents the Seed Node within the cluster.
      * Acts as an initial contact point for new members joining the cluster.
      */
     case Seed extends NodeRole("seed")
 
     /**
-     * Represent a Client Node within the cluster.
+     * Represents a Client Node within the cluster.
      */
     case Client extends NodeRole("client")
 

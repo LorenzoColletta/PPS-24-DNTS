@@ -1,7 +1,7 @@
 package config
 
 /**
- * Represent the available data generation strategies.
+ * Represents the available data generation strategies.
  * Each implementation encapsulates only the parameters strictly required for that specific dataset type.
  */
 sealed trait DatasetStrategyConfig

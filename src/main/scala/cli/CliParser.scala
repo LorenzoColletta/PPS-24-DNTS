@@ -4,7 +4,7 @@ import actors.root.RootProtocol.NodeRole
 import scala.annotation.tailrec
 
 /**
- * Represent the possible outcomes of the command-line argument parsing process.
+ * Represents the possible outcomes of the command-line argument parsing process.
  */
 sealed trait ParseResult
 
