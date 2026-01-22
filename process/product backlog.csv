@@ -34,6 +34,17 @@ Cluster Manager,impl. Cluster manager actor,Colletta,6,,,,,,
 ,,,,,,,,,
 >>> SPRINT 3: 19-25 Gennaio,,,,,,,,,
 Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
+Application Bootstrap,monitor and trainer ref. with pipeline adjustment,Fantilli,3,0,0,0,0,0,0
+,network configuration and building,Fantilli,6,6,3,0,0,0,0
+,dataset generation,Fantilli,4,4,2,2,0,0,0
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+>>> SPRINT 4: 26 Gennaio - 01 Febbraio,,,,,,,,,
+Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
 Application Bootstrap,main function,Fantilli,3,0,0,0,0,0,0
-,network configuration and building,Fantilli,6,0,0,0,0,0,0
-,dataset generation,Fantilli,4,0,0,0,0,0,0
+,Root actor and bootstrap,Fantilli,,,,,,,
+,...,Fantilli,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
+,,,,,,,,,
