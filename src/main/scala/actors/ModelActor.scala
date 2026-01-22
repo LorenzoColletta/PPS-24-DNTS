@@ -16,18 +16,18 @@ object ModelActor:
     case TrainingCompleted(updatedModel: Model)
     case GetMetrics(replyTo: ActorRef[MonitorCommand.ViewUpdateResponse])
     case ExportToFile()
-    case Initialize(model: Model)
+    case Initialize(model: Model, optimizer: Optimizer)
     
-  def apply(optimizer: Optimizer): Behavior[ModelCommand] =
+  def apply(): Behavior[ModelCommand] =
     Behaviors.setup: ctx =>
-      given Optimizer = optimizer
       idle()
 
-  private def idle()(using Optimizer): Behavior[ModelCommand] =
+  private def idle(): Behavior[ModelCommand] =
     Behaviors.receive: (ctx, msg) =>
       msg match
-        case ModelCommand.Initialize(model) =>
+        case ModelCommand.Initialize(model, optimizer) =>
           ctx.log.info("Model: Model initialized. Switching to active state.")
+          given Optimizer = optimizer
           active(model)
 
         case _ => Behaviors.unhandled
