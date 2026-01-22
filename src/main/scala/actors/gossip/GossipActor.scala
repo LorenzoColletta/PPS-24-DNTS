@@ -1,52 +1,55 @@
 package actors.gossip
 
+import actors.gossip.GossipProtocol.*
+
 import actors.ModelActor
 import actors.ModelActor.ModelCommand
-import actors.gossip.GossipProtocol.*
+import actors.cluster.*
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
+
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
+
+import akka.actor.typed.scaladsl.TimerScheduler
+
 import config.AppConfig
 import domain.network.Model
+
 import scala.util.Random
+import scala.concurrent.duration.*
 
 object GossipActor:
 
   def apply(
              modelActor: ActorRef[ModelCommand],
              monitorActor: ActorRef[MonitorCommand],
-             trainerActor: ActorRef[TrainerCommand]
+             trainerActor: ActorRef[TrainerCommand],
+             clusterManager: ActorRef[ClusterCommand]
            )(using config: AppConfig): Behavior[GossipCommand] =
     Behaviors.setup: context =>
       Behaviors.withTimers: timers =>
-        timers.startTimerWithFixedDelay(GossipCommand.TickGossip,
-                                        GossipCommand.TickGossip,
+        timers.startTimerWithFixedDelay(TickGossip,
+                                        TickGossip,
                                         config.gossipInterval)
         context.log.info("GossipActor started: Peer-to-peer synchronization active.")
-        active(modelActor, monitorActor, trainerActor, Set.empty)
+        active(modelActor, monitorActor, trainerActor, clusterManager)
 
   private def active(
                       modelActor: ActorRef[ModelCommand],
                       monitorActor: ActorRef[MonitorCommand],
                       trainerActor: ActorRef[TrainerCommand],
-                      peers: Set[ActorRef[GossipCommand]],
+                      clusterManager: ActorRef[ClusterCommand]
                     ): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
-        case GossipCommand.TickGossip =>
-          val remotePeers = (peers - context.self).toList
-
-          if remotePeers.nonEmpty then
-            val target = Random.shuffle(remotePeers).head
-            modelActor ! ModelActor.ModelCommand.GetModel(
-              context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
-            )
+        case TickGossip =>
+          clusterManager ! NodesRefRequest(replyTo = )
           Behaviors.same
-        case GossipCommand.SendModelToPeer(model, target) =>
-          target ! GossipCommand.HandleRemoteModel(model)
+        case SendModelToPeer(model, target) =>
+          target ! HandleRemoteModel(model)
           Behaviors.same
-        case GossipCommand.HandleRemoteModel(remoteModel) =>
+        case HandleRemoteModel(remoteModel) =>
           context.log.info("Gossip: Received remote model. Triggering synchronization.")
           modelActor ! ModelActor.ModelCommand.SyncModel(remoteModel)
           Behaviors.same
@@ -54,25 +57,23 @@ object GossipActor:
         //New node trigger Inizialize
         //GossipCommand.Inizialize
         //peer UP
-        
-        case GossipCommand.UpdatePeers(newPeers) =>
-          context.log.debug(s"Gossip: Peer list updated. Knowledge base: ${newPeers.size} nodes.")
-          active(modelActor, monitorActor, trainerActor, newPeers)
-        case GossipCommand.SpreadCommand(cmd) =>
+        case SpreadCommand(cmd) =>
           context.log.info(s"Gossip: Broadcasting control signal $cmd to all known peers.")
-          peers.foreach(_ ! GossipCommand.HandleControlCommand(cmd))
+          //peers.foreach(_ ! GossipCommand.HandleControlCommand(cmd))
           Behaviors.same
 
-        case GossipCommand.HandleControlCommand(cmd) =>
+        case HandleControlCommand(cmd) =>
           context.log.info(s"Gossip: Executing remote control command: $cmd")
           cmd match
-            case ControlCommand.GlobalPause  => 
+            case GlobalStart =>
+              clusterManager ! StartSimulation
+            case GlobalPause  =>
               monitorActor ! MonitorCommand.InternalPause
               trainerActor ! TrainerCommand.Pause
-            case ControlCommand.GlobalResume => 
+            case GlobalResume =>
               monitorActor ! MonitorCommand.InternalResume
               trainerActor ! TrainerCommand.Resume
-            case ControlCommand.GlobalStop   => 
+            case GlobalStop   =>
               monitorActor ! MonitorCommand.InternalStop
               trainerActor ! TrainerCommand.Stop
           Behaviors.same

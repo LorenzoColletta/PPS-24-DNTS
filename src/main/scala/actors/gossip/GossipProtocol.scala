@@ -2,32 +2,26 @@ package actors.gossip
 
 import akka.actor.typed.ActorRef
 import domain.network.Model
+import akka.actor.typed.receptionist.ServiceKey
 
-/**
- * Defines the messaging protocol for the Gossip component.
- */
 object GossipProtocol:
-  enum GossipCommand:
-    /** Internal trigger to start a new gossip round. */
-    case TickGossip
 
-    /** Received when a remote peer sends its model for synchronization. */
-    case HandleRemoteModel(remoteModel: Model)
+  sealed trait Message extends Serializable
 
-    /** Propagates a control command to all other peers in the cluster. */
-    case SpreadCommand(cmd: ControlCommand)
+  sealed trait GossipCommand extends Message
 
-    /** Handles a control command received from a peer. */
-    case HandleControlCommand(cmd: ControlCommand)
+  case object TickGossip extends GossipCommand
 
-    /** Updates the local list of available gossip peers. */
-    case UpdatePeers(peers: Set[ActorRef[GossipCommand]])
+  final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
 
-    case SendModelToPeer(model: Model, target: ActorRef[GossipCommand])
+  final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
 
-  /** Global simulation control signals. */
-  enum ControlCommand:
-    case GlobalStart
-    case GlobalPause
-    case GlobalResume
-    case GlobalStop
+
+  sealed trait ControlCommand extends Message with GossipCommand
+
+  case object GlobalStart  extends ControlCommand
+  case object GlobalPause  extends ControlCommand
+  case object GlobalResume extends ControlCommand
+  case object GlobalStop   extends ControlCommand
+
+  final case class SpreadCommand(cmd: ControlCommand) extends GossipCommand
