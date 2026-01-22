@@ -4,6 +4,10 @@ import scala.concurrent.duration.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+import domain.util.Space
+import domain.training.LossFunction
+import domain.training.Strategies.Losses
+
 /**
  * Defines the configuration contract for the system.
  */
@@ -19,6 +23,12 @@ trait AppConfig:
 
   /** The filename used for logging the node network weights. */
   def netLogFileName: String
+  
+  /** Defines the boundaries of the 2D plane used for data generation and visualization. */
+  def space: Space
+
+  /** The loss function used to measure the network performance. */
+  def lossFunction: LossFunction
 
 
 /**
@@ -40,9 +50,6 @@ object ProductionConfig extends AppConfig:
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
     val timestamp = now.format(formatter)
     s"node_network_$timestamp.log"
-
-/**
- * Provides the implicit configuration instance for the actors.
- */
-object ConfigModule:
-  given AppConfig = ProductionConfig
+  override final val space: Space = Space(100.0, 100.0)
+  
+  override final val lossFunction: LossFunction = Losses.mse

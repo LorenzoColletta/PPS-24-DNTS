@@ -5,7 +5,8 @@ import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.*
-import domain.network.{Activations, Feature, HyperParams, Layer, Network, Regularization, Model}
+
+import domain.network.{Activations, Feature, ModelBuilder, Regularization, HyperParams}
 import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.training.Strategies.Losses.mse
@@ -17,27 +18,23 @@ import config.{AppConfig, ProductionConfig}
 class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
   given AppConfig = ProductionConfig
+
+  private final val dummyFeatures = Feature.X
   
-  private final val dummyLayer = Layer(
-    Matrix.fill(1, 1)(0.5),
-    Vector.fromList(List.fill(1)(0.1)),
-    Activations.Sigmoid
-  )
-  private final val dummyNetwork = Network(List(dummyLayer))
+  private final val dummyModel = ModelBuilder.fromInputs(dummyFeatures)
+    .addLayer(neurons = 1, activation = Activations.Sigmoid)
+    .withSeed(1234L)
+    .build()
 
   private final val dummyData = List(
     LabeledPoint2D(Point2D(0.0, 0.0), Label.Negative),
     LabeledPoint2D(Point2D(1.0, 1.0), Label.Positive)
   )
 
-  private final val dummyFeatures = List(Feature.X)
-
-
-  private final val dummyModel = Model(dummyNetwork, dummyFeatures)
-
   private final val dummyConfig = TrainingConfig(
-    dataset = dummyData,
-    features = dummyFeatures,
+    trainSet = dummyData,
+    testSet = Nil,
+    features = List(dummyFeatures),
     hp = HyperParams(0.1, Regularization.None),
     epochs = 5,
     batchSize = 2,
@@ -49,8 +46,9 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
-
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
+    
     modelProbe.expectMessageType[ModelCommand.GetModel]
   }
 
@@ -58,7 +56,8 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
 
     val askMsg = modelProbe.expectMessageType[ModelCommand.GetModel]
     askMsg.replyTo ! dummyModel
@@ -72,7 +71,9 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
+    
     modelProbe.expectMessageType[ModelCommand.GetModel]
 
     trainer ! TrainerCommand.Stop
@@ -84,7 +85,8 @@ class TrainerActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     val modelProbe = createTestProbe[ModelCommand]()
     val trainer = spawn(TrainerActor(modelProbe.ref))
 
-    trainer ! TrainerCommand.Start(dummyConfig)
+    trainer ! TrainerCommand.SetTrainConfig(dummyConfig)
+    trainer ! TrainerCommand.Start(dummyData, Nil)
 
     val askMsg = modelProbe.expectMessageType[ModelCommand.GetModel]
     askMsg.replyTo ! dummyModel

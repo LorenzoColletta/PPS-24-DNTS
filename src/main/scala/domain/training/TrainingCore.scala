@@ -6,8 +6,23 @@ import domain.data.{LabeledPoint2D, toVector}
 import domain.training.{LossFunction, NetworkGradient}
 import domain.training.Consensus.averageGradients
 
+/**
+ * Core object responsible for the numerical computation of training steps.
+ * It acts as a bridge between the high-level Actors and the low-level math of Backpropagation and LinearAlgebra.
+ */
 object TrainingCore:
 
+  /**
+   * Computes the gradients and the loss for a specific batch of data.
+   * This is used during the training phase to update the model weights.
+   *
+   * @param model  The current model containing the network and feature configuration.
+   * @param batch  The subset of training data to process.
+   * @param lossFn The implicit loss function to evaluate the prediction error.
+   * @return A tuple containing:
+   *         - `NetworkGradient`: The averaged gradients for this batch.
+   *         - `Double`: The average loss value for this batch.
+   */
   def computeBatchGradients(
     model: Model,
     batch: List[LabeledPoint2D],
@@ -16,8 +31,9 @@ object TrainingCore:
     val results = batch.map { ex =>
       val grads = Backpropagation.computeGradients(model.network, ex, model.features)
 
-      val out = Vector(model.predict(ex.point))
-      val loss = lossFn.compute(out, ex.label.toVector)
+      val prediction = model.predict(ex.point)
+      val predictionVec = Vector(prediction)
+      val loss = lossFn.compute(predictionVec, ex.label.toVector)
 
       (NetworkGradient(grads), loss)
     }
@@ -27,3 +43,24 @@ object TrainingCore:
     val avgLoss = if (batch.isEmpty) 0.0 else lossList.sum / batch.size.toDouble
 
     (avgGrad, avgLoss)
+
+  /**
+   * Computes the average loss over an entire dataset.
+   *
+   * @param model  The current model to evaluate.
+   * @param data   The list of data points.
+   * @param lossFn The implicit loss function.
+   * @return The average loss value over the provided dataset.
+   */
+  def computeDatasetLoss(
+    model: Model,
+    data: List[LabeledPoint2D]
+  )(using lossFn: LossFunction): Double =
+
+    if data.isEmpty then 0.0
+    else
+      val totalLoss = data.map { ex =>
+        val prediction = model.predict(ex.point)
+        lossFn.compute(Vector(prediction), ex.label.toVector)
+      }.sum
+      totalLoss / data.size.toDouble

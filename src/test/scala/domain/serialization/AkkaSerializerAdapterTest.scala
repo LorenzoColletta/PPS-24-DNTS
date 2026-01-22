@@ -3,20 +3,17 @@ package domain.serialization
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import domain.network.{Network, Layer, Activations}
-import domain.data.LinearAlgebra.{Matrix, Vector}
-import domain.network.Activations.given
-import domain.serialization.NetworkSerializers.given
-import domain.serialization.LinearAlgebraSerializers.given
+import domain.network.{Network, Activations, ModelBuilder, Feature}
 
 class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
 
   private final val adapter = new AkkaSerializerAdapter()
 
-  private def createDummyNetwork(): Network =
-    Network(List(
-      Layer(Matrix.fill(1, 1)(0.5), Vector.fromList(List(0.1)), Activations.Sigmoid)
-    ))
+  private final val dummyModel = ModelBuilder.fromInputs(Feature.X)
+    .addLayer(neurons = 1, activation = Activations.Sigmoid)
+    .withSeed(1234L)
+    .build()
+  
 
   test("Adapter identifier is correctly set") {
     adapter.identifier shouldBe 99999
@@ -27,19 +24,19 @@ class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
   }
 
   test("Adapter produces correct manifest string for a Network object") {
-    val net = createDummyNetwork()
+    val net = dummyModel.network
 
     adapter.manifest(net) shouldBe AkkaSerializerAdapter.ManifestNetwork
   }
 
   test("Adapter properly serializes a Network to binary") {
-    val net = createDummyNetwork()
+    val net = dummyModel.network
 
     adapter.toBinary(net).length should be > 0
   }
 
   test("Adapter round-trip preserves the Network") {
-    val originalNet = createDummyNetwork()
+    val originalNet = dummyModel.network
 
     val bytes = adapter.toBinary(originalNet)
     val restoredObj = adapter.fromBinary(bytes, AkkaSerializerAdapter.ManifestNetwork)
