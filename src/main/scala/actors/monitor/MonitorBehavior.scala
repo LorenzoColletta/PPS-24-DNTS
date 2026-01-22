@@ -8,7 +8,7 @@ import view.{ViewBoundary, ViewStateSnapshot}
 import actors.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.GossipActor.GossipCommand
-import actors.RootActor.RootCommand
+import actors.root.RootActor.RootCommand
 import actors.monitor.MonitorActor.*
 import actors.monitor.MonitorProtocol.PrivateMonitorCommand
 

@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import config.AppConfig
 import actors.GossipActor.GossipCommand
 import actors.ModelActor.ModelCommand
-import actors.RootActor.RootCommand
+import actors.root.RootActor.RootCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import view.{ViewBoundary, ViewStateSnapshot}
 
