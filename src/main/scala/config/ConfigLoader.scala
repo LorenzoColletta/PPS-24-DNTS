@@ -14,6 +14,7 @@ import scala.jdk.CollectionConverters._
  * @param networkLayers The topology of the neural network (hidden layers and their activation functions).
  * @param features      The list of input features enabled for the model.
  * @param datasetType   The name or type of the dataset to generate (e.g., "xor", "spiral").
+ * @param datasetConf   The specific configuration parameters for the chosen dataset type.
  * @param datasetSize   The total number of samples to generate.
  * @param testSplit     The fraction of the dataset to set aside for validation (e.g., 0.2 for 20%).
  * @param epochs        The number of training iterations over the dataset.
@@ -24,9 +25,12 @@ case class FileConfig(
   seed: Option[Long],
   networkLayers: List[LayerConf],
   features: List[Feature],
+
   datasetType: String,
+  datasetConf: DatasetStrategyConfig,
   datasetSize: Int,
   testSplit: Double,
+
   epochs: Int,
   batchSize: Int,
   hyperParams: HyperParams
@@ -66,19 +70,42 @@ object ConfigLoader:
    * @throws IllegalArgumentException If an unknown activation function or regularization type is encountered.
    */
   def load(path: String): FileConfig =
+    val rootConf = resolveConfig(path)
+    val simConf = rootConf.getConfig("simulation")
+
+    val seed = if simConf.hasPath("seed") then Some(simConf.getLong("seed")) else None
+    
+    val (layers, features) = parseNetwork(simConf.getConfig("network"))
+
+    val (datasetStrategy, dsType, dsSize, testSplit) = parseDataset(simConf.getConfig("dataset"))
+
+    val (epochs, batchSize, hp) = parseTraining(simConf.getConfig("training"))
+
+    FileConfig(
+      seed = seed,
+      networkLayers = layers,
+      features = features,
+      datasetConf = datasetStrategy,
+      datasetType = dsType,
+      datasetSize = dsSize,
+      testSplit = testSplit,
+      epochs = epochs,
+      batchSize = batchSize,
+      hyperParams = hp
+    )
+
+
+  private def resolveConfig(path: String): Config =
     val file = new File(path)
-    val conf = 
-      if (file.exists()) ConfigFactory.parseFile(file).resolve() 
+    if file.exists()
+      then ConfigFactory.parseFile(file).resolve()
       else ConfigFactory.load(path).resolve()
 
-    val sim = conf.getConfig("simulation")
-
-    val seed = if sim.hasPath("seed") then Some(sim.getLong("seed")) else None
-
-    val features = sim.getStringList("network.features").asScala
+  private def parseNetwork(netConf: Config): (List[LayerConf], List[Feature]) =
+    val features = netConf.getStringList("features").asScala
       .map(f => Feature.valueOf(f)).toList
 
-    val layers = sim.getConfigList("network.hidden-layers").asScala.map { c =>
+    val layers = netConf.getConfigList("hidden-layers").asScala.map { c =>
       val actName = c.getString("activation").toLowerCase
       val activation = Activations.registry.getOrElse(
         actName,
@@ -87,26 +114,66 @@ object ConfigLoader:
       LayerConf(c.getInt("neurons"), activation)
     }.toList
 
-    val trainConf = sim.getConfig("training")
-    val hpConf = trainConf.getConfig("hyper-params")
-    val regConf = hpConf.getConfig("regularization")
+    (seed, layers, features)
 
-    val regType = regConf.getString("type")
+  private def parseDataset(dsConf: Config): (DatasetStrategyConfig, String, Int, Double) =
+    val typeName = dsConf.getString("type")
+    val size = dsConf.getInt("size")
+    val split = dsConf.getDouble("test-split")
+
+    val strategy = parseDatasetStrategy(typeName, dsConf)
+
+    (strategy, typeName, size, split)
+
+  private def parseTraining(trainConf: Config): (Int, Int, HyperParams) =
+    val epochs = trainConf.getInt("epochs")
+    val batchSize = trainConf.getInt("batch-size")
+    val hpConf = trainConf.getConfig("hyper-params")
+    
+    val regConf = hpConf.getConfig("regularization")
     val regularization = Regularization.fromName(
-      regType,
+      regConf.getString("type"),
       key => regConf.getDouble(key)
     )
 
     val hp = HyperParams(hpConf.getDouble("learning-rate"), regularization)
 
-    FileConfig(
-      seed = seed,
-      networkLayers = layers,
-      features = features,
-      datasetType = sim.getConfig("dataset").getString("type"),
-      datasetSize = sim.getConfig("dataset").getInt("size"),
-      testSplit = sim.getConfig("dataset").getDouble("test-split"),
-      epochs = trainConf.getInt("epochs"),
-      batchSize = trainConf.getInt("batch-size"),
-      hyperParams = hp,
-    )
+    (epochs, batchSize, hp)
+
+  private def parseDatasetStrategy(typeName: String, conf: Config): DatasetStrategyConfig =
+    typeName.toLowerCase match
+      case "gaussian" =>
+        Gaussian(
+          distance = conf.getDouble("distance"),
+          sigma = conf.getDouble("sigma"),
+          radius = conf.getDouble("radius"),
+          domainMin = conf.getDouble("domain-min"),
+          domainMax = conf.getDouble("domain-max")
+        )
+
+      case "ring" =>
+        Ring(
+          centerX = conf.getDouble("center-x"),
+          centerY = conf.getDouble("center-y"),
+          innerRadius = conf.getDouble("inner-radius"),
+          outerRadius = conf.getDouble("outer-radius"),
+          thickness = conf.getDouble("thickness"),
+          domainMin = conf.getDouble("domain-min"),
+          domainMax = conf.getDouble("domain-max")
+        )
+
+      case "spiral" =>
+        Spiral(
+          startDistance = conf.getDouble("start-distance"),
+          branchDistance = conf.getDouble("branch-distance"),
+          rotation = conf.getDouble("rotation")
+        )
+
+      case "xor" =>
+        Xor(
+          domainMin = conf.getDouble("domain-min"),
+          domainMax = conf.getDouble("domain-max")
+        )
+
+      case other =>
+        throw new IllegalArgumentException(s"Unknown dataset type: $other")
