@@ -2,26 +2,26 @@ package actors.gossip
 
 import akka.actor.typed.ActorRef
 import domain.network.Model
-import akka.actor.typed.receptionist.ServiceKey
 
 object GossipProtocol:
 
-  sealed trait Message extends Serializable
 
-  sealed trait GossipCommand extends Message
+  sealed trait ControlCommand extends GossipCommand
 
-  case object TickGossip extends GossipCommand
+  object ControlCommand:
+    case object GlobalStart extends ControlCommand
 
-  final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
+    case object GlobalPause extends ControlCommand
 
-  final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
+    case object GlobalResume extends ControlCommand
 
+    case object GlobalStop extends ControlCommand
 
-  sealed trait ControlCommand extends Message with GossipCommand
+  sealed trait GossipCommand extends Serializable
 
-  case object GlobalStart  extends ControlCommand
-  case object GlobalPause  extends ControlCommand
-  case object GlobalResume extends ControlCommand
-  case object GlobalStop   extends ControlCommand
-
-  final case class SpreadCommand(cmd: ControlCommand) extends GossipCommand
+  object GossipCommand:
+    case object TickGossip extends GossipCommand
+    final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
+    final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
+    final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
+    final case class HandleControlCommand(cmd: ControlCommand) extends ControlCommand
