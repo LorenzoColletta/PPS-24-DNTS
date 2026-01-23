@@ -9,6 +9,7 @@ import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import domain.network.Model
+import scala.util.Random
 
 private[gossip] class GossipBehavior(
                                       context: ActorContext[GossipCommand],
@@ -22,6 +23,15 @@ private[gossip] class GossipBehavior(
     Behaviors.receive: (context, message) =>
       message match
         case GossipCommand.TickGossip =>
+          clusterManager ! NodesRefRequest(context.messageAdapter { peers =>
+            val potentialPeers = peers.filter(_ != context.self).toList
+            if potentialPeers.nonEmpty then
+              val target = potentialPeers(Random.nextInt(potentialPeers.size))
+              modelActor ! ModelActor.ModelCommand.GetModel(
+                context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
+              )
+            GossipCommand.TickGossip
+          })
           Behaviors.same
         case GossipCommand.SendModelToPeer(model, target) =>
           context.log.info(s"Gossip: Sending local model weights to peer")
@@ -37,7 +47,7 @@ private[gossip] class GossipBehavior(
             case ControlCommand.GlobalStart =>
               clusterManager ! StartSimulation
               monitorActor ! MonitorCommand.StartSimulation
-              modelActor ! Initialize()
+              //modelActor ! ModelCommand
             case ControlCommand.GlobalPause =>
               monitorActor ! MonitorCommand.InternalPause
               trainerActor ! TrainerCommand.Pause

@@ -23,5 +23,6 @@ object GossipProtocol:
     case object TickGossip extends GossipCommand
     final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
     final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
+    final case class InternalPrepareGossip(model: Model) extends GossipCommand
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
     final case class HandleControlCommand(cmd: ControlCommand) extends ControlCommand
