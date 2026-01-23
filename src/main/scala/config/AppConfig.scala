@@ -18,7 +18,10 @@ trait AppConfig:
   /** The delay between processing two consecutive training batches. */
   def batchInterval: FiniteDuration
 
-  /** The filename used for logging the node network. */
+  /** The time interval at which the GossipActor triggers a synchronization with a peer. */
+  def gossipInterval: FiniteDuration
+
+  /** The filename used for logging the node network weights. */
   def netLogFileName: String
   
   /** Defines the boundaries of the 2D plane used for data generation and visualization. */
@@ -32,16 +35,21 @@ trait AppConfig:
  * Default Production Configuration.
  */
 object ProductionConfig extends AppConfig:
+  /** UI and metrics refresh rate. */
   override final val metricsInterval: FiniteDuration = 500.millis
+
+  /** Local training speed (delay between batches). */
   override final val batchInterval: FiniteDuration = 10.millis
 
+  /** P2P synchronization frequency. */
+  override final val gossipInterval: FiniteDuration = 2.seconds
+
+  /** Dynamic log filename generation with timestamp. */
   override final val netLogFileName: String =
     val now = LocalDateTime.now()
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
     val timestamp = now.format(formatter)
     s"node_network_$timestamp.log"
-
   override final val space: Space = Space(100.0, 100.0)
   
   override final val lossFunction: LossFunction = Losses.mse
-  

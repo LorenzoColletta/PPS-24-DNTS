@@ -4,7 +4,7 @@ import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*
 import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 import actors.monitor.MonitorProtocol.MonitorCommand
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipProtocol.*
 import akka.cluster.typed.{Cluster, Subscribe}
 
 /**

@@ -6,7 +6,7 @@ import akka.actor.typed.{ActorRef, Behavior}
 import config.AppConfig
 import domain.training.LossFunction
 import actors.trainer.TrainerBehavior
-import actors.ModelActor.ModelCommand
+import actors.model.ModelActor.ModelCommand
 
 
 /**

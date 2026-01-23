@@ -1,6 +1,6 @@
 package actors.cluster
 
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipProtocol.GossipCommand
 import akka.cluster.ClusterEvent.*
 import akka.actor.typed.ActorRef
 import actors.monitor.MonitorProtocol.MonitorCommand

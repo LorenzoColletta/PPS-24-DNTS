@@ -1,28 +1,15 @@
-package actors
+package actors.model
 
-import domain.network.Model
-import domain.model.ModelTasks
-import domain.training.{NetworkGradient, Optimizer}
-import actors.monitor.MonitorActor.MonitorCommand
-import akka.actor.typed.scaladsl.Behaviors
+import actors.model.ModelProtocol.ModelCommand
 import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import domain.model.ModelTasks
+import domain.training.Optimizer
+import domain.network.Model
 
-object ModelActor:
-  
-  enum ModelCommand:
-    case ApplyGradients(grads: NetworkGradient)
-    case GetModel(replyTo: ActorRef[Model])
-    case SyncModel(remoteModel: Model)
-    case TrainingCompleted(updatedModel: Model)
-    case GetMetrics(replyTo: ActorRef[MonitorCommand.ViewUpdateResponse])
-    case ExportToFile()
-    case Initialize(model: Model, optimizer: Optimizer)
-    
-  def apply(): Behavior[ModelCommand] =
-    Behaviors.setup: ctx =>
-      idle()
+private[model] class ModelBehavior(context: ActorContext[ModelCommand]):
 
-  private def idle(): Behavior[ModelCommand] =
+  def idle(): Behavior[ModelCommand] =
     Behaviors.receive: (ctx, msg) =>
       msg match
         case ModelCommand.Initialize(model, optimizer) =>
@@ -31,9 +18,10 @@ object ModelActor:
           active(model)
 
         case _ => Behaviors.unhandled
-      
+
+
   private def active(currentModel: Model)(using Optimizer): Behavior[ModelCommand] =
-    Behaviors.receive: (context, message) =>
+    Behaviors.receive: (cxt, message) =>
       message match
         case ModelCommand.ApplyGradients(grads) =>
           val (newModel, _) = ModelTasks.applyGradients(grads).run(currentModel)
@@ -41,8 +29,12 @@ object ModelActor:
         case ModelCommand.SyncModel(remoteModel) =>
           val (newModel, _) = ModelTasks.mergeWith(remoteModel).run(currentModel)
           active(newModel)
+        case ModelCommand.GetPrediction(point, replyTo) =>
+          val prediction = currentModel.predict(point)
+          replyTo ! prediction
+          Behaviors.same
         case ModelCommand.GetModel(replyTo) =>
           replyTo ! currentModel
           Behaviors.same
         case ModelCommand.TrainingCompleted(model) =>
-          Behaviors.same
+          active(model)
