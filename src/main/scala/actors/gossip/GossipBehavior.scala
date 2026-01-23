@@ -2,18 +2,18 @@ package actors.gossip
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import actors.gossip.GossipProtocol.*
-import actors.ModelActor
-import actors.ModelActor.ModelCommand.Initialize
+import actors.gossip.GossipActor.{GossipCommand, ControlCommand}
+import actors.model.ModelActor.ModelCommand
 import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.monitor.MonitorProtocol.MonitorCommand
+import actors.monitor.MonitorActor.MonitorCommand
 import domain.network.Model
+
 import scala.util.Random
 
 private[gossip] class GossipBehavior(
                                       context: ActorContext[GossipCommand],
-                                      modelActor: ActorRef[ModelActor.ModelCommand],
+                                      modelActor: ActorRef[ModelCommand],
                                       monitorActor: ActorRef[MonitorCommand],
                                       trainerActor: ActorRef[TrainerCommand],
                                       clusterManager: ActorRef[ClusterCommand]
@@ -22,25 +22,33 @@ private[gossip] class GossipBehavior(
   def active(): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
+
         case GossipCommand.TickGossip =>
-          clusterManager ! NodesRefRequest(context.messageAdapter { peers =>
-            val potentialPeers = peers.filter(_ != context.self).toList
-            if potentialPeers.nonEmpty then
-              val target = potentialPeers(Random.nextInt(potentialPeers.size))
-              modelActor ! ModelActor.ModelCommand.GetModel(
-                context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
-              )
-            GossipCommand.TickGossip
-          })
+          clusterManager ! NodesRefRequest(
+            replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers.toList))
+          )
+          
           Behaviors.same
+
+        case GossipCommand.WrappedPeers(peers) =>
+          val potentialPeers = peers.filter(_ != context.self)
+          if potentialPeers.nonEmpty then
+            val target = potentialPeers(Random.nextInt(potentialPeers.size))
+            modelActor ! ModelCommand.GetModel(
+              replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
+            )
+          Behaviors.same
+
         case GossipCommand.SendModelToPeer(model, target) =>
           context.log.info(s"Gossip: Sending local model weights to peer")
           target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
+
         case GossipCommand.HandleRemoteModel(remoteModel) =>
           context.log.info("Remote model received: initiating local synchronization.")
-          modelActor ! ModelActor.ModelCommand.SyncModel(remoteModel)
+          modelActor ! ModelCommand.SyncModel(remoteModel)
           Behaviors.same
+
         case GossipCommand.HandleControlCommand(cmd) =>
           context.log.info(s"Executing remote control command: $cmd")
           cmd match

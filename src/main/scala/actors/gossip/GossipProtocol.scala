@@ -6,6 +6,8 @@ import domain.network.Model
 object GossipProtocol:
 
 
+  sealed trait GossipCommand extends Serializable
+
   sealed trait ControlCommand extends GossipCommand
 
   object ControlCommand:
@@ -16,11 +18,10 @@ object GossipProtocol:
     case object GlobalResume extends ControlCommand
 
     case object GlobalStop extends ControlCommand
-
-  sealed trait GossipCommand extends Serializable
-
+  
   object GossipCommand:
     case object TickGossip extends GossipCommand
+    final case class WrappedPeers(peers: List[ActorRef[GossipCommand]]) extends GossipCommand
     final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
     final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
     final case class InternalPrepareGossip(model: Model) extends GossipCommand

@@ -11,7 +11,7 @@ import domain.data.LabeledPoint2D
 import domain.network.Model
 import domain.training.{LossFunction, TrainingCore}
 import actors.trainer.TrainerActor.*
-import actors.ModelActor.ModelCommand
+import actors.model.ModelActor.ModelCommand
 
 /**
  * Encapsulates the behavior logic for the TrainerActor.

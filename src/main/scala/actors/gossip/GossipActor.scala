@@ -3,7 +3,7 @@ package actors.gossip
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import config.AppConfig
-import actors.ModelActor.ModelCommand
+import actors.model.ModelActor.ModelCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.cluster.ClusterCommand
