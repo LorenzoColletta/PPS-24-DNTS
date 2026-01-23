@@ -1,6 +1,6 @@
 package actors
 
-import actors.ModelActor.ModelCommand
+import actors.model.ModelActor.ModelCommand
 import actors.gossip.GossipActor
 import actors.gossip.GossipProtocol.*
 import actors.monitor.MonitorProtocol.MonitorCommand

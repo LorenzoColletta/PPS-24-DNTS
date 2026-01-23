@@ -6,10 +6,11 @@ import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.*
+import actors.monitor.MonitorActor
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
-import actors.ModelActor.ModelCommand
-import actors.gossip.GossipProtocol
+import actors.model.ModelActor.ModelCommand
+import actors.gossip.GossipActor.GossipCommand
 import actors.RootActor.RootCommand
 import domain.network.{Feature, HyperParams, Activations, Regularization, Model, ModelBuilder}
 import view.{ViewBoundary, ViewStateSnapshot}

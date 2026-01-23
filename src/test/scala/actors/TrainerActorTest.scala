@@ -11,7 +11,7 @@ import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.training.Strategies.Losses.mse
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
-import actors.ModelActor.ModelCommand
+import actors.model.ModelActor.ModelCommand
 import actors.trainer.TrainerActor
 import config.{AppConfig, ProductionConfig}
 
