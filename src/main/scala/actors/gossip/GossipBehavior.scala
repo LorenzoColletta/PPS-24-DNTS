@@ -25,7 +25,7 @@ private[gossip] class GossipBehavior(
 
         case GossipCommand.TickGossip =>
           clusterManager ! NodesRefRequest(
-            replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers.toList))
+            replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
           
           Behaviors.same

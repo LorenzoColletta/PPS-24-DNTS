@@ -10,7 +10,7 @@ import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 sealed trait ClusterCommand
 
 
-final case class NodesRefRequest(replyTo: ActorRef[Set[ActorRef[GossipCommand]]]) extends ClusterCommand
+final case class NodesRefRequest(replyTo: ActorRef[List[ActorRef[GossipCommand]]]) extends ClusterCommand
 
 /**
  * Wraps an Akka Cluster [[MemberEvent]] for internal handling.
