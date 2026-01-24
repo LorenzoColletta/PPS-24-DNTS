@@ -3,15 +3,19 @@ package domain.serialization
 import scala.util.{Failure, Success}
 import akka.serialization.SerializerWithStringManifest
 
-import domain.network.Network
+import domain.network.Model
 import domain.network.Activations.given
 import domain.serialization.NetworkSerializers.given
 import domain.serialization.LinearAlgebraSerializers.given
 import domain.serialization.Serializer as DomainSerializer
 
+import actors.gossip.GossipActor.ControlCommand
+
+
 object AkkaSerializerAdapter:
 
-  final val ManifestNetwork = "N"
+  final val ManifestModel   = "M"
+  final val ManifestControl = "C"
   final val ManifestDataset = "D"
 
   private case class TypeBinding[T](
@@ -21,7 +25,8 @@ object AkkaSerializerAdapter:
   )
 
   private val registry: List[TypeBinding[?]] = List(
-    TypeBinding(ManifestNetwork, classOf[Network], summon[DomainSerializer[Network]])
+    TypeBinding(ManifestModel, classOf[Model], summon[DomainSerializer[Model]]),
+    TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]])
   )
 
 class AkkaSerializerAdapter extends SerializerWithStringManifest:
