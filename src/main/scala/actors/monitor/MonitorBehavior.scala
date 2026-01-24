@@ -5,10 +5,9 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
 import config.AppConfig
 import view.{ViewBoundary, ViewStateSnapshot}
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipActor.{GossipCommand, ControlCommand}
 import actors.root.RootActor.RootCommand
-import actors.monitor.MonitorActor.*
-import actors.monitor.MonitorProtocol.PrivateMonitorCommand
+import actors.monitor.MonitorProtocol._
 import actors.model.ModelActor.ModelCommand
 
 /**
@@ -121,7 +120,7 @@ private[monitor] class MonitorBehavior(
 
         case MonitorCommand.PauseSimulation =>
           context.log.info("Monitor: User requested PAUSE. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GlobalPause)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
           Behaviors.same
 
         case MonitorCommand.InternalPause =>
@@ -131,7 +130,7 @@ private[monitor] class MonitorBehavior(
 
         case MonitorCommand.StopSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GlobalStop)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 
         case MonitorCommand.InternalStop =>
@@ -164,7 +163,7 @@ private[monitor] class MonitorBehavior(
       message match
         case MonitorCommand.ResumeSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GlobalPause)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
           Behaviors.same
 
         case MonitorCommand.InternalResume =>
@@ -175,7 +174,7 @@ private[monitor] class MonitorBehavior(
 
         case MonitorCommand.StopSimulation =>
           context.log.info("Monitor: User requested STOP. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GlobalStop)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 
         case MonitorCommand.InternalStop =>

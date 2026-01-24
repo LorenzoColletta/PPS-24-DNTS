@@ -5,12 +5,11 @@ lazy val root = (project in file("."))
   .settings(
     name := "PPS-24-DNTS",
 
-    // 1. Rimuove i warning del compilatore (es. import inutilizzati, API deprecate)
     scalacOptions ++= Seq(
-      "-deprecation",         // Avvisa se usi API vecchie
-      "-feature",             // Avvisa se mancano definizioni di feature
-      "-Wunused:all",         // Segnala variabili, import o parametri non usati
-      "-no-indent"            // Opzionale: se preferisci uno stile meno rigido sulle indentazioni
+      "-deprecation",
+      "-feature",
+      "-Wunused:all"
+      //"-no-indent"
     ),
 
     libraryDependencies ++= {

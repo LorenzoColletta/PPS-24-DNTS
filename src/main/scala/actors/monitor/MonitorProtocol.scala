@@ -123,6 +123,6 @@ object MonitorProtocol:
 
   /** Private protocol for the MonitorActor. */
   private[monitor] object PrivateMonitorCommand:
-    
+
     /** Triggers local metric collection. */
     private[monitor] case object TickMetrics extends PrivateMonitorCommand

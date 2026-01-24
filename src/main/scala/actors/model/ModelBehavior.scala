@@ -1,6 +1,6 @@
 package actors.model
 
-import actors.model.ModelProtocol.ModelCommand
+import actors.model.ModelActor.ModelCommand
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import domain.model.ModelTasks

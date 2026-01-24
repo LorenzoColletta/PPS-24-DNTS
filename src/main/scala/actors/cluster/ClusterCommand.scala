@@ -1,6 +1,6 @@
 package actors.cluster
 
-import actors.gossip.GossipProtocol.GossipCommand
+import actors.gossip.GossipActor.GossipCommand
 import akka.actor.typed.ActorRef
 import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 
