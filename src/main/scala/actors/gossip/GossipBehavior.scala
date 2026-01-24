@@ -63,6 +63,7 @@ private[gossip] class GossipBehavior(
             case Failure(exception) =>
               context.log.error(s"Failed to deserialize remote Model: ${exception.getMessage}")
           Behaviors.same
+
         case GossipCommand.SpreadCommand(cmd) =>
           clusterManager ! NodesRefRequest(
             replyTo = context.messageAdapter(peers =>
@@ -95,7 +96,6 @@ private[gossip] class GossipBehavior(
                 case ControlCommand.GlobalStart =>
                   clusterManager ! StartSimulation
                   monitorActor ! MonitorCommand.StartSimulation
-                //modelActor ! ModelCommand
                 case ControlCommand.GlobalPause =>
                   monitorActor ! MonitorCommand.InternalPause
                   trainerActor ! TrainerCommand.Pause
@@ -107,7 +107,7 @@ private[gossip] class GossipBehavior(
                   trainerActor ! TrainerCommand.Stop
             case Failure(ex) =>
               context.log.error(s"Error deserialize: ${ex.getMessage}")
-          
+
           Behaviors.same
 
         case _ =>
