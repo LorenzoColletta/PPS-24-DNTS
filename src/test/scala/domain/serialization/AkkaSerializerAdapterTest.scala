@@ -19,29 +19,25 @@ class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
     adapter.identifier shouldBe 99999
   }
 
-  test("Adapter exposes correct public constant for Network manifest") {
-    AkkaSerializerAdapter.ManifestNetwork shouldBe "N"
+  test("Adapter exposes correct public constant for Model manifest") {
+    AkkaSerializerAdapter.ManifestModel shouldBe "M"
   }
 
-  test("Adapter produces correct manifest string for a Network object") {
-    val net = dummyModel.network
+  test("Adapter produces correct manifest string for a Model object") {
 
-    adapter.manifest(net) shouldBe AkkaSerializerAdapter.ManifestNetwork
+    adapter.manifest(dummyModel) shouldBe  AkkaSerializerAdapter.ManifestModel
   }
 
-  test("Adapter properly serializes a Network to binary") {
-    val net = dummyModel.network
-
-    adapter.toBinary(net).length should be > 0
+  test("Adapter properly serializes a Model to binary") {
+    adapter.toBinary(dummyModel).length should be > 0
   }
 
-  test("Adapter round-trip preserves the Network") {
-    val originalNet = dummyModel.network
+  test("Adapter round-trip preserves the Model") {
 
-    val bytes = adapter.toBinary(originalNet)
-    val restoredObj = adapter.fromBinary(bytes, AkkaSerializerAdapter.ManifestNetwork)
+    val bytes = adapter.toBinary(dummyModel)
+    val restoredObj = adapter.fromBinary(bytes, AkkaSerializerAdapter.ManifestModel)
 
-    restoredObj shouldBe originalNet
+    restoredObj shouldBe dummyModel
   }
 
   test("Adapter throws exception when asked for manifest of unsupported type") {
@@ -79,7 +75,7 @@ class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
     val corruptedBytes = Array[Byte](0, 0, 0, 1)
 
     an[IllegalArgumentException] should be thrownBy {
-      adapter.fromBinary(corruptedBytes, AkkaSerializerAdapter.ManifestNetwork)
+      adapter.fromBinary(corruptedBytes, AkkaSerializerAdapter.ManifestModel)
     }
   }
 }

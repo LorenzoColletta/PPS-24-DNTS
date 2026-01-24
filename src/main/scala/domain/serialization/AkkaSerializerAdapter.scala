@@ -9,6 +9,8 @@ import domain.serialization.NetworkSerializers.given
 import domain.serialization.LinearAlgebraSerializers.given
 import domain.serialization.Serializer as DomainSerializer
 
+import domain.serialization.ModelSerializers.given
+import domain.serialization.ControlCommandSerializers.given
 import actors.gossip.GossipActor.ControlCommand
 
 
