@@ -11,6 +11,7 @@ object GossipProtocol:
   sealed trait ControlCommand extends GossipCommand
 
   object ControlCommand:
+
     case object GlobalStart extends ControlCommand
 
     case object GlobalPause extends ControlCommand
@@ -22,8 +23,8 @@ object GossipProtocol:
   object GossipCommand:
     case object TickGossip extends GossipCommand
     final case class WrappedPeers(peers: List[ActorRef[GossipCommand]]) extends GossipCommand
-    final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
+    final case class HandleRemoteModel(bytes: Array[Byte]) extends GossipCommand
     final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
-    final case class InternalPrepareGossip(model: Model) extends GossipCommand
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
-    final case class HandleControlCommand(cmd: ControlCommand) extends ControlCommand
+    final case class InternalExecuteSpread(cmd: ControlCommand, peers: List[ActorRef[GossipCommand]]) extends ControlCommand
+    final case class HandleControlCommand(bytes: Array[Byte]) extends ControlCommand

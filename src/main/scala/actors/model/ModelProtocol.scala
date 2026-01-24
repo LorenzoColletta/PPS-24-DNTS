@@ -18,4 +18,4 @@ object ModelProtocol:
     final case class  TrainingCompleted(updatedModel: Model)  extends ModelCommand
     final case class  GetMetrics(replyTo: ActorRef[MonitorCommand.ViewUpdateResponse])  extends ModelCommand
     final case class  ExportToFile() extends ModelCommand
-    final case class GetPrediction(point: Point2D, replyTo: ActorRef[Double]) extends ModelCommand
+    final case class  GetPrediction(point: Point2D, replyTo: ActorRef[Double]) extends ModelCommand
