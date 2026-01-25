@@ -1,11 +1,16 @@
 package actors.cluster
 
+import actors.gossip.GossipActor.GossipCommand
+import akka.actor.typed.ActorRef
 import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 
 /**
  * Defines the internal protocol of messages handled by cluster behaviors.
  */
 sealed trait ClusterCommand
+
+
+final case class NodesRefRequest(replyTo: ActorRef[Set[ActorRef[GossipCommand]]]) extends ClusterCommand
 
 /**
  * Wraps an Akka Cluster [[MemberEvent]] for internal handling.

@@ -2,10 +2,9 @@ package actors.monitor
 
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
-
 import config.AppConfig
-import actors.GossipActor.GossipCommand
-import actors.ModelActor.ModelCommand
+import actors.gossip.GossipActor.GossipCommand
+import actors.model.ModelActor.ModelCommand
 import actors.root.RootActor.RootCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import view.{ViewBoundary, ViewStateSnapshot}
@@ -30,13 +29,13 @@ object MonitorActor:
    * @param appConfig    Implicit application global configuration.
    */
   def apply(
-    modelActor: ActorRef[ModelCommand],
-    trainerActor: ActorRef[TrainerCommand],
-    gossipActor: ActorRef[GossipCommand],
-    rootActor: ActorRef[RootCommand],
-    boundary: ViewBoundary,
-    isMaster: Boolean = false
-  )(using appConfig: AppConfig): Behavior[MonitorMessage] =
+             modelActor: ActorRef[ModelCommand],
+             trainerActor: ActorRef[TrainerCommand],
+             gossipActor: ActorRef[GossipCommand],
+             rootActor: ActorRef[RootCommand],
+             boundary: ViewBoundary,
+             isMaster: Boolean = false
+           )(using appConfig: AppConfig): Behavior[MonitorMessage] =
 
     Behaviors.setup: context =>
       Behaviors.withTimers: timers =>

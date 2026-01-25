@@ -1,10 +1,10 @@
 package actors.cluster
 
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipActor.GossipCommand
 import akka.cluster.ClusterEvent.*
 import akka.actor.typed.ActorRef
-import actors.monitor.MonitorProtocol.MonitorCommand
-import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
+import actors.monitor.MonitorActor.MonitorCommand
+import actors.monitor.MonitorActor.MonitorCommand.PeerCountChanged
 
 /**
  * Defines the policy for reacting to cluster membership and reachability events.

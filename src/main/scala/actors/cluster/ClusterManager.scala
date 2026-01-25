@@ -3,8 +3,8 @@ package actors.cluster
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*
 import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
-import actors.monitor.MonitorProtocol.MonitorCommand
-import actors.GossipActor.GossipCommand
+import actors.monitor.MonitorActor.MonitorCommand
+import actors.gossip.GossipActor.GossipCommand
 import akka.cluster.typed.{Cluster, Subscribe}
 
 /**
@@ -24,7 +24,7 @@ object ClusterManager:
     monitor: ActorRef[MonitorCommand],
     gossip: ActorRef[GossipCommand]
   ): Behavior[ClusterCommand] =
-    Behaviors.setup { context =>
+    Behaviors.setup: context =>
 
       val memberEventAdapter: ActorRef[MemberEvent] = context.messageAdapter(MemberCommand.apply)
       Cluster(context.system).subscriptions ! Subscribe(memberEventAdapter, classOf[MemberEvent])
@@ -38,4 +38,3 @@ object ClusterManager:
         monitor,
         gossip
       )
-    }
