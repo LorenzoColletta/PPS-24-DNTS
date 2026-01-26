@@ -50,6 +50,9 @@ object ProductionConfig extends AppConfig:
     val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
     val timestamp = now.format(formatter)
     s"node_network_$timestamp.log"
+
+  /** Defines a 100x100 coordinate space. */
   override final val space: Space = Space(100.0, 100.0)
-  
+
+  /** Define Mean Squared Error (MSE) as the standard loss metric. */
   override final val lossFunction: LossFunction = Losses.mse
