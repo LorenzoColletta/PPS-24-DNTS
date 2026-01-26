@@ -5,6 +5,9 @@ import domain.data.LinearAlgebra.{Matrix, Vector}
 
 object Exporters:
 
+  /**
+   * Exporter for generating detailed JSON representations of a [[Network]].
+   */
   given networkExporter: Exporter[Network] with
     def jsonExport(net: Network): String =
       val layersJson = net.layers.zipWithIndex.map { case (layer, idx) =>

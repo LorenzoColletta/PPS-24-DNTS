@@ -13,24 +13,40 @@ import domain.serialization.ModelSerializers.given
 import domain.serialization.ControlCommandSerializers.given
 import actors.gossip.GossipActor.ControlCommand
 
-
+/**
+ * Registry and configuration container for the [[AkkaSerializationAdapter]].
+ * Defines the unique Manifest codes used to identify types.
+ */
 object AkkaSerializerAdapter:
 
-  final val ManifestModel   = "M"
+  /** Manifest code for [[Model]]. */
+  final val ManifestModel = "M"
+  /** Manifest code for [[ControlCommand]]. */
   final val ManifestControl = "C"
-  final val ManifestDataset = "D"
 
+  /**
+   * Internal mapping connecting a specific Class type to its Manifest string
+   * and its corresponding [[domain.serialization.Serializer]].
+   */
   private case class TypeBinding[T](
     manifest: String,
     clss: Class[T],
     serializer: DomainSerializer[T]
   )
 
+  /**
+   * The static registry of supported types.
+   */
   private val registry: List[TypeBinding[?]] = List(
     TypeBinding(ManifestModel, classOf[Model], summon[DomainSerializer[Model]]),
     TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]])
   )
 
+
+/**
+ * Adapter class that integrates the custom [[domain.serialization.Serializer]] type classes
+ * into the Akka Actor serialization infrastructure. .
+ */
 class AkkaSerializerAdapter extends SerializerWithStringManifest:
   import AkkaSerializerAdapter.registry
   import AkkaSerializerAdapter.TypeBinding
@@ -44,12 +60,25 @@ class AkkaSerializerAdapter extends SerializerWithStringManifest:
     registry.map(b => b.clss -> b).toMap
 
 
+  /**
+   * @param o The object to be serialized.
+   * @return The "Manifest" (a short string code) associated with the object instance.
+   * @throws IllegalArgumentException If the object type is not registered in this adapter.
+   */
   override def manifest(o: AnyRef): String =
     classToBinding.get(o.getClass) match
       case Some(binding) => binding.manifest
       case None =>
         throw new IllegalArgumentException(s"Type not supported by AkkaSerializerAdapter: ${o.getClass.getName}")
 
+  /**
+   * Serializes the object into a byte array.
+   * Delegates the logic to the [[domain.serialization.Serializer]] found in the registry.
+   *
+   * @param o The object to serialize.
+   * @return The binary representation of the object.
+   * @throws IllegalArgumentException If no serializer is found for the object's type.
+   */
   override def toBinary(o: AnyRef): Array[Byte] =
     classToBinding.get(o.getClass) match
       case Some(binding) =>
@@ -57,6 +86,14 @@ class AkkaSerializerAdapter extends SerializerWithStringManifest:
       case None =>
         throw new IllegalArgumentException(s"Serializer not found for type: ${o.getClass.getName}")
 
+  /**
+   * Deserializes a byte array back into a generic [[AnyRef]].
+   *
+   * @param bytes    The raw binary data received.
+   * @param manifest The manifest string identifying the type of the object.
+   * @return The reconstructed object.
+   * @throws IllegalArgumentException If the manifest is unknown or deserialization fails.
+   */
   override def fromBinary(bytes: Array[Byte], manifest: String): AnyRef =
     manifestToBinding.get(manifest) match
       case Some(binding) =>

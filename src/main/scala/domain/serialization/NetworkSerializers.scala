@@ -7,8 +7,19 @@ import scala.util.{Try, Failure, Success}
 import domain.network.{Network, Layer, Activation}
 import domain.data.LinearAlgebra.{Matrix, Vector}
 
+/**
+ * Binary serializers for Neural [[Network]]s.
+ */
 object NetworkSerializers:
 
+  /**
+   * Serializer for the complete Neural [[Network]] topology.
+   * Handles layer iteration and delegates weight/bias serialization to implicit instances.
+   *
+   * @param mSer                The implicit [[Serializer]] used for [[Matrix]] serialization.
+   * @param vSer                The implicit [[Serializer]] used for [[Vector]] serialization.
+   * @param activationRegistry  The implicit mapping from the string name to the [[Activation]] instance.
+   */
   given networkSerializer(
     using
       mSer: Serializer[Matrix],
