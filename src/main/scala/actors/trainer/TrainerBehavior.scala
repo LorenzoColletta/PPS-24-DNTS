@@ -41,7 +41,7 @@ private[trainer] class TrainerBehavior(
           ready(trainConfig)
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
-          replyTo ! MetricsCalculated(0.0, 0.0)
+          replyTo ! MetricsCalculated(0.0, 0.0, 0)
           Behaviors.same
 
         case TrainerCommand.Stop =>
@@ -69,7 +69,7 @@ private[trainer] class TrainerBehavior(
           training(newTrainConfig, shuffledDataset, rand, 1, 0)
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
-          replyTo ! MetricsCalculated(0.0, 0.0)
+          replyTo ! MetricsCalculated(0.0, 0.0, 0)
           Behaviors.same
 
         case TrainerCommand.Stop =>
@@ -125,7 +125,7 @@ private[trainer] class TrainerBehavior(
             val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)
             val testLoss = TrainingCore.computeDatasetLoss(model, trainConfig.testSet)
 
-            replyTo ! MetricsCalculated(trainLoss, testLoss)
+            replyTo ! MetricsCalculated(trainLoss, testLoss, currentEpoch)
             Behaviors.same
 
           case TrainerCommand.Pause =>
@@ -160,7 +160,7 @@ private[trainer] class TrainerBehavior(
           val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)
           val testLoss = TrainingCore.computeDatasetLoss(model, trainConfig.testSet)
 
-          replyTo ! MetricsCalculated(trainLoss, testLoss)
+          replyTo ! MetricsCalculated(trainLoss, testLoss, resumePos._1)
           Behaviors.same
 
         case TrainerCommand.Stop =>

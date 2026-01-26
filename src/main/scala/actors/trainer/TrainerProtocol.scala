@@ -36,10 +36,12 @@ object TrainerProtocol:
    *
    * @param trainLoss The loss value computed on the training set.
    * @param testLoss  The loss value computed on the test set.
+   * @param epoch     The actual epoch
    */
   case class MetricsCalculated(
     trainLoss: Double,
-    testLoss: Double
+    testLoss: Double,
+    epoch: Int
   )
 
 
