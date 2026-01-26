@@ -5,17 +5,27 @@ import scala.math.{signum, max, abs}
 import domain.data.LinearAlgebra.*
 import domain.network.{Regularization, Network}
 
+/**
+ * Collection of standard implementations
+ * for [[LossFunction]], [[RegularizationStrategy]], and [[Optimizer]].
+ */
 object Strategies:
 
+  /**
+   * Standard Loss Functions used to evaluate model performance.
+   */
   object Losses:
+    /** Mean Squared Error (MSE) loss. */
     given mse: LossFunction with
       def compute(predicted: Vector, target: Vector): Double =
         val diff = predicted - target
         (diff dot diff) / (2.0 * predicted.length)
-
+      
       def derivative(predicted: Vector, target: Vector): Vector =
         (predicted - target) / predicted.length.toDouble
 
+
+  /** [[RegularizationStrategy]] implementations factory. */
   object Regularizers:
     private final val none: RegularizationStrategy = (w, _) => w
 
@@ -31,6 +41,12 @@ object Strategies:
           else x - (signum(x) * threshold)
         }
 
+    /**
+     * Creates a concrete [[RegularizationStrategy]] based on the provided configuration.
+     *
+     * @param conf The regularization configuration object (e.g., L1, L2, ElasticNet, None).
+     * @return A [[RegularizationStrategy]] that applies the specific penalty logic to the weight matrices.
+     */
     def fromConfig(conf: Regularization): RegularizationStrategy = conf match
       case Regularization.None => none
       case Regularization.L2(l) => L2(l)
@@ -38,7 +54,16 @@ object Strategies:
       case Regularization.ElasticNet(l1, l2) =>
         (w, lr) => L1(l1)(L2(l2)(w, lr), lr)
 
+
+  /** Standard Optimization Algorithms. */
   object Optimizers:
+    /**
+     * Stochastic Gradient Descent (SGD).
+     * Updates weights by subtracting the gradient scaled by the learning rate.
+     *
+     * @param learningRate The step size.
+     * @param reg          The regularization strategy to apply during updates.
+     */
     class SGD(learningRate: Double, reg: RegularizationStrategy) extends Optimizer:
       def updateWeights(net: Network, grads: NetworkGradient): Network =
         require(net.layers.length == grads.layers.length, "Gradient mismatch")

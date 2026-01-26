@@ -16,12 +16,12 @@ object TrainingCore:
    * Computes the gradients and the loss for a specific batch of data.
    * This is used during the training phase to update the model weights.
    *
-   * @param model  The current model containing the network and feature configuration.
+   * @param model  The current [[Model]] containing the network and feature configuration.
    * @param batch  The subset of training data to process.
-   * @param lossFn The implicit loss function to evaluate the prediction error.
+   * @param lossFn The implicit [[LossFunction]] to evaluate the prediction error.
    * @return A tuple containing:
-   *         - `NetworkGradient`: The averaged gradients for this batch.
-   *         - `Double`: The average loss value for this batch.
+   *         - [[NetworkGradient]]: The averaged gradients for this batch.
+   *         - [[Double]]: The average loss value for this batch.
    */
   def computeBatchGradients(
     model: Model,
@@ -47,9 +47,9 @@ object TrainingCore:
   /**
    * Computes the average loss over an entire dataset.
    *
-   * @param model  The current model to evaluate.
+   * @param model  The current [[Model]] containing the network and feature configuration.
    * @param data   The list of data points.
-   * @param lossFn The implicit loss function.
+   * @param lossFn The implicit [[LossFunction]] to evaluate the prediction error.
    * @return The average loss value over the provided dataset.
    */
   def computeDatasetLoss(

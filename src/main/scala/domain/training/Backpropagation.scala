@@ -5,10 +5,26 @@ import domain.data.{Label, LabeledPoint2D}
 import domain.data.toVector
 import domain.network.*
 
+/**
+ * Implements the Backpropagation algorithm for computing gradients in a Feed-Forward Neural Network.
+ */
 object Backpropagation:
 
   private case class LayerCache(input: Vector, weightedSum: Vector, activationOutput: Vector)
 
+  /**
+   * Computes the gradients for a single training example.
+   *
+   * It performs two passes:
+   * 1. **Forward Pass**: Propagates the input through the network, caching intermediate activations.
+   * 2. **Backward Pass**: Propagates the error from the output layer back to the input, computing partial derivatives.
+   *
+   * @param network  The current state of the neural network.
+   * @param example  The labeled training sample.
+   * @param features The feature extraction pipeline configuration.
+   * @param loss     The loss function used to calculate the error signal.
+   * @return A list of [[LayerGradient]]s, one for each layer in the network.
+   */
   def computeGradients(
     network: Network,
     example: LabeledPoint2D,

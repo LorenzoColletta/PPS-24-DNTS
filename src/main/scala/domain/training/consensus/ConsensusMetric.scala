@@ -3,11 +3,25 @@ package domain.training.consensus
 import domain.network.Network
 import domain.data.LinearAlgebra.{Matrix, Vector}
 
+/**
+ * Strategy interface for calculating the quantitative difference between two neural networks.
+ */
 trait ConsensusMetric:
+  /**
+   * Computes a scalar value representing the dissimilarity between two network states.
+   *
+   * @param n1 The first network.
+   * @param n2 The second network.
+   * @return A [[Double]] where 0.0 implies identical networks, and higher values imply greater difference.
+   */
   def divergence(n1: Network, n2: Network): Double
 
 object ConsensusMetric:
 
+  /**
+   * Default implementation using Mean Absolute Error (MAE) on all parameters.
+   * It calculates the average absolute difference across all weights and biases.
+   */
   given default: ConsensusMetric with
     def divergence(n1: Network, n2: Network): Double =
       require(n1.layers.length == n2.layers.length, "Topology mismatch")
