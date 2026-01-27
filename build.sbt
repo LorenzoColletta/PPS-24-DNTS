@@ -9,7 +9,6 @@ lazy val root = (project in file("."))
       "-deprecation",
       "-feature",
       "-Wunused:all"
-      //"-no-indent"
     ),
 
     libraryDependencies ++= {
@@ -17,6 +16,7 @@ lazy val root = (project in file("."))
       Seq(
         "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion,
         "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
+        "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
         "ch.qos.logback" % "logback-classic" % "1.4.14",
         "org.scalatest" %% "scalatest" % "3.2.18" % Test,
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test

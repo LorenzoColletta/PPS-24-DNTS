@@ -3,100 +3,72 @@ package actors
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import akka.actor.typed.ActorRef
 import org.scalatest.wordspec.AnyWordSpecLike
-import domain.network.{Model, ModelBuilder, Feature}
-import actors.gossip.GossipActor
-import actors.gossip.GossipProtocol.*
-import actors.gossip.GossipProtocol.ControlCommand.*
-import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import actors.model.ModelActor.ModelCommand
+import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
+import actors.gossip.GossipActor
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
+import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
+import domain.network.{Activations, Feature, Model, ModelBuilder}
 import config.{AppConfig, ProductionConfig}
-import domain.serialization.Serializer
-import domain.serialization.ControlCommandSerializers.given
-import domain.serialization.ModelSerializers.given
-import domain.serialization.NetworkSerializers.given
-import domain.serialization.LinearAlgebraSerializers.given
-import domain.network.Activations.given
 
-class GossipActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
+class GossipActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike:
 
-  given config: AppConfig = ProductionConfig
-  val dummyModel: Model = ModelBuilder.fromInputs(Feature.X).build()
+  private val dummyModel = ModelBuilder.fromInputs(Feature.X).addLayer(1, Activations.Relu).build()
 
-  "A GossipActor" should {
+  "A GossipActor (GossipBehavior)" should {
 
-    "request peer list from ClusterManager on TickGossip" in {
-      val clusterProbe = createTestProbe[ClusterCommand]()
-      val gossip = spawn(GossipActor(
-        createTestProbe[ModelCommand]().ref,
-        createTestProbe[MonitorCommand]().ref,
-        createTestProbe[TrainerCommand]().ref,
-        clusterProbe.ref
-      ))
+    val modelProbe = createTestProbe[ModelCommand]()
+    val monitorProbe = createTestProbe[MonitorCommand]()
+    val trainerProbe = createTestProbe[TrainerCommand]()
+    val clusterProbe = createTestProbe[ClusterCommand]()
 
-      gossip ! GossipCommand.TickGossip
-      clusterProbe.expectMessageType[NodesRefRequest]
-    }
+    given AppConfig = ProductionConfig
 
-    "spread a control command to other peers when receiving SpreadCommand" in {
-      val clusterProbe = createTestProbe[ClusterCommand]()
-      val peerProbe = createTestProbe[GossipCommand]()
+    val gossipActor = spawn(GossipActor(
+      modelProbe.ref,
+      monitorProbe.ref,
+      trainerProbe.ref,
+      clusterProbe.ref
+    ))
 
-      val gossip = spawn(GossipActor(
-        createTestProbe[ModelCommand]().ref,
-        createTestProbe[MonitorCommand]().ref,
-        createTestProbe[TrainerCommand]().ref,
-        clusterProbe.ref
-      ))
-
-      gossip ! GossipCommand.SpreadCommand(GlobalPause)
+    "request peers from cluster manager on TickGossip" in {
+      gossipActor ! GossipCommand.TickGossip
 
       val request = clusterProbe.expectMessageType[NodesRefRequest]
 
-      request.replyTo ! List(peerProbe.ref, gossip.ref)
-
-      val received = peerProbe.expectMessageType[GossipCommand.HandleControlCommand]
-      val deserialized = summon[Serializer[ControlCommand]].deserialize(received.bytes).get
-
-      deserialized shouldBe GlobalPause
+      request.replyTo ! List(gossipActor.ref)
     }
 
-    "execute local actions when receiving a serialized HandleControlCommand" in {
-      val monitorProbe = createTestProbe[MonitorCommand]()
-      val trainerProbe = createTestProbe[TrainerCommand]()
-      val serializer = summon[Serializer[ControlCommand]]
+    "sync model when receiving a remote model" in {
+      gossipActor ! GossipCommand.HandleRemoteModel(dummyModel)
 
-      val gossip = spawn(GossipActor(
-        createTestProbe[ModelCommand]().ref,
-        monitorProbe.ref,
-        trainerProbe.ref,
-        createTestProbe[ClusterCommand]().ref
-      ))
-
-      val bytes = serializer.serialize(GlobalStop)
-      gossip ! GossipCommand.HandleControlCommand(bytes)
-
-      monitorProbe.expectMessage(MonitorCommand.InternalStop)
-      trainerProbe.expectMessage(TrainerCommand.Stop)
+      modelProbe.expectMessage(ModelCommand.SyncModel(dummyModel))
     }
 
-    "sync local model when receiving a serialized HandleRemoteModel" in {
-      val modelProbe = createTestProbe[ModelCommand]()
-      val modelSerializer = summon[Serializer[Model]]
+    "propagate control commands to other peers via SpreadCommand" in {
+      val remotePeerProbe = createTestProbe[GossipCommand]()
+      val command = ControlCommand.GlobalStart
 
-      val gossip = spawn(GossipActor(
-        modelProbe.ref,
-        createTestProbe[MonitorCommand]().ref,
-        createTestProbe[TrainerCommand]().ref,
-        createTestProbe[ClusterCommand]().ref
-      ))
+      gossipActor ! GossipCommand.SpreadCommand(command)
 
-      val bytes = modelSerializer.serialize(dummyModel)
-      gossip ! GossipCommand.HandleRemoteModel(bytes)
+      val request = clusterProbe.expectMessageType[NodesRefRequest]
+      request.replyTo ! (List(gossipActor.ref, remotePeerProbe.ref))
 
-      val syncMsg = modelProbe.expectMessageType[ModelCommand.SyncModel]
-      syncMsg.remoteModel.features shouldBe dummyModel.features
+      remotePeerProbe.expectMessage(GossipCommand.HandleControlCommand(command))
+    }
+
+    "handle local execution of ControlCommands (e.g., GlobalPause)" in {
+      gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalPause)
+
+      monitorProbe.expectMessage(MonitorCommand.InternalPause)
+      trainerProbe.expectMessage(TrainerCommand.Pause)
+    }
+
+    "handle local execution of ControlCommands (e.g., GlobalStart)" in {
+      gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStart)
+
+      clusterProbe.expectMessage(StartSimulation)
+      monitorProbe.expectMessage(MonitorCommand.StartSimulation)
     }
   }
-}

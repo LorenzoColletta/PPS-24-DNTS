@@ -9,13 +9,6 @@ import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.monitor.MonitorActor.MonitorCommand
 import domain.network.Model
-import domain.serialization.ModelSerializers.given
-import domain.serialization.NetworkSerializers.given
-import domain.serialization.LinearAlgebraSerializers.given
-import domain.network.Activations.given
-import domain.serialization.ControlCommandSerializers.given
-import domain.serialization.Serializer
-import scala.util.{Success, Failure}
 
 import scala.util.Random
 
@@ -35,7 +28,7 @@ private[gossip] class GossipBehavior(
           clusterManager ! NodesRefRequest(
             replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
-          
+
           Behaviors.same
 
         case GossipCommand.WrappedPeers(peers) =>
@@ -48,65 +41,46 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.SendModelToPeer(model, target) =>
-          val serializer = summon[Serializer[Model]]
-          val serializedBytes = serializer.serialize(model)
-          context.log.info(s"Gossip: Sending serialized Model (${serializedBytes.length} bytes) to peer")
-          target ! GossipCommand.HandleRemoteModel(serializedBytes)
+          context.log.info(s"Gossip: Sending Model  to peer ${target}")
+          target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
 
-        case GossipCommand.HandleRemoteModel(bytes) =>
-          val serializer = summon[Serializer[Model]]
-          serializer.deserialize(bytes) match
-            case Success(remoteModel) =>
-              context.log.info("Remote Model received and deserialized successfully.")
-              modelActor ! ModelCommand.SyncModel(remoteModel)
-            case Failure(exception) =>
-              context.log.error(s"Failed to deserialize remote Model: ${exception.getMessage}")
+        case GossipCommand.HandleRemoteModel(remoteModel) =>
+          modelActor ! ModelCommand.SyncModel(remoteModel)
           Behaviors.same
 
         case GossipCommand.SpreadCommand(cmd) =>
           clusterManager ! NodesRefRequest(
             replyTo = context.messageAdapter(peers =>
-              GossipCommand.InternalExecuteSpread(cmd, peers)
+              GossipCommand.WrappedSpreadCommand(peers, cmd)
             )
           )
           Behaviors.same
 
-        case GossipCommand.InternalExecuteSpread(cmd, peers) =>
-          val serializer = summon[Serializer[ControlCommand]]
-          val serializedCmd = serializer.serialize(cmd)
-
+        case GossipCommand.WrappedSpreadCommand(peers, cmd) =>
           val otherPeers = peers.filter(_ != context.self)
-          context.log.info(s"Control command $cmd sent in broadcast to ${otherPeers.size} peer.")
-
-          otherPeers.foreach { peer =>
-            peer ! GossipCommand.HandleControlCommand(serializedCmd)
-          }
-
+          otherPeers.foreach ( peer =>
+            peer ! GossipCommand.HandleControlCommand(cmd)
+          )
           Behaviors.same
 
-        case GossipCommand.HandleControlCommand(bytes) =>
+        case GossipCommand.HandleControlCommand(cmd) =>
 
-          val serializer = summon[Serializer[ControlCommand]]
+          context.log.info(s"Executing remote control command: $cmd")
 
-          serializer.deserialize(bytes) match
-            case Success(cmd) =>
-              context.log.info(s"Executing remote control command: $cmd")
-              cmd match
-                case ControlCommand.GlobalStart =>
-                  clusterManager ! StartSimulation
-                  monitorActor ! MonitorCommand.StartSimulation
-                case ControlCommand.GlobalPause =>
-                  monitorActor ! MonitorCommand.InternalPause
-                  trainerActor ! TrainerCommand.Pause
-                case ControlCommand.GlobalResume =>
-                  monitorActor ! MonitorCommand.InternalResume
-                  trainerActor ! TrainerCommand.Resume
-                case ControlCommand.GlobalStop =>
-                  monitorActor ! MonitorCommand.InternalStop
-                  trainerActor ! TrainerCommand.Stop
-            case Failure(ex) =>
-              context.log.error(s"Error deserialize: ${ex.getMessage}")
+          cmd match
+            case ControlCommand.GlobalStart =>
+              clusterManager ! StartSimulation
+              monitorActor ! MonitorCommand.StartSimulation
+            case ControlCommand.GlobalPause =>
+              monitorActor ! MonitorCommand.InternalPause
+              trainerActor ! TrainerCommand.Pause
+            case ControlCommand.GlobalResume =>
+              monitorActor ! MonitorCommand.InternalResume
+              trainerActor ! TrainerCommand.Resume
+            case ControlCommand.GlobalStop =>
+              monitorActor ! MonitorCommand.InternalStop
+              trainerActor ! TrainerCommand.Stop
 
           Behaviors.same
 

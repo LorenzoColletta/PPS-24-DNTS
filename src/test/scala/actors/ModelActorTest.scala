@@ -53,7 +53,7 @@ class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
     trainerActor ! TrainerCommand.SetTrainConfig(dummyConfig)
     trainerActor ! TrainerCommand.Start(dummyData, Nil)
-    
+
     modelActor ! ModelCommand.Initialize(model, testOptimizer, trainerActor)
 
     (modelActor, trainerActor)
@@ -63,7 +63,7 @@ class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
     "return different predictions after a model update" in {
       val model1 = createModel(1L)
       val model2 = createModel(999L)
-      
+
       val (modelActor, trainerActor) = setup(model1)
 
       val probe = createTestProbe[Double]()
@@ -85,7 +85,7 @@ class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
       val model2 = createModel(1L)
 
       val (modelActor, trainerActor) = setup(model1)
-      
+
       val probe = createTestProbe[Double]()
       val testPoint = Point2D(0.5, 0.5)
 
