@@ -31,5 +31,6 @@ object GossipActor:
           modelActor,
           monitorActor,
           trainerActor,
-          clusterManager
+          clusterManager,
+          config
         ).active()

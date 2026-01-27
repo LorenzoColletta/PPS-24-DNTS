@@ -114,6 +114,8 @@ object TrainerProtocol:
       trainConfig: TrainingConfig
     ) extends TrainerCommand
 
+    final case class UpdateDataset(localPoints: List[LabeledPoint2D]) extends TrainerCommand
+
 
   /**
    * Trait for all private commands handled by the TrainerActor.

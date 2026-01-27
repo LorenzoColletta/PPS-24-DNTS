@@ -1,6 +1,7 @@
 package actors.gossip
 
 import akka.actor.typed.ActorRef
+import config.DatasetStrategyConfig
 import domain.network.Model
 
 object GossipProtocol:
@@ -25,6 +26,7 @@ object GossipProtocol:
     final case class WrappedPeers(peers: List[ActorRef[GossipCommand]]) extends GossipCommand
     final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
     final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
+    final case class InitLocalDataset(size: Int, strategy: DatasetStrategyConfig) extends GossipCommand
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
     final case class WrappedSpreadCommand(peers: List[ActorRef[GossipCommand]], cmd: ControlCommand) extends ControlCommand
     final case class HandleControlCommand(cmd: ControlCommand) extends ControlCommand

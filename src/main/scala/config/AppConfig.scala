@@ -29,6 +29,10 @@ trait AppConfig:
 
   /** The loss function used to measure the network performance. */
   def lossFunction: LossFunction
+  
+  def datasetSize: Int
+  
+  def datasetStrategy: DatasetStrategyConfig
 
 
 /**
@@ -56,3 +60,11 @@ object ProductionConfig extends AppConfig:
 
   /** Define Mean Squared Error (MSE) as the standard loss metric. */
   override final val lossFunction: LossFunction = Losses.mse
+
+  override final val datasetSize: Int = 200
+  override final val datasetStrategy: DatasetStrategyConfig =
+    DatasetStrategyConfig.Spiral(
+      startDistance = 10.0,
+      branchDistance = 5.0,
+      rotation = 0.0
+    )
