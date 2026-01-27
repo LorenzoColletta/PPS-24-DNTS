@@ -77,7 +77,7 @@ object ConfigLoader:
 
     val seed = if simConf.hasPath("seed") then Some(simConf.getLong("seed")) else None
     
-    val (layers, features) = parseNetwork(simConf.getConfig("network"))
+    val (layers, features) = parseModel(simConf.getConfig("model"))
 
     val (datasetStrategy, dsType, dsSize, testSplit) = parseDataset(simConf.getConfig("dataset"))
 
@@ -103,7 +103,7 @@ object ConfigLoader:
       then ConfigFactory.parseFile(file).resolve()
       else ConfigFactory.load(path).resolve()
 
-  private def parseNetwork(netConf: Config): (List[LayerConf], List[Feature]) =
+  private def parseModel(netConf: Config): (List[LayerConf], List[Feature]) =
     val features = netConf.getStringList("features").asScala
       .map(f => Feature.valueOf(f)).toList
 

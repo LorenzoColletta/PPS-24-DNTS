@@ -2,57 +2,45 @@ package domain.serialization
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
-import domain.network.{Network, Layer, Activations}
+import domain.network.{Activations, Feature, Layer, ModelBuilder, Network, Model}
 import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.serialization.Exporters.given
+import domain.serialization.Exporters.Exporter
 
 class ExportersTest extends AnyFunSuite with Matchers {
 
-  private final val dummyNet = Network(List(
-    Layer(Matrix.zeros(1, 1), Vector.zeros(1), Activations.Sigmoid)
-  ))
-  private final val magicNumber = 123.456
+  def createModel(seed: Long): Model =
+    ModelBuilder.fromInputs(Feature.X, Feature.Y)
+      .addLayer(2, Activations.Relu)
+      .withSeed(seed)
+      .build()
 
-  test("Network JSON export contains 'layer_index' field") {
-    val json = summon[Exporter[Network]].jsonExport(dummyNet)
-    json should include ("\"layer_index\"")
+  final val dummyModel = createModel(1)
+
+  test("Model export should start with 'model' block and contain features") {
+    val json = summon[Exporter[Model]].jsonExport(dummyModel)
+    json should startWith ("model {")
+    json should include ("features = [\"X\", \"Y\"]")
   }
 
-  test("Network JSON export contains 'weights' field") {
-    val json = summon[Exporter[Network]].jsonExport(dummyNet)
-    json should include ("\"weights\"")
+  test("Model export should contain 'hidden-layers' section") {
+    val json = summon[Exporter[Model]].jsonExport(dummyModel)
+    json should include ("hidden-layers =")
   }
 
-  test("Network JSON export contains 'biases' field") {
-    val json = summon[Exporter[Network]].jsonExport(dummyNet)
-    json should include ("\"biases\"")
+  test("Model export contains technical network fields") {
+    val json = summon[Exporter[Model]].jsonExport(dummyModel)
+
+    json should include ("\"layer_index\":")
+    json should include ("\"activation\":")
+    json should include ("\"neurons_count\":")
   }
 
-  test("Network JSON export contains 'activation' field") {
-    val json = summon[Exporter[Network]].jsonExport(dummyNet)
-    json should include ("\"activation\"")
-  }
+  test("Model export contains weight and bias parameters") {
+    val json = summon[Exporter[Model]].jsonExport(dummyModel)
 
-  test("Network JSON export correctly formats numerical values") {
-    val layer = Layer(
-      weights = Matrix.fill(1, 1)(magicNumber),
-      biases = Vector.zeros(1),
-      activation = Activations.Sigmoid
-    )
-    val net = Network(List(layer))
-
-    val json = summon[Exporter[Network]].jsonExport(net)
-
-    json should include (magicNumber.toString)
-  }
-
-  test("Network JSON export includes correct activation name") {
-    val layer = Layer(Matrix.zeros(1,1), Vector.zeros(1), Activations.Relu)
-    val net = Network(List(layer))
-
-    val json = summon[Exporter[Network]].jsonExport(net)
-
-    json.toLowerCase should include (Activations.Relu.name.toLowerCase)
+    json should include ("\"parameters\":")
+    json should include ("\"biases\":")
+    json should include ("\"weights\":")
   }
 }

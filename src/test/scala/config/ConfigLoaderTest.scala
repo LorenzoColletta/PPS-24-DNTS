@@ -13,7 +13,7 @@ class ConfigLoaderTest extends AnyFunSuite with Matchers:
         |simulation {
         |  seed = 42
         |
-        |  network { 
+        |  model { 
         |   features = ["X"], 
         |   hidden-layers = [
         |      { neurons: 8, activation: "Relu" },
@@ -61,7 +61,7 @@ class ConfigLoaderTest extends AnyFunSuite with Matchers:
         |simulation {
         |  seed = 42
         |  
-        |  network { 
+        |  model { 
         |   features = ["X"], 
         |   hidden-layers = [
         |      { neurons: 8, activation: "Relu" },

@@ -53,8 +53,7 @@ class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
 
     trainerActor ! TrainerCommand.SetTrainConfig(dummyConfig)
     trainerActor ! TrainerCommand.Start(dummyData, Nil)
-
-
+    
     modelActor ! ModelCommand.Initialize(model, testOptimizer, trainerActor)
 
     (modelActor, trainerActor)

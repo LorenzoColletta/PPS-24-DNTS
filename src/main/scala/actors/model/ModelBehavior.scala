@@ -5,19 +5,44 @@ import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import config.{AppConfig, ProductionConfig}
 import domain.model.ModelTasks
 import domain.training.Optimizer
 import domain.training.Consensus.*
 import domain.training.consensus.ConsensusMetric.given
 import domain.network.Model
+import domain.serialization.Exporters.given
+import domain.serialization.Exporters.Exporter
+import ModelConstants.*
+
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
 
 private object ModelConstants:
   val InitialEpoch: Int = 0
   val MaxConsensus: Double = 1.0
   val ConsensusSmoothing: Double = 1.0
 
-private[model] class ModelBehavior(context: ActorContext[ModelCommand]):
-  import ModelConstants.*
+private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: AppConfig):
+
+
+  def idle(): Behavior[ModelCommand] =
+    Behaviors.receive: (ctx, msg) =>
+      msg match
+        case ModelCommand.Initialize(model, optimizer, trainerActor) =>
+          ctx.log.info("Model: Model initialized. Switching to active state.")
+
+          given Optimizer = optimizer
+
+          active(
+            currentModel = model,
+            currentEpoch = InitialEpoch,
+            currentConsensus = MaxConsensus,
+            trainerActor
+          )
+
+        case _ => Behaviors.unhandled
+
   private def active(
                       currentModel: Model,
                       currentEpoch: Int,
@@ -80,21 +105,16 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand]):
           )
           Behaviors.same
 
-        //case ModelCommand.ExportToFile() =>
-
-  def idle(): Behavior[ModelCommand] =
-    Behaviors.receive: (ctx, msg) =>
-      msg match
-        case ModelCommand.Initialize(model, optimizer, trainerActor) =>
-          ctx.log.info("Model: Model initialized. Switching to active state.")
-
-          given Optimizer = optimizer
-
-          active(
-            currentModel = model,
-            currentEpoch = InitialEpoch,
-            currentConsensus = MaxConsensus,
-            trainerActor
-          )
-
+        case ModelCommand.ExportToFile() =>
+          val jsonModel = summon[Exporter[Model]].jsonExport(currentModel)
+          val fileName = config.netLogFileName
+          val path = Paths.get(fileName)
+          try {
+            Files.write(path, jsonModel.getBytes(StandardCharsets.UTF_8))
+            context.log.info(s"Model exported in: $fileName")
+          } catch {
+            case e: Exception =>
+              context.log.error(s"Error in exportation of $fileName: ${e.getMessage}")
+          }
+          Behaviors.same
         case _ => Behaviors.unhandled
