@@ -28,6 +28,5 @@ object TrainerActor:
   def apply(
     modelActor: ActorRef[ModelCommand],
   )(using lossFunction: LossFunction, config: AppConfig): Behavior[TrainerMessage] =
-    Behaviors.setup: context =>
-      Behaviors.withTimers: timers =>
-        new TrainerBehavior(context, timers, modelActor).idle()
+    Behaviors.withTimers: timers =>
+      new TrainerBehavior(timers, modelActor).idle()

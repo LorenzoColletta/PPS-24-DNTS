@@ -1,12 +1,11 @@
 package actors.monitor
 
-import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 import config.AppConfig
 import actors.gossip.GossipActor.GossipCommand
 import actors.model.ModelActor.ModelCommand
 import actors.root.RootActor.RootCommand
-import actors.trainer.TrainerActor.TrainerCommand
 import view.{ViewBoundary, ViewStateSnapshot}
 
 /**
@@ -21,7 +20,6 @@ object MonitorActor:
    * Creates the initial behavior for the MonitorActor.
    *
    * @param modelActor   Reference to the local ModelActor.
-   * @param trainerActor Reference to the local TrainerActor.
    * @param gossipActor  Reference to the local GossipActor.
    * @param rootActor    Reference to the local RootActor.
    * @param boundary     The abstraction acting as a bridge to the View.
@@ -29,23 +27,23 @@ object MonitorActor:
    * @param appConfig    Implicit application global configuration.
    */
   def apply(
-             modelActor: ActorRef[ModelCommand],
-             trainerActor: ActorRef[TrainerCommand],
-             gossipActor: ActorRef[GossipCommand],
-             rootActor: ActorRef[RootCommand],
-             boundary: ViewBoundary,
-             isMaster: Boolean = false
-           )(using appConfig: AppConfig): Behavior[MonitorMessage] =
+    modelActor: ActorRef[ModelCommand],
+    gossipActor: ActorRef[GossipCommand],
+    rootActor: ActorRef[RootCommand],
+    boundary: ViewBoundary,
+    isMaster: Boolean = false
+  )(using appConfig: AppConfig): Behavior[MonitorMessage] =
 
     Behaviors.setup: context =>
+
+      boundary.bindController(cmd => context.self ! cmd)
+
       Behaviors.withTimers: timers =>
         new MonitorBehavior(
-          context,
           timers,
           modelActor,
-          trainerActor,
           gossipActor,
           rootActor,
-          boundary,
+          boundary, 
           isMaster
         ).connecting(ViewStateSnapshot())

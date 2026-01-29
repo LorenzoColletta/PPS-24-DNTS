@@ -1,6 +1,6 @@
 package actors.trainer
 
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
+import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
 import scala.concurrent.duration.*
@@ -16,14 +16,12 @@ import actors.model.ModelActor.ModelCommand
 /**
  * Encapsulates the behavior logic for the TrainerActor.
  *
- * @param context       The actor context providing access to the actor system.
  * @param timers        The scheduler for managing timed messages.
  * @param modelActor    A reference to the ModelActor.
  * @param lossFunction  Implicit loss function used during training process.
  * @param config        Implicit global application configuration.
  */
 private[trainer] class TrainerBehavior(
-  context: ActorContext[TrainerMessage],
   timers: TimerScheduler[TrainerMessage],
   modelActor: ActorRef[ModelCommand]
 )(using lossFunction: LossFunction, config: AppConfig):
@@ -90,64 +88,63 @@ private[trainer] class TrainerBehavior(
 
     implicit val timeout: Timeout = 3.seconds
 
-    Behaviors.withTimers: timers =>
-      Behaviors.receive: (ctx, msg) =>
-        msg match
-          case PrivateTrainerCommand.NextBatch(epoch, idx) =>
-            if epoch > trainConfig.epochs then
-              ctx.log.info("Trainer: All epochs completed.")
-              ready(trainConfig)
+    Behaviors.receive: (ctx, msg) =>
+      msg match
+        case PrivateTrainerCommand.NextBatch(epoch, idx) =>
+          if epoch > trainConfig.epochs then
+            ctx.log.info("Trainer: All epochs completed.")
+            ready(trainConfig)
+          else
+            val batch = currentDataset.slice(idx, idx + trainConfig.batchSize)
+
+            if batch.isEmpty then
+              val nextEpoch = epoch + 1
+              val nextShuffled = rand.shuffle(trainConfig.trainSet)
+
+              ctx.self ! PrivateTrainerCommand.NextBatch(nextEpoch, 0)
+              training(trainConfig, nextShuffled, rand, nextEpoch, 0)
             else
-              val batch = currentDataset.slice(idx, idx + trainConfig.batchSize)
+              ctx.ask[ModelCommand, Model](modelActor, ref => ModelCommand.GetModel(ref)) {
+                case Success(model) => TrainerCommand.ComputeGradients(model, batch, epoch, idx)
+                case Failure(_) => TrainerCommand.Stop
+              }
+              Behaviors.same
 
-              if batch.isEmpty then
-                val nextEpoch = epoch + 1
-                val nextShuffled = rand.shuffle(trainConfig.trainSet)
+        case TrainerCommand.ComputeGradients(model, batch, epoch, idx) =>
+          val (grads, _) = TrainingCore.computeBatchGradients(model, batch)
+          modelActor ! ModelCommand.ApplyGradients(grads)
 
-                ctx.self ! PrivateTrainerCommand.NextBatch(nextEpoch, 0)
-                training(trainConfig, nextShuffled, rand, nextEpoch, 0)
-              else
-                ctx.ask[ModelCommand, Model](modelActor, ref => ModelCommand.GetModel(ref)) {
-                  case Success(model) => TrainerCommand.ComputeGradients(model, batch, epoch, idx)
-                  case Failure(_) => TrainerCommand.Stop
-                }
-                Behaviors.same
+          val nextIdx = idx + trainConfig.batchSize
+          timers.startSingleTimer(PrivateTrainerCommand.NextBatch(epoch, nextIdx), config.batchInterval)
+          Behaviors.same
 
-          case TrainerCommand.ComputeGradients(model, batch, epoch, idx) =>
-            val (grads, _) = TrainingCore.computeBatchGradients(model, batch)
-            modelActor ! ModelCommand.ApplyGradients(grads)
+        case TrainerCommand.CalculateMetrics(model, replyTo) =>
+          val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)
+          val testLoss = TrainingCore.computeDatasetLoss(model, trainConfig.testSet)
 
-            val nextIdx = idx + trainConfig.batchSize
-            timers.startSingleTimer(PrivateTrainerCommand.NextBatch(epoch, nextIdx), config.batchInterval)
-            Behaviors.same
+          replyTo ! MetricsCalculated(trainLoss, testLoss, currentEpoch)
+          Behaviors.same
 
-          case TrainerCommand.CalculateMetrics(model, replyTo) =>
-            val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)
-            val testLoss = TrainingCore.computeDatasetLoss(model, trainConfig.testSet)
-
-            replyTo ! MetricsCalculated(trainLoss, testLoss, currentEpoch)
-            Behaviors.same
-
-          case TrainerCommand.UpdateDataset(localPoints)  =>
-            training(
-              trainConfig,
-              currentDataset = localPoints,
-              rand,
-              currentEpoch,
-              currentIdx
-            )
+        case TrainerCommand.UpdateDataset(localPoints)  =>
+          training(
+            trainConfig,
+            currentDataset = localPoints,
+            rand,
+            currentEpoch,
+            currentIdx
+          )
 
 
-          case TrainerCommand.Pause =>
-            ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
-            timers.cancelAll()
-            paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx))
+        case TrainerCommand.Pause =>
+          ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
+          timers.cancelAll()
+          paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx))
 
-          case TrainerCommand.Stop =>
-            timers.cancelAll()
-            Behaviors.stopped
+        case TrainerCommand.Stop =>
+          timers.cancelAll()
+          Behaviors.stopped
 
-          case _ => Behaviors.same
+        case _ => Behaviors.same
 
   /**
    * Paused state.

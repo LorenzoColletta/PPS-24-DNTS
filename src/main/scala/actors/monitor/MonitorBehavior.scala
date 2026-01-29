@@ -1,10 +1,9 @@
 package actors.monitor
 
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
+import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import config.AppConfig
 import view.{ViewBoundary, ViewStateSnapshot}
-import actors.trainer.TrainerActor.TrainerCommand
 import actors.gossip.GossipActor.{GossipCommand, ControlCommand}
 import actors.root.RootActor.RootCommand
 import actors.monitor.MonitorProtocol._
@@ -13,10 +12,8 @@ import actors.model.ModelActor.ModelCommand
 /**
  * Encapsulates the behavior logic for the MonitorActor.
  *
- * @param context       The actor context providing access to the actor system.
  * @param timers        The scheduler for managing timed messages.
  * @param modelActor    Reference to the local ModelActor.
- * @param trainerActor  Reference to the local TrainerActor.
  * @param gossipActor   Reference to the local GossipActor.
  * @param rootActor     Reference to the local RootActor.
  * @param boundary      The abstraction acting as a bridge to the View.
@@ -24,10 +21,8 @@ import actors.model.ModelActor.ModelCommand
  * @param appConfig     Implicit application global configuration.
  */
 private[monitor] class MonitorBehavior(
-  context: ActorContext[MonitorMessage],
   timers: TimerScheduler[MonitorMessage],
   modelActor: ActorRef[ModelCommand],
-  trainerActor: ActorRef[TrainerCommand],
   gossipActor: ActorRef[GossipCommand],
   rootActor: ActorRef[RootCommand],
   boundary: ViewBoundary,
@@ -126,7 +121,7 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.InternalPause =>
           context.log.info("Monitor: Remote PAUSE command.")
           boundary.setPausedState(true)
-          Behaviors.same
+          paused(snapshot)
 
         case MonitorCommand.StopSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")

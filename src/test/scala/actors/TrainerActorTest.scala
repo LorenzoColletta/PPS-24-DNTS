@@ -3,11 +3,9 @@ package actors
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
-
 import scala.concurrent.duration.*
 
 import domain.network.{Activations, Feature, ModelBuilder, Regularization, HyperParams}
-import domain.data.LinearAlgebra.{Matrix, Vector}
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.training.Strategies.Losses.mse
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
