@@ -3,7 +3,7 @@ package domain.serialization
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import domain.network.{Network, Activations, ModelBuilder, Feature}
+import domain.network.{Activations, ModelBuilder, Feature}
 
 class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
 
@@ -25,7 +25,7 @@ class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
 
   test("Adapter produces correct manifest string for a Model object") {
 
-    adapter.manifest(dummyModel) shouldBe  AkkaSerializerAdapter.ManifestModel
+    adapter.manifest(dummyModel) shouldBe AkkaSerializerAdapter.ManifestModel
   }
 
   test("Adapter properly serializes a Model to binary") {

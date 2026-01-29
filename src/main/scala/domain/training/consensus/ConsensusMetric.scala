@@ -1,7 +1,6 @@
 package domain.training.consensus
 
 import domain.network.Network
-import domain.data.LinearAlgebra.{Matrix, Vector}
 
 /**
  * Strategy interface for calculating the quantitative difference between two neural networks.

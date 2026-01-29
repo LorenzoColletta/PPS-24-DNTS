@@ -2,8 +2,7 @@ package domain.serialization
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import domain.network.{Activations, Feature, Layer, ModelBuilder, Network, Model}
-import domain.data.LinearAlgebra.{Matrix, Vector}
+import domain.network.{Activations, Feature, ModelBuilder, Model}
 import domain.serialization.Exporters.given
 import domain.serialization.Exporters.Exporter
 

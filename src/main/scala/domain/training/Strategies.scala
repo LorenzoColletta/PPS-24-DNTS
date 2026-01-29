@@ -1,6 +1,6 @@
 package domain.training
 
-import scala.math.{signum, max, abs}
+import scala.math.{signum, abs}
 
 import domain.data.LinearAlgebra.*
 import domain.network.{Regularization, Network}

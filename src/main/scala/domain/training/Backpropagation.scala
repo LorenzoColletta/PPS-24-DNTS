@@ -1,7 +1,7 @@
 package domain.training
 
 import domain.data.LinearAlgebra.*
-import domain.data.{Label, LabeledPoint2D}
+import domain.data.LabeledPoint2D
 import domain.data.toVector
 import domain.network.*
 

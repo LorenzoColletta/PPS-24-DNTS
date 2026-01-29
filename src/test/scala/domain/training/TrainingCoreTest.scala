@@ -3,8 +3,7 @@ package domain.training
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import domain.network.{ModelBuilder, Activations, Feature, Model}
-import domain.data.LinearAlgebra.{Matrix, Vector}
+import domain.network.{ModelBuilder, Activations, Feature}
 import domain.data.{LabeledPoint2D, Label, Point2D}
 import domain.training.Strategies.Losses.mse
 
@@ -24,7 +23,7 @@ class TrainingCoreTest extends AnyFunSuite with Matchers {
   //private final val dummyModel = Model(dummyNetwork, dummyFeatures)
 
   test("computeBatchGradients should return a gradient with the same topology as the network") {
-    val (avgGrad, avgLoss) = TrainingCore.computeBatchGradients(dummyModel, dummyBatch)
+    val (avgGrad, _) = TrainingCore.computeBatchGradients(dummyModel, dummyBatch)
 
     avgGrad.layers.length shouldBe dummyModel.network.layers.length
   }

@@ -2,7 +2,7 @@ package config
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import java.nio.charset.StandardCharsets
 
 class ConfigLoaderTest extends AnyFunSuite with Matchers:

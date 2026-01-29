@@ -2,7 +2,7 @@ package domain.serialization
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import scala.util.{Try, Failure, Success}
+import scala.util.Try
 
 import domain.network.{Network, Layer, Activation}
 import domain.data.LinearAlgebra.{Matrix, Vector}

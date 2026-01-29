@@ -1,7 +1,6 @@
 package domain.serialization
 
 import domain.network.Model
-import domain.data.LinearAlgebra.{Matrix, Vector}
 
 object Exporters:
 
@@ -48,7 +47,7 @@ object Exporters:
       }
 
       s"""model {
-         | features = ${featuresJson}
+         | features = $featuresJson
          | hidden-layers = $hiddenLayersJson
          | output-layer = $outputLayerJson
          |}""".stripMargin
