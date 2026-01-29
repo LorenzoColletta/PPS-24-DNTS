@@ -18,8 +18,9 @@ lazy val root = (project in file("."))
         "com.typesafe.akka" %% "akka-cluster-typed" % akkaVersion,
         "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
         "ch.qos.logback" % "logback-classic" % "1.4.14",
+        "org.jfree" % "jfreechart" % "1.5.3",
         "org.scalatest" %% "scalatest" % "3.2.18" % Test,
-        "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
       )
     }
   )
