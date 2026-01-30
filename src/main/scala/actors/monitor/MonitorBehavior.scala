@@ -56,6 +56,12 @@ private[monitor] class MonitorBehavior(
           boundary.updatePeerDisplay(active, total)
           connecting(snapshot.copy(activePeers = active, totalPeers = total))
 
+        case MonitorCommand.InternalStop =>
+          context.log.info("Monitor: Remote STOP command.")
+          boundary.stopSimulation()
+          timers.cancelAll()
+          Behaviors.stopped
+
         case _ => Behaviors.same
 
   /**
@@ -86,6 +92,12 @@ private[monitor] class MonitorBehavior(
           context.log.info(s"Monitor: Cluster Status changed, $active/$total connected peer.")
           boundary.updatePeerDisplay(active, total)
           idle(snapshot.copy(activePeers = active, totalPeers = total))
+
+        case MonitorCommand.InternalStop =>
+          context.log.info("Monitor: Remote STOP command.")
+          boundary.stopSimulation()
+          timers.cancelAll()
+          Behaviors.stopped
 
         case _ => Behaviors.unhandled
 
@@ -176,7 +188,7 @@ private[monitor] class MonitorBehavior(
           context.log.info("Monitor: Remote STOP command.")
           boundary.stopSimulation()
           timers.cancelAll()
-          idle(snapshot)
+          Behaviors.stopped
 
         case MonitorCommand.PeerCountChanged(active, total) =>
           boundary.updatePeerDisplay(active, total)

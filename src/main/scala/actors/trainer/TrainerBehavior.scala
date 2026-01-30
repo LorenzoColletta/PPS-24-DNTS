@@ -43,6 +43,7 @@ private[trainer] class TrainerBehavior(
           Behaviors.same
 
         case TrainerCommand.Stop =>
+          timers.cancelAll()
           Behaviors.stopped
 
         case _ => Behaviors.unhandled
@@ -71,6 +72,7 @@ private[trainer] class TrainerBehavior(
           Behaviors.same
 
         case TrainerCommand.Stop =>
+          timers.cancelAll()
           Behaviors.stopped
 
         case _ => Behaviors.unhandled
@@ -171,6 +173,7 @@ private[trainer] class TrainerBehavior(
           Behaviors.same
 
         case TrainerCommand.Stop =>
+          timers.cancelAll()
           Behaviors.stopped
 
         case _ => Behaviors.same
