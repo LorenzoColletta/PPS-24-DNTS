@@ -14,7 +14,7 @@ import view.ViewStateSnapshot
  */
 object SimulationPanel:
   private object Dimension:
-    final val resWBoundary = 500
+    final val resWBoundary = 50
     final val resHBoundary = resWBoundary
 
   private object Text:
@@ -144,7 +144,7 @@ class SimulationPanel(using config: AppConfig) extends JPanel:
    * Updates the UI to indicate the simulation has stopped.
    */
   def stopSimulation(): Unit =
-    SwingUtilities.invokeLater(() => lblStatus.setText(Text.StatusStopped))
+    lblStatus.setText(Text.StatusStopped)
 
   /**
    * Updates the UI to indicate a critical node crash.

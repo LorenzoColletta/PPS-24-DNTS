@@ -56,7 +56,7 @@ object ProductionConfig extends AppConfig:
     s"node_network_$timestamp.log"
 
   /** Defines a 100x100 coordinate space. */
-  override final val space: Space = Space(12.0, 12.0)
+  override final val space: Space = Space(50.0, 50.0)
 
   /** Define Mean Squared Error (MSE) as the standard loss metric. */
   override final val lossFunction: LossFunction = Losses.mse

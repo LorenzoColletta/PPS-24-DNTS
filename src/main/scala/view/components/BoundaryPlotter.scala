@@ -16,7 +16,7 @@ import domain.util.Space
 object BoundaryPlotter:
   private object RenderConfig:
     final val ScaleFactor = 4
-    final val HeatmapAlphaFactor = 1.0f
+    final val HeatmapAlphaFactor = 0.8f
 
   private object Dimension:
     final val PointSizeTrain = 6

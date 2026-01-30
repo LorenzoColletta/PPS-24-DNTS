@@ -2,6 +2,7 @@ package view
 
 import javax.swing.*
 import java.awt.CardLayout
+import java.awt.event.{WindowAdapter, WindowEvent}
 
 import config.AppConfig
 import domain.network.Model
@@ -63,10 +64,10 @@ class GuiView(using config: AppConfig) extends ViewBoundary:
     )
 
   override def stopSimulation(): Unit =
-    simulationPanel.stopSimulation()
-    SwingUtilities.invokeLater(() =>
-      mainLayout.show(mainPanel, Cards.Setup)
-    )
+    SwingUtilities.invokeLater(() => {
+      simulationPanel.stopSimulation()
+      frame.dispose()
+    })
 
   override def updatePeerDisplay(active: Int, total: Int): Unit =
     setupPanel.updatePeerCount(active, total)
@@ -91,8 +92,17 @@ class GuiView(using config: AppConfig) extends ViewBoundary:
 
   private def initFrame(): Unit =
     frame.setSize(Dimensions.Width, Dimensions.Height)
-    frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
     frame.setLocationRelativeTo(null)
+
+    frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE)
+    frame.addWindowListener(new WindowAdapter {
+      override def windowClosing(e: WindowEvent): Unit =
+        if globalHandler != null then
+          globalHandler(MonitorCommand.StopSimulation)
+        else
+          frame.dispose()
+          System.exit(0)
+    })
 
     mainPanel.add(setupPanel, Cards.Setup)
     mainPanel.add(simulationPanel, Cards.Simulation)
