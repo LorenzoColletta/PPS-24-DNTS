@@ -5,7 +5,7 @@ import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
-import config.{AppConfig, ProductionConfig}
+import config.AppConfig
 import domain.model.ModelTasks
 import domain.training.Optimizer
 import domain.training.Consensus.*
@@ -23,9 +23,18 @@ private object ModelConstants:
   val MaxConsensus: Double = 1.0
   val ConsensusSmoothing: Double = 1.0
 
+/**
+ * Encapsulates the behavior logic for the ModelActor.
+ *
+ * @param context The actor context.
+ * @param config  Global application configuration.
+ *
+ */
 private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: AppConfig):
 
-
+  /**
+   * Initial state: Waiting for the model and optimizer initialization.
+   */
   def idle(): Behavior[ModelCommand] =
     Behaviors.receive: (ctx, msg) =>
       msg match
@@ -43,6 +52,14 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: A
 
         case _ => Behaviors.unhandled
 
+  /**
+   * Main state: Model updates and synchronization.
+   *
+   * @param currentModel     The current instance of the Neural Network.
+   * @param currentEpoch     The current training epoch count.
+   * @param currentConsensus The current consensus metric (divergence from peers).
+   * @param trainerActor     Reference to the associated TrainerActor.
+   */
   private def active(
                       currentModel: Model,
                       currentEpoch: Int,

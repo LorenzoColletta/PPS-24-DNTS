@@ -54,10 +54,37 @@ object ModelProtocol:
      * @param remoteModel The model received via gossip from another node.
      */
     final case class  SyncModel(remoteModel: Model)  extends ModelCommand
+
+    /**
+     * Triggers the calculation of metrics.
+     *
+     * @param replyTo The monitor reference that will receive the formatted ViewUpdateResponse.
+     */
     final case class  GetMetrics(replyTo: ActorRef[MonitorCommand.ViewUpdateResponse])  extends ModelCommand
+
+    /**
+     * Internal message used to wrap the results of metric calculations.
+     *
+     * @param metrics The raw metrics calculated by the Trainer.
+     * @param replyTo The original monitor reference to respond to.
+     */
     final case class  InternalMetricsResult(
                                              metrics: MetricsCalculated,
                                              replyTo: ActorRef[MonitorCommand.ViewUpdateResponse]
                                            ) extends ModelCommand
+
+    /**
+     * Request to write the current model to the file
+     */
     final case class  ExportToFile() extends ModelCommand
-    final case class  GetPrediction(point: Point2D, replyTo: ActorRef[Double]) extends ModelCommand
+
+    /**
+     * Performs a forward pass on the current network to predict the output for a given point.
+     *
+     * @param point   The input features (Point2D).
+     * @param replyTo The actor reference that will receive the predicted Double value.
+     */
+    final case class  GetPrediction(
+                                     point: Point2D,
+                                     replyTo: ActorRef[Double]
+                                   ) extends ModelCommand
