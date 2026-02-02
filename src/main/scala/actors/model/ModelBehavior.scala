@@ -80,14 +80,6 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: A
           replyTo ! currentModel
           Behaviors.same
 
-        case ModelCommand.TrainingCompleted(model) =>
-          active(
-            currentModel = model,
-            currentEpoch = currentEpoch,
-            currentConsensus = currentConsensus,
-            trainerActor = trainerActor
-          )
-
         case ModelCommand.GetMetrics(replyTo) =>
           trainerActor ! TrainerCommand.CalculateMetrics(
             currentModel,
