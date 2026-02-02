@@ -125,16 +125,6 @@ private[trainer] class TrainerBehavior(
           replyTo ! MetricsCalculated(trainLoss, testLoss, currentEpoch)
           Behaviors.same
 
-        case TrainerCommand.UpdateDataset(localPoints)  =>
-          training(
-            trainConfig,
-            currentDataset = localPoints,
-            rand,
-            currentEpoch,
-            currentIdx
-          )
-
-
         case TrainerCommand.Pause =>
           ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
           timers.cancelAll()
