@@ -27,10 +27,8 @@ object GossipActor:
         )
 
         GossipBehavior(
-          context,
           modelActor,
           monitorActor,
           trainerActor,
-          clusterManager,
-          config
+          clusterManager
         ).active()

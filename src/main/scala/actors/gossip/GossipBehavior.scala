@@ -1,25 +1,21 @@
 package actors.gossip
 
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
+import akka.actor.typed.scaladsl.Behaviors
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
 import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.monitor.MonitorActor.MonitorCommand
-import config.{AppConfig, ProductionConfig}
-import domain.dataset.{DataModelFactory, DatasetGenerator}
 import domain.network.Model
 
 import scala.util.Random
 
 private[gossip] class GossipBehavior(
-                                      context: ActorContext[GossipCommand],
                                       modelActor: ActorRef[ModelCommand],
                                       monitorActor: ActorRef[MonitorCommand],
                                       trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterCommand],
-                                      config: AppConfig
+                                      clusterManager: ActorRef[ClusterCommand]
                                     ):
 
   def active(): Behavior[GossipCommand] =
@@ -30,7 +26,6 @@ private[gossip] class GossipBehavior(
           clusterManager ! NodesRefRequest(
             replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
-
           Behaviors.same
 
         case GossipCommand.WrappedPeers(peers) =>
@@ -46,16 +41,32 @@ private[gossip] class GossipBehavior(
           context.log.info(s"Gossip: Sending Model  to peer ${target}")
           target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
-        case GossipCommand.InitLocalDataset(size, strategy) =>
 
-          val localSeed = Some(context.self.path.address.port.getOrElse(0).toLong)
-          val datasetModel = DataModelFactory.create(strategy, localSeed)(using ProductionConfig.space)
-          val localPoints  = DatasetGenerator.generate(size, datasetModel)
-
-          trainerActor ! TrainerCommand.UpdateDataset(localPoints)
-
-          context.log.info(s"Dataset initialized with $size points using seed $localSeed")
+        case GossipCommand.DistributeDataset(trainSet , testSet) =>
+          clusterManager ! NodesRefRequest(
+            replyTo = context.messageAdapter(peers =>
+              GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)
+            )
+          )
           Behaviors.same
+        case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
+          val totalNodes = peers.size
+          if (totalNodes > 0) then
+            val chunkSize = trainSet.size / totalNodes
+
+            peers.zipWithIndex.foreach: (peer, index) =>
+              val from = index * chunkSize
+              val until = if (index == totalNodes - 1) trainSet.size else (index + 1) * chunkSize
+
+              val trainShard = trainSet.slice(from, until)
+
+              peer ! GossipCommand.HandleDistributeDataset(trainShard, testSet)
+          Behaviors.same
+
+        case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
+          trainerActor ! TrainerCommand.Start(trainShard, testSet)
+          Behaviors.same
+
         case GossipCommand.HandleRemoteModel(remoteModel) =>
           modelActor ! ModelCommand.SyncModel(remoteModel)
           Behaviors.same
@@ -81,7 +92,6 @@ private[gossip] class GossipBehavior(
 
           cmd match
             case ControlCommand.GlobalStart =>
-              context.self ! GossipCommand.InitLocalDataset(config.datasetSize, config.datasetStrategy)
               clusterManager ! StartSimulation
               monitorActor ! MonitorCommand.StartSimulation
             case ControlCommand.GlobalPause =>

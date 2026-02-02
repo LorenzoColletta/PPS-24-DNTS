@@ -1,102 +1,116 @@
 package actors
 
-import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
-import domain.data.{LabeledPoint2D, Point2D}
-import domain.network.{Activations, Feature, HyperParams, Model, ModelBuilder, Regularization}
-import org.scalatest.wordspec.AnyWordSpecLike
+import akka.actor.testkit.typed.scaladsl.{ScalaTestWithActorTestKit, TestProbe}
+import akka.actor.typed.ActorRef
+import org.scalatest.funsuite.AnyFunSuiteLike
+import org.scalatest.matchers.should.Matchers
 import actors.model.ModelActor
 import actors.model.ModelActor.ModelCommand
-import actors.trainer.TrainerActor
-import actors.trainer.TrainerActor.TrainingConfig
 import actors.trainer.TrainerActor.TrainerCommand
-import akka.actor.typed.ActorRef
-import config.{AppConfig, ProductionConfig}
-import domain.data.Label
+import actors.monitor.MonitorActor.MonitorCommand
+import domain.network.{Activations, Feature, Model, ModelBuilder}
 import domain.training.Strategies.Optimizers.SGD
 import domain.training.Strategies.Regularizers
+import domain.network.Regularization
+import domain.training.{LayerGradient, NetworkGradient}
+import domain.data.Point2D
+import domain.data.LinearAlgebra.{Matrix, Vector}
+import config.{AppConfig, ProductionConfig}
 
-class ModelActorTest extends ScalaTestWithActorTestKit with AnyWordSpecLike {
-
+class ModelActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
   given AppConfig = ProductionConfig
-  given domain.training.LossFunction = domain.training.Strategies.Losses.mse
+
+  private final val dummyFeatures = Feature.X
+  private final val dummyModel = ModelBuilder.fromInputs(dummyFeatures)
+    .addLayer(1, Activations.Sigmoid)
+    .build()
 
   private final val dummyReg = Regularizers.fromConfig(Regularization.None)
   private final val testOptimizer = new SGD(learningRate = 0.01, reg = dummyReg)
-  private final val dummyFeatures = Feature.X
 
 
-  private final val dummyData = List(
-    LabeledPoint2D(Point2D(0.0, 0.0), Label.Negative),
-    LabeledPoint2D(Point2D(1.0, 1.0), Label.Positive)
-  )
+  def setup(): (ActorRef[ModelCommand], TestProbe[TrainerCommand]) = {
+    val trainerProbe = createTestProbe[TrainerCommand]()
+    val modelActor = spawn(ModelActor())
+    (modelActor, trainerProbe)
+  }
 
-  private final val dummyConfig = TrainingConfig(
-    trainSet = dummyData,
-    testSet = Nil,
-    features = List(dummyFeatures),
-    hp = HyperParams(0.1, Regularization.None),
-    epochs = 5,
-    batchSize = 2,
-    seed = Some(1234L)
-  )
+  test("ModelActor should start in idle and transition to active upon Initialize") {
+    val (modelActor, trainerProbe) = setup()
+    val replyProbe = createTestProbe[Model]()
 
-  def createModel(seed: Long): Model =
-    ModelBuilder.fromInputs(Feature.X, Feature.Y)
-      .addLayer(2, Activations.Relu)
-      .withSeed(seed)
+    modelActor ! ModelCommand.Initialize(dummyModel, testOptimizer, trainerProbe.ref)
+
+    modelActor ! ModelCommand.GetModel(replyProbe.ref)
+    replyProbe.expectMessage(dummyModel)
+  }
+
+  test("ModelActor should apply gradients and update the model") {
+    val (modelActor, trainerProbe) = setup()
+    modelActor ! ModelCommand.Initialize(dummyModel, testOptimizer, trainerProbe.ref)
+
+    val layerGradients = dummyModel.network.layers.map: layer =>
+      val rows = layer.weights.rows
+      val cols = layer.weights.cols
+      val biasSize = layer.biases.length
+
+      val weightGradients = Matrix.fill(rows, cols)(0.1)
+      val biasGradients = Vector.fromList(List.fill(biasSize)(0.1))
+
+      LayerGradient(weightGradients, biasGradients)
+
+    val grads = domain.training.NetworkGradient(layerGradients.toList)
+
+    modelActor ! ModelCommand.ApplyGradients(grads)
+
+    val replyProbe = createTestProbe[Model]()
+    modelActor ! ModelCommand.GetModel(replyProbe.ref)
+    val updatedModel = replyProbe.receiveMessage()
+
+    updatedModel.network.layers.head.weights.toFlatList should not be dummyModel.network.layers.head.weights.toFlatList
+  }
+
+  test("ModelActor should handle SyncModel from Gossip") {
+    val (modelActor, trainerProbe) = setup()
+    modelActor ! ModelCommand.Initialize(dummyModel, testOptimizer, trainerProbe.ref)
+
+    val remoteModel = ModelBuilder.fromInputs(dummyFeatures)
+      .addLayer(1, Activations.Sigmoid)
+      .withSeed(999L)
       .build()
 
-  def setup(model: Model): (ActorRef[ModelCommand], ActorRef[TrainerCommand]) =
-    val modelActor = spawn(ModelActor())
-    val trainerActor = spawn(TrainerActor(modelActor.ref))
+    modelActor ! ModelCommand.SyncModel(remoteModel)
 
-    trainerActor ! TrainerCommand.SetTrainConfig(dummyConfig)
-    trainerActor ! TrainerCommand.Start(dummyData, Nil)
+    val replyProbe = createTestProbe[Model]()
+    modelActor ! ModelCommand.GetModel(replyProbe.ref)
+    val currentModel = replyProbe.receiveMessage()
 
-    modelActor ! ModelCommand.Initialize(model, testOptimizer, trainerActor)
+    currentModel should not be dummyModel
+  }
 
-    (modelActor, trainerActor)
+  test("ModelActor should forward GetMetrics request to TrainerActor") {
+    val (modelActor, trainerProbe) = setup()
+    val monitorProbe = createTestProbe[MonitorCommand.ViewUpdateResponse]()
 
-  "A ModelActor" should {
+    modelActor ! ModelCommand.Initialize(dummyModel, testOptimizer, trainerProbe.ref)
 
-    "return different predictions after a model update" in {
-      val model1 = createModel(1L)
-      val model2 = createModel(999L)
+    modelActor ! ModelCommand.GetMetrics(monitorProbe.ref)
 
-      val (modelActor, trainerActor) = setup(model1)
+    val msg = trainerProbe.expectMessageType[TrainerCommand.CalculateMetrics]
+    msg.model shouldBe dummyModel
+  }
 
-      val probe = createTestProbe[Double]()
-      val testPoint = Point2D(0.5, 0.5)
+  test("ModelActor should provide predictions for specific points") {
+    val (modelActor, trainerProbe) = setup()
+    val replyProbe = createTestProbe[Double]()
 
-      modelActor ! ModelCommand.GetPrediction(testPoint, probe.ref)
-      val prediction1 = probe.receiveMessage()
+    modelActor ! ModelCommand.Initialize(dummyModel, testOptimizer, trainerProbe.ref)
 
-      modelActor ! ModelCommand.TrainingCompleted(model2)
-      modelActor ! ModelCommand.GetPrediction(testPoint, probe.ref)
+    val testPoint = Point2D(0.5, 0.5)
+    modelActor ! ModelCommand.GetPrediction(testPoint, replyProbe.ref)
 
-      val prediction2 = probe.receiveMessage()
-
-      prediction1 should not be prediction2
-    }
-
-    "return same predictions with same model" in {
-      val model1 = createModel(1L)
-      val model2 = createModel(1L)
-
-      val (modelActor, trainerActor) = setup(model1)
-
-      val probe = createTestProbe[Double]()
-      val testPoint = Point2D(0.5, 0.5)
-
-      modelActor ! ModelCommand.GetPrediction(testPoint, probe.ref)
-      val prediction1 = probe.receiveMessage()
-
-      modelActor ! ModelCommand.TrainingCompleted(model2)
-      modelActor ! ModelCommand.GetPrediction(testPoint, probe.ref)
-      val prediction2 = probe.receiveMessage()
-
-      prediction1 shouldBe prediction2
-    }
+    val prediction = replyProbe.receiveMessage()
+    prediction should (be >= 0.0 and be <= 1.0) // Sigmoid output range
   }
 }

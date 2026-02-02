@@ -2,6 +2,7 @@ package actors.gossip
 
 import akka.actor.typed.ActorRef
 import config.DatasetStrategyConfig
+import domain.data.LabeledPoint2D
 import domain.network.Model
 
 object GossipProtocol:
@@ -23,10 +24,12 @@ object GossipProtocol:
   
   object GossipCommand:
     case object TickGossip extends GossipCommand
+    final case class DistributeDataset(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
+    final case class WrappedDistributeDataset(peers: List[ActorRef[GossipCommand]], trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
+    final case class HandleDistributeDataset(trainShard: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
     final case class WrappedPeers(peers: List[ActorRef[GossipCommand]]) extends GossipCommand
     final case class HandleRemoteModel(remoteModel: Model) extends GossipCommand
     final case class SendModelToPeer(model: Model, target: ActorRef[GossipCommand]) extends GossipCommand
-    final case class InitLocalDataset(size: Int, strategy: DatasetStrategyConfig) extends GossipCommand
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
     final case class WrappedSpreadCommand(peers: List[ActorRef[GossipCommand]], cmd: ControlCommand) extends ControlCommand
     final case class HandleControlCommand(cmd: ControlCommand) extends ControlCommand

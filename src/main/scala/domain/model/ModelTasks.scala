@@ -2,7 +2,7 @@ package domain.model
 
 
 import domain.common.States.State
-import domain.network.{Model, Network}
+import domain.network.Model
 import domain.training.{NetworkGradient, Optimizer}
 import domain.training.Consensus.averageWith
 
