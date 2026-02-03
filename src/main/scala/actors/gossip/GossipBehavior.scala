@@ -13,6 +13,16 @@ import domain.network.Model
 
 import scala.util.Random
 
+/**
+ * Encapsulates the behavior logic for the GossipActor.
+ *
+ * @param modelActor     Reference to the local ModelActor.
+ * @param monitorActor   Reference to the local MonitorActor.
+ * @param trainerActor   Reference to the local TrainerActor.
+ * @param clusterManager Reference to the Cluster Manager.
+ * @param timers         The scheduler for managing periodic gossip ticks.
+ * @param config         Global application configuration.
+ */
 private[gossip] class GossipBehavior(
                                       modelActor: ActorRef[ModelCommand],
                                       monitorActor: ActorRef[MonitorCommand],
@@ -22,6 +32,9 @@ private[gossip] class GossipBehavior(
                                       config: AppConfig
                                     ):
 
+  /**
+   * Main operational state of the GossipActor.
+   */
   def active(): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
@@ -46,20 +59,6 @@ private[gossip] class GossipBehavior(
           )
           Behaviors.same
 
-        case GossipCommand.WrappedPeers(peers) =>
-          val potentialPeers = peers.filter(_ != context.self)
-          if potentialPeers.nonEmpty then
-            val target = potentialPeers(Random.nextInt(potentialPeers.size))
-            modelActor ! ModelCommand.GetModel(
-              replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
-            )
-          Behaviors.same
-
-        case GossipCommand.SendModelToPeer(model, target) =>
-          context.log.info(s"Gossip: Sending Model  to peer ${target}")
-          target ! GossipCommand.HandleRemoteModel(model)
-          Behaviors.same
-
         case GossipCommand.DistributeDataset(trainSet , testSet) =>
           clusterManager ! NodesRefRequest(
             replyTo = context.messageAdapter(peers =>
@@ -67,6 +66,7 @@ private[gossip] class GossipBehavior(
             )
           )
           Behaviors.same
+
         case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
           val totalNodes = peers.size
           if (totalNodes > 0) then
@@ -83,6 +83,20 @@ private[gossip] class GossipBehavior(
 
         case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
           trainerActor ! TrainerCommand.Start(trainShard, testSet)
+          Behaviors.same
+
+        case GossipCommand.WrappedPeers(peers) =>
+          val potentialPeers = peers.filter(_ != context.self)
+          if potentialPeers.nonEmpty then
+            val target = potentialPeers(Random.nextInt(potentialPeers.size))
+            modelActor ! ModelCommand.GetModel(
+              replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
+            )
+          Behaviors.same
+
+        case GossipCommand.SendModelToPeer(model, target) =>
+          context.log.info(s"Gossip: Sending Model  to peer ${target}")
+          target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
 
         case GossipCommand.HandleRemoteModel(remoteModel) =>
