@@ -12,7 +12,7 @@ import domain.network.{Activations, Feature, Model, ModelBuilder}
 import domain.training.Strategies.Optimizers.SGD
 import domain.training.Strategies.Regularizers
 import domain.network.Regularization
-import domain.training.{LayerGradient, NetworkGradient}
+import domain.training.LayerGradient
 import domain.data.Point2D
 import domain.data.LinearAlgebra.{Matrix, Vector}
 import config.{AppConfig, ProductionConfig}
@@ -60,7 +60,7 @@ class ModelActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with
 
       LayerGradient(weightGradients, biasGradients)
 
-    val grads = domain.training.NetworkGradient(layerGradients.toList)
+    val grads = domain.training.NetworkGradient(layerGradients)
 
     modelActor ! ModelCommand.ApplyGradients(grads)
 
