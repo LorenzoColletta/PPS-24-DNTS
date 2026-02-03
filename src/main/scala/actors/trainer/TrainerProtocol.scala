@@ -4,6 +4,8 @@ import akka.actor.typed.ActorRef
 
 import domain.data.LabeledPoint2D
 import domain.network.{Feature, HyperParams, Model}
+import actors.gossip.GossipActor.GossipCommand
+import actors.monitor.MonitorActor.MonitorCommand
 
 /**
  * Defines the public API and Data Structures for the Trainer component.
@@ -58,6 +60,17 @@ object TrainerProtocol:
 
   /** Protocol for the TrainerActor. */
   object TrainerCommand:
+
+    /**
+     * Registers the references to auxiliary services (Monitor and Gossip).
+     *
+     * @param monitor The reference to the local [[MonitorActor]].
+     * @param gossip  The reference to the local [[GossipActor]].
+     */
+    final case class RegisterServices(
+      monitor: ActorRef[MonitorCommand],
+      gossip: ActorRef[GossipCommand]
+    ) extends TrainerCommand
 
     /** 
      * Starts the training process with the provided datasets. 

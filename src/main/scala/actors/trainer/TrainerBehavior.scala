@@ -12,6 +12,8 @@ import domain.network.Model
 import domain.training.{LossFunction, TrainingCore}
 import actors.trainer.TrainerActor.*
 import actors.model.ModelActor.ModelCommand
+import actors.gossip.GossipActor.GossipCommand
+import actors.monitor.MonitorActor.MonitorCommand
 
 /**
  * Encapsulates the behavior logic for the TrainerActor.
@@ -31,12 +33,20 @@ private[trainer] class TrainerBehavior(
   /**
    * Initial state: Waiting for configuration.
    */
-  def idle(): Behavior[TrainerMessage] =
+  def idle(
+    monitor: Option[ActorRef[MonitorCommand]] = None,
+    gossip: Option[ActorRef[GossipCommand]] = None
+  ): Behavior[TrainerMessage] =
+
     Behaviors.receive: (ctx, msg) =>
       msg match
+        case TrainerCommand.RegisterServices(monRef, gosRef) =>
+          ctx.log.info("Trainer: Services registered (Monitor & Gossip).")
+          idle(Some(monRef), Some(gosRef))
+
         case TrainerCommand.SetTrainConfig(trainConfig) =>
           ctx.log.info(s"Trainer: Setting Training Configuration")
-          ready(trainConfig)
+          ready(trainConfig, monitor, gossip)
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
           replyTo ! MetricsCalculated(0.0, 0.0, 0)
@@ -51,7 +61,12 @@ private[trainer] class TrainerBehavior(
   /**
    * Configured state: Ready to start training.
    */
-  private def ready(trainConfig: TrainingConfig): Behavior[TrainerMessage] =
+  private def ready(
+    trainConfig: TrainingConfig,
+    monitor: Option[ActorRef[MonitorCommand]],
+    gossip: Option[ActorRef[GossipCommand]]
+  ): Behavior[TrainerMessage] =
+
     Behaviors.receive: (ctx, msg) =>
       msg match
         case TrainerCommand.Start(trainSet, testSet) =>
@@ -64,8 +79,15 @@ private[trainer] class TrainerBehavior(
           val rand = newTrainConfig.seed.map(s => new Random(s)).getOrElse(new Random())
           val shuffledDataset = rand.shuffle(newTrainConfig.trainSet)
 
+          monitor.foreach(_ ! MonitorCommand.StartWithData(trainSet, testSet))
+          gossip.foreach(_ ! GossipCommand.StartGossipTick)
+          
           ctx.self ! PrivateTrainerCommand.NextBatch(1, 0)
-          training(newTrainConfig, shuffledDataset, rand, 1, 0)
+          training(newTrainConfig, shuffledDataset, rand, 1, 0, monitor, gossip)
+
+        case TrainerCommand.RegisterServices(monRef, gosRef) =>
+          ctx.log.info("Trainer: Services registered (Monitor & Gossip).")
+          ready(trainConfig, Some(monRef), Some(gosRef))
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
           replyTo ! MetricsCalculated(0.0, 0.0, 0)
@@ -85,7 +107,9 @@ private[trainer] class TrainerBehavior(
     currentDataset: List[LabeledPoint2D],
     rand: Random,
     currentEpoch: Int,
-    currentIdx: Int
+    currentIdx: Int,
+    monitor: Option[ActorRef[MonitorCommand]],
+    gossip: Option[ActorRef[GossipCommand]]
   ): Behavior[TrainerMessage] =
 
     implicit val timeout: Timeout = 3.seconds
@@ -95,7 +119,11 @@ private[trainer] class TrainerBehavior(
         case PrivateTrainerCommand.NextBatch(epoch, idx) =>
           if epoch > trainConfig.epochs then
             ctx.log.info("Trainer: All epochs completed.")
-            ready(trainConfig)
+
+            monitor.foreach(_ ! MonitorCommand.SimulationFinished)
+            gossip.foreach(_ ! GossipCommand.StopGossipTick)
+
+            ready(trainConfig, monitor, gossip)
           else
             val batch = currentDataset.slice(idx, idx + trainConfig.batchSize)
 
@@ -104,7 +132,7 @@ private[trainer] class TrainerBehavior(
               val nextShuffled = rand.shuffle(trainConfig.trainSet)
 
               ctx.self ! PrivateTrainerCommand.NextBatch(nextEpoch, 0)
-              training(trainConfig, nextShuffled, rand, nextEpoch, 0)
+              training(trainConfig, nextShuffled, rand, nextEpoch, 0, monitor, gossip)
             else
               ctx.ask[ModelCommand, Model](modelActor, ref => ModelCommand.GetModel(ref)) {
                 case Success(model) => TrainerCommand.ComputeGradients(model, batch, epoch, idx)
@@ -130,7 +158,7 @@ private[trainer] class TrainerBehavior(
         case TrainerCommand.Pause =>
           ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
           timers.cancelAll()
-          paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx))
+          paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
 
         case TrainerCommand.Stop =>
           timers.cancelAll()
@@ -145,7 +173,9 @@ private[trainer] class TrainerBehavior(
     trainConfig: TrainingConfig,
     currentDataset: List[LabeledPoint2D],
     rand: Random,
-    resumePos: (Int, Int)
+    resumePos: (Int, Int),
+    monitor: Option[ActorRef[MonitorCommand]],
+    gossip: Option[ActorRef[GossipCommand]]
   ): Behavior[TrainerMessage] =
 
     Behaviors.receive: (ctx, msg) =>
@@ -153,7 +183,7 @@ private[trainer] class TrainerBehavior(
         case TrainerCommand.Resume =>
           ctx.log.info(s"Trainer: Resuming from Epoch ${resumePos._1}, Index ${resumePos._2}")
           ctx.self ! PrivateTrainerCommand.NextBatch(resumePos._1, resumePos._2)
-          training(trainConfig, currentDataset, rand, resumePos._1, resumePos._2)
+          training(trainConfig, currentDataset, rand, resumePos._1, resumePos._2, monitor, gossip)
 
         case TrainerCommand.CalculateMetrics(model, replyTo) =>
           val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)
