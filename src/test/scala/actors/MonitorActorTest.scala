@@ -31,6 +31,7 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     override def showCrashMessage(): Unit = ()
     override def stopSimulation(): Unit = ()
     override def bindController(handler: MonitorCommand => Unit): Unit = ()
+    override def simulationFinished(): Unit = ()
 
   private final val dummyFeatures = Feature.X
   
