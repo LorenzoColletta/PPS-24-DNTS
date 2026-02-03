@@ -13,6 +13,7 @@ import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import config.{AppConfig, ProductionConfig}
+import scala.concurrent.duration.*
 
 class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
@@ -47,6 +48,26 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
     (gossipActor, modelProbe, monitorProbe, trainerProbe, clusterProbe)
   }
 
+  test("GossipActor should start periodic gossip when receiving StartGossipTick") {
+    val (gossipActor, _, _, _, clusterProbe) = setupGossip()
+
+    gossipActor ! GossipCommand.StartGossipTick
+
+    clusterProbe.expectMessageType[NodesRefRequest](5.seconds)
+  }
+
+  test("GossipActor should stop periodic gossip when receiving StopGossipTick") {
+    val (gossipActor, _, _, _, clusterProbe) = setupGossip()
+
+    gossipActor ! GossipCommand.StartGossipTick
+
+    clusterProbe.expectMessageType[NodesRefRequest]
+
+    gossipActor ! GossipCommand.StopGossipTick
+
+    clusterProbe.expectNoMessage(2.seconds)
+  }
+
   test("GossipActor should initiate gossip cycle on Tick: Request Nodes -> Get Model -> Send to Peer") {
     val (gossipActor, modelProbe, _, _, clusterProbe) = setupGossip()
 
@@ -65,7 +86,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
     peerProbe.expectMessageType[GossipCommand.HandleRemoteModel]
   }
 
-  test("GossipActor should forward received remote models to ModelActor for Sync") {
+  test("GossipActor should propagate remote models to the local ModelActor for synchronization") {
     val (gossipActor, modelProbe, _, _, _) = setupGossip()
 
     gossipActor ! GossipCommand.HandleRemoteModel(dummyModel)

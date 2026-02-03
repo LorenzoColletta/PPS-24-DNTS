@@ -4,42 +4,59 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
-import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
+import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation, StopSimulation}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.monitor.MonitorActor.MonitorCommand
+import akka.actor.typed.scaladsl.TimerScheduler
+import config.AppConfig
 import domain.network.Model
 
 import scala.util.Random
 
+/**
+ * Encapsulates the behavior logic for the GossipActor.
+ *
+ * @param modelActor     Reference to the local ModelActor.
+ * @param monitorActor   Reference to the local MonitorActor.
+ * @param trainerActor   Reference to the local TrainerActor.
+ * @param clusterManager Reference to the Cluster Manager.
+ * @param timers         The scheduler for managing periodic gossip ticks.
+ * @param config         Global application configuration.
+ */
 private[gossip] class GossipBehavior(
                                       modelActor: ActorRef[ModelCommand],
                                       monitorActor: ActorRef[MonitorCommand],
                                       trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterCommand]
+                                      clusterManager: ActorRef[ClusterCommand],
+                                      timers: TimerScheduler[GossipCommand],
+                                      config: AppConfig
                                     ):
 
+  /**
+   * Main operational state of the GossipActor.
+   */
   def active(): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
+
+        case GossipCommand.StartGossipTick =>
+          context.log.info("Gossip: Received Start signal. Starting gossip polling.")
+          timers.startTimerWithFixedDelay(
+            GossipCommand.TickGossip,
+            GossipCommand.TickGossip,
+            config.gossipInterval
+          )
+          Behaviors.same
+
+        case GossipCommand.StopGossipTick =>
+          context.log.info("Gossip: Stopping gossip polling.")
+          timers.cancel(GossipCommand.TickGossip)
+          Behaviors.same
 
         case GossipCommand.TickGossip =>
           clusterManager ! NodesRefRequest(
             replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
-          Behaviors.same
-
-        case GossipCommand.WrappedPeers(peers) =>
-          val potentialPeers = peers.filter(_ != context.self)
-          if potentialPeers.nonEmpty then
-            val target = potentialPeers(Random.nextInt(potentialPeers.size))
-            modelActor ! ModelCommand.GetModel(
-              replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
-            )
-          Behaviors.same
-
-        case GossipCommand.SendModelToPeer(model, target) =>
-          context.log.info(s"Gossip: Sending Model  to peer ${target}")
-          target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
 
         case GossipCommand.DistributeDataset(trainSet , testSet) =>
@@ -49,6 +66,7 @@ private[gossip] class GossipBehavior(
             )
           )
           Behaviors.same
+
         case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
           val totalNodes = peers.size
           if (totalNodes > 0) then
@@ -65,6 +83,20 @@ private[gossip] class GossipBehavior(
 
         case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
           trainerActor ! TrainerCommand.Start(trainShard, testSet)
+          Behaviors.same
+
+        case GossipCommand.WrappedPeers(peers) =>
+          val potentialPeers = peers.filter(_ != context.self)
+          if potentialPeers.nonEmpty then
+            val target = potentialPeers(Random.nextInt(potentialPeers.size))
+            modelActor ! ModelCommand.GetModel(
+              replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
+            )
+          Behaviors.same
+
+        case GossipCommand.SendModelToPeer(model, target) =>
+          context.log.info(s"Gossip: Sending Model  to peer ${target}")
+          target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
 
         case GossipCommand.HandleRemoteModel(remoteModel) =>
@@ -101,8 +133,11 @@ private[gossip] class GossipBehavior(
               monitorActor ! MonitorCommand.InternalResume
               trainerActor ! TrainerCommand.Resume
             case ControlCommand.GlobalStop =>
+              clusterManager ! StopSimulation
               monitorActor ! MonitorCommand.InternalStop
               trainerActor ! TrainerCommand.Stop
+            case _ =>
+              context.log.info(s"Not found remote control command: $cmd")
 
           Behaviors.same
 

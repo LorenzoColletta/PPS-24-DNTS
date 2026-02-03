@@ -8,7 +8,7 @@ import config.{AppConfig, ProductionConfig}
 /**
  * This actor is responsible for maintaining the model's state, applying
  * gradients to update the weights, and managing the synchronization of
- * requests from the gossip cluster.
+ * requests from the Gossip Actor.
  */
 object ModelActor:
 
