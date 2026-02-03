@@ -102,6 +102,11 @@ trait ViewBoundary:
   def showCrashMessage(): Unit
 
   /**
-   * Clears the charts and resets the UI to a stopped state.
+   * Block and close the UI for application exit.
    */
   def stopSimulation(): Unit
+
+  /**
+   * Updates the UI to indicate that the training session has completed successfully.
+   */
+  def simulationFinished(): Unit

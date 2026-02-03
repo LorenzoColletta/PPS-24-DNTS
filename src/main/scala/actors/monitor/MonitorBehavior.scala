@@ -160,6 +160,12 @@ private[monitor] class MonitorBehavior(
           context.system.terminate()
           Behaviors.stopped
 
+        case MonitorCommand.SimulationFinished =>
+          context.log.info("Monitor: Simulation Finished naturally.")
+          timers.cancelAll()
+          boundary.simulationFinished()
+          paused(snapshot)
+
         case _ => Behaviors.unhandled
 
   /**

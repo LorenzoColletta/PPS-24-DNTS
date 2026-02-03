@@ -85,6 +85,9 @@ class GuiView(using config: AppConfig) extends ViewBoundary:
   override def showCrashMessage(): Unit =
     simulationPanel.showCrashState()
 
+  override def simulationFinished(): Unit =
+    simulationPanel.simulationFinished()
+
   override def showInitialError(reason: String): Unit =
     SwingUtilities.invokeLater(() =>
       JOptionPane.showMessageDialog(frame, reason, "Bootstrap Error", JOptionPane.ERROR_MESSAGE)

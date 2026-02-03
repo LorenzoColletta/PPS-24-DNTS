@@ -23,6 +23,7 @@ object SimulationPanel:
     final val StatusPaused = "Status: PAUSED"
     final val StatusStopped = "Status: STOPPED"
     final val StatusCrashed = "Status: CRASHED"
+    final val StatusFinished = "Status: FINISHED"
 
     final val BtnPause = "PAUSE"
     final val BtnResume = "RESUME"
@@ -30,8 +31,9 @@ object SimulationPanel:
     final val BtnExport = "EXPORT WEIGHTS"
     final val BtnCrash = "CRASH NODE"
 
-    final val TooltipCrash = "Simulates a critical failure and terminates the node."
-    final val TooltipExport = "Saves the current model weights to a JSON file."
+    final val TooltipStop = "Request STOP for global simulation and application exit"
+    final val TooltipCrash = "Simulates a critical failure and terminates the node"
+    final val TooltipExport = "Saves the current node model weights to a JSON file"
 
   private object Style:
     final val InfoFont = new Font("Monospaced", Font.BOLD, 14)
@@ -158,6 +160,17 @@ class SimulationPanel(using config: AppConfig) extends JPanel:
       JOptionPane.showMessageDialog(this, "System CRASHED as requested.", "CRASHED", JOptionPane.WARNING_MESSAGE)
     )
 
+  /**
+   * Updates the UI to indicate that the training session has completed successfully.
+   * Disable pause/resume control button.
+   */
+  def simulationFinished(): Unit =
+    SwingUtilities.invokeLater(() =>
+      lblStatus.setText(Text.StatusFinished)
+      lblStatus.setForeground(Color.GREEN)
+      btnPause.setEnabled(false)
+    )
+
 
   private def initLayout(): Unit =
     setLayout(new BorderLayout())
@@ -187,7 +200,8 @@ class SimulationPanel(using config: AppConfig) extends JPanel:
 
     controlsPanel.add(lblStatus)
     controlsPanel.add(Box.createHorizontalStrut(20))
-    controlsPanel.add(btnPause); controlsPanel.add(btnStop)
+    controlsPanel.add(btnPause)
+    btnStop.setToolTipText(Text.TooltipStop); controlsPanel.add(btnStop)
     controlsPanel.add(Box.createHorizontalStrut(20))
     btnExport.setToolTipText(Text.TooltipExport); controlsPanel.add(btnExport)
     btnCrash.setToolTipText(Text.TooltipCrash); controlsPanel.add(btnCrash)

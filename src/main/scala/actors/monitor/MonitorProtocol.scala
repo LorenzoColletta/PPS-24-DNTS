@@ -115,6 +115,11 @@ object MonitorProtocol:
      */
     case object RequestWeightsLog extends MonitorCommand
 
+    /**
+     * Signals that the training simulation has successfully completed all configured epochs.
+     */
+    case object SimulationFinished extends MonitorCommand
+
 
   /**
    * Trait for all private commands handled by the MonitorActor.
