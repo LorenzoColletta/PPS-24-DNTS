@@ -86,8 +86,6 @@ private[monitor] class MonitorBehavior(
           boundary.startSimulation(newSnapshot)
           timers.startTimerAtFixedRate(PrivateMonitorCommand.TickMetrics, appConfig.metricsInterval)
 
-          gossipActor ! GossipCommand.StartGossipTick
-
           active(newSnapshot)
 
         case MonitorCommand.PeerCountChanged(active, total) =>
@@ -118,13 +116,7 @@ private[monitor] class MonitorBehavior(
 
           boundary.plotMetrics(epoch, trainLoss, testLoss, consensus)
           boundary.plotDecisionBoundary(model)
-
-          /*snapshot.config.foreach { cfg =>
-            if epoch >= cfg.epochs then
-              context.log.info(s"Monitor: Target epochs (${cfg.epochs}) reached. Stopping Gossip Tick.")
-              gossipActor ! GossipCommand.StopGossipTick
-          }*/
-
+          
           active(snapshot.copy(
             epoch = epoch,
             model = Some(model),
