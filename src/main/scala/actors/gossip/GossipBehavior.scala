@@ -69,7 +69,7 @@ private[gossip] class GossipBehavior(
 
         case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
           val totalNodes = peers.size
-          if (totalNodes > 0) then
+          if totalNodes > 0 then
             val chunkSize = trainSet.size / totalNodes
 
             peers.zipWithIndex.foreach: (peer, index) =>
@@ -95,7 +95,7 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.SendModelToPeer(model, target) =>
-          context.log.info(s"Gossip: Sending Model  to peer ${target}")
+          context.log.info(s"Gossip: Sending Model  to peer $target")
           target ! GossipCommand.HandleRemoteModel(model)
           Behaviors.same
 
