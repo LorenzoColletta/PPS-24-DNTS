@@ -4,9 +4,11 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
-import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
+import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation, StopSimulation}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.monitor.MonitorActor.MonitorCommand
+import akka.actor.typed.scaladsl.TimerScheduler
+import config.AppConfig
 import domain.network.Model
 
 import scala.util.Random
@@ -15,12 +17,28 @@ private[gossip] class GossipBehavior(
                                       modelActor: ActorRef[ModelCommand],
                                       monitorActor: ActorRef[MonitorCommand],
                                       trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterCommand]
+                                      clusterManager: ActorRef[ClusterCommand],
+                                      timers: TimerScheduler[GossipCommand],
+                                      config: AppConfig
                                     ):
 
   def active(): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
+
+        case GossipCommand.StartGossipTick =>
+          context.log.info("Gossip: Received Start signal. Starting gossip polling.")
+          timers.startTimerWithFixedDelay(
+            GossipCommand.TickGossip,
+            GossipCommand.TickGossip,
+            config.gossipInterval
+          )
+          Behaviors.same
+
+        case GossipCommand.StopGossipTick =>
+          context.log.info("Gossip: Stopping gossip polling.")
+          timers.cancel(GossipCommand.TickGossip)
+          Behaviors.same
 
         case GossipCommand.TickGossip =>
           clusterManager ! NodesRefRequest(
@@ -101,8 +119,11 @@ private[gossip] class GossipBehavior(
               monitorActor ! MonitorCommand.InternalResume
               trainerActor ! TrainerCommand.Resume
             case ControlCommand.GlobalStop =>
+              clusterManager ! StopSimulation
               monitorActor ! MonitorCommand.InternalStop
               trainerActor ! TrainerCommand.Stop
+            case _ =>
+              context.log.info(s"Not found remote control command: $cmd")
 
           Behaviors.same
 

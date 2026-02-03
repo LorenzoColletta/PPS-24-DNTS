@@ -18,17 +18,13 @@ object GossipActor:
              trainerActor: ActorRef[TrainerCommand],
              clusterManager: ActorRef[ClusterCommand]
            )(using config: AppConfig): Behavior[GossipCommand] =
-    Behaviors.setup: context =>
+    Behaviors.setup: _ =>
       Behaviors.withTimers: timers =>
-        timers.startTimerWithFixedDelay(
-          GossipCommand.TickGossip,
-          GossipCommand.TickGossip,
-          config.gossipInterval
-        )
-
         GossipBehavior(
           modelActor,
           monitorActor,
           trainerActor,
-          clusterManager
+          clusterManager,
+          timers,
+          config
         ).active()

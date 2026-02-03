@@ -23,7 +23,9 @@ object GossipProtocol:
     case object GlobalStop extends ControlCommand
   
   object GossipCommand:
+    case object StartGossipTick extends GossipCommand
     case object TickGossip extends GossipCommand
+    case object StopGossipTick extends GossipCommand
     final case class DistributeDataset(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
     final case class WrappedDistributeDataset(peers: List[ActorRef[GossipCommand]], trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
     final case class HandleDistributeDataset(trainShard: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
