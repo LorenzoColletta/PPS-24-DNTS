@@ -1,6 +1,6 @@
-package actors.cluster
+package actors.cluster.membership
 
-import actors.cluster1.ClusterProtocol.{NodeEvent, NodeReachable, NodeUnreachable, NodeUp, NodeRemoved}
+import actors.cluster.ClusterProtocol.*
 
 /**
  * Defines the policy for reacting to cluster membership and reachability events.
