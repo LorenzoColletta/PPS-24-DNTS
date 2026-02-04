@@ -1,10 +1,6 @@
 package actors.cluster
 
-import actors.GossipActor.GossipCommand
-import akka.cluster.ClusterEvent.*
-import akka.actor.typed.ActorRef
-import actors.monitor.MonitorProtocol.MonitorCommand
-import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
+import actors.cluster1.ClusterProtocol.{NodeEvent, NodeReachable, NodeUnreachable, NodeUp, NodeRemoved}
 
 /**
  * Defines the policy for reacting to cluster membership and reachability events.
@@ -12,49 +8,22 @@ import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 object MembershipPolicy:
 
   /**
-   * Applies a cluster command to the current membership state.
+   * Manages a state change according to the received event.
    *
    * @param membership
    * The current cluster membership state.
-   * @param command
-   * A cluster-related command derived from Akka Cluster events.
-   * @param monitor
-   * Actor responsible for observing cluster metrics (e.g. peer counts).
-   * @param gossip
-   * Actor responsible for propagating cluster membership information
-   * to other nodes.
+   * @param event
+   * A cluster-related event derived from Akka Cluster events.
    * @return
-   * The updated [[ClusterMembership]] after applying the command.
+   * The updated [[ClusterMembership]] after applying the change.
    */
-  def apply(
-    membership: ClusterMembership,
-    command: ClusterCommand,
-    monitor: ActorRef[MonitorCommand],
-    gossip: ActorRef[GossipCommand]
-  ): ClusterMembership =
-    command match
-      case MemberCommand(MemberUp(m)) =>
-        val updated = membership.addPeer(m.address)
-        monitor ! PeerCountChanged(updated.available, updated.total)
-        updated
+  def update(membership: ClusterMembership, event: NodeEvent): ClusterMembership = event match
 
-      case MemberCommand(MemberRemoved(m, _)) =>
-        val updated = membership.removePeer(m.address)
-//        gossip ! GossipCommand.PeerDown(m.address)
-        monitor ! PeerCountChanged(updated.available, updated.total)
-        updated
+    case NodeUp(node) => membership.addNode(node.member.address)
 
-      case ReachabilityCommand(UnreachableMember(m)) =>
-        val updated = membership.markUnreachable(m.address)
-//        gossip ! GossipCommand.PeerUnreachable(m.address)
-        monitor ! PeerCountChanged(updated.available, updated.total)
-        updated
+    case NodeUnreachable(node) => membership.markUnreachable(node.member.address)
 
-      case ReachabilityCommand(ReachableMember(m)) =>
-        val updated = membership.markReachable(m.address)
-//        gossip ! GossipCommand.PeerReachable(m.address)
-        monitor ! PeerCountChanged(updated.available, updated.total)
-        updated
+    case NodeReachable(node) => membership.markReachable(node.member.address)
 
-      case _ =>
-        membership
+    case NodeRemoved(node) => membership.removeNode(node.member.address)
+
