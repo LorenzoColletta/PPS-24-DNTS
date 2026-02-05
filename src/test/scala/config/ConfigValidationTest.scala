@@ -3,8 +3,6 @@ package config
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-import domain.network.{Activations, Feature, HyperParams, LayerConf, Regularization}
-
 class ConfigValidationTest extends AnyFunSuite with Matchers:
 
   test("DatasetStrategyConfig.Gaussian should throw IllegalArgumentException if sigma is negative"):

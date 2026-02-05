@@ -4,9 +4,10 @@ import actors.cluster.ClusterProtocol.*
 import actors.cluster.effect.*
 import actors.cluster.timer.*
 import actors.cluster.*
-import actors.monitor.MonitorProtocol.MonitorCommand
+import actors.monitor.MonitorActor.MonitorCommand
+import actors.monitor.MonitorActor.MonitorCommand.PeerCountChanged
+import actors.gossip.GossipActor.GossipCommand
 import actors.discovery.GossipPeerDiscovery.DiscoveryCommand
-import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.{NodeRole, RootCommand}
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*

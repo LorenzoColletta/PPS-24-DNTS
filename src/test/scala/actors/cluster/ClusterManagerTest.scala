@@ -8,7 +8,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import actors.cluster.*
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipProtocol.GossipCommand
 import com.typesafe.config.ConfigFactory
 
 

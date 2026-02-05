@@ -2,9 +2,20 @@ package view
 
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
+import actors.monitor.MonitorActor.MonitorCommand
 
 /**
- * Data recap for initial screen and live monitoring
+ * Data recap for initial screen and live monitoring.
+ *
+ * @param epoch       The current training epoch number.
+ * @param model       The optional current state of the neural network model.
+ * @param config      The optional active training configuration parameters.
+ * @param trainLoss   The optional current loss value computed on the training dataset.
+ * @param testLoss    The optional current loss value computed on the test dataset.
+ * @param consensus   The optional consensus metric representing the model's divergence from the cluster average.
+ * @param activePeers The count of currently reachable peers in the cluster.
+ * @param totalPeers  The total count of known peers in the cluster.
+ * @param clusterSeed The optional identifier of the cluster.
  */
 case class ViewStateSnapshot(
   epoch: Int = 0,
@@ -23,6 +34,13 @@ case class ViewStateSnapshot(
  * Boundary interface that defines how the application logic interacts with the User Interface.
  */
 trait ViewBoundary:
+
+  /**
+   * Binds the UI actions to a controller handler.
+   *
+   * @param handler A function that accepts a [[MonitorCommand]] to be sent to the actor system.
+   */
+  def bindController(handler: MonitorCommand => Unit): Unit
 
   /**
    * Displays the initial setup screen after a successful cluster creation/connection.
@@ -84,6 +102,11 @@ trait ViewBoundary:
   def showCrashMessage(): Unit
 
   /**
-   * Clears the charts and resets the UI to a stopped state.
+   * Block and close the UI for application exit.
    */
   def stopSimulation(): Unit
+
+  /**
+   * Updates the UI to indicate that the training session has completed successfully.
+   */
+  def simulationFinished(): Unit

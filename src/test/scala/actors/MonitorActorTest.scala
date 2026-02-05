@@ -7,9 +7,9 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.duration.*
 import actors.monitor.MonitorActor.MonitorCommand
-import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
-import actors.ModelActor.ModelCommand
-import actors.GossipActor.GossipCommand
+import actors.trainer.TrainerActor.TrainingConfig
+import actors.model.ModelActor.ModelCommand
+import actors.gossip.GossipActor.GossipCommand
 import actors.root.RootActor.RootCommand
 import actors.monitor.MonitorActor
 import domain.network.{Feature, HyperParams, Activations, Regularization, Model, ModelBuilder}
@@ -30,6 +30,8 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
     override def setPausedState(paused: Boolean): Unit = ()
     override def showCrashMessage(): Unit = ()
     override def stopSimulation(): Unit = ()
+    override def bindController(handler: MonitorCommand => Unit): Unit = ()
+    override def simulationFinished(): Unit = ()
 
   private final val dummyFeatures = Feature.X
   
@@ -49,13 +51,11 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
 
   test("MonitorActor should start the Trainer and poll for metrics on Start") {
     val modelProbe = createTestProbe[ModelCommand]()
-    val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
     val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
-      trainerProbe.ref,
       gossipProbe.ref,
       rootProbe.ref,
       dummyBoundary,
@@ -70,13 +70,11 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
 
   test("MonitorActor should handle metrics response correctly") {
     val modelProbe = createTestProbe[ModelCommand]()
-    val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
     val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
-      trainerProbe.ref,
       gossipProbe.ref,
       rootProbe.ref,
       dummyBoundary,
@@ -101,13 +99,11 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
 
   test("MonitorActor should propagate Pause to Gossip") {
     val modelProbe = createTestProbe[ModelCommand]()
-    val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
     val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
-      trainerProbe.ref,
       gossipProbe.ref,
       rootProbe.ref,
       dummyBoundary,
@@ -123,13 +119,11 @@ class MonitorActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wi
 
   test("MonitorActor should clear the timers on Stop") {
     val modelProbe = createTestProbe[ModelCommand]()
-    val trainerProbe = createTestProbe[TrainerCommand]()
     val gossipProbe = createTestProbe[GossipCommand]()
     val rootProbe = createTestProbe[RootCommand]()
 
     val monitor = spawn(MonitorActor(
       modelProbe.ref,
-      trainerProbe.ref,
       gossipProbe.ref,
       rootProbe.ref,
       dummyBoundary,

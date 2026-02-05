@@ -5,7 +5,6 @@ import org.scalatest.matchers.should.Matchers
 
 import domain.data.*
 import domain.network.*
-import domain.network.Activations
 import domain.data.LinearAlgebra.*
 import Strategies.Losses.given
 

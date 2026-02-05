@@ -6,8 +6,14 @@ import scala.util.Try
 import domain.data.LinearAlgebra
 import domain.data.LinearAlgebra.{Matrix, Vector}
 
+/**
+ * Binary serializers for [[LinearAlgebra]] primitives.
+ */
 object LinearAlgebraSerializers:
 
+  /**
+   * Serializer for [[Vector]].
+   */
   given vectorSerializer: Serializer[Vector] with
     def serialize(v: Vector): Array[Byte] =
       val data = v.toList
@@ -24,6 +30,9 @@ object LinearAlgebraSerializers:
       LinearAlgebra.Vector.fromList(data)
     }
 
+  /**
+   * Serializer for [[Matrix]].
+   */
   given matrixSerializer: Serializer[Matrix] with
     def serialize(m: Matrix): Array[Byte] =
       val rows = m.rows

@@ -4,6 +4,8 @@ import akka.actor.typed.ActorRef
 
 import domain.data.LabeledPoint2D
 import domain.network.{Feature, HyperParams, Model}
+import actors.gossip.GossipActor.GossipCommand
+import actors.monitor.MonitorActor.MonitorCommand
 
 /**
  * Defines the public API and Data Structures for the Trainer component.
@@ -36,10 +38,12 @@ object TrainerProtocol:
    *
    * @param trainLoss The loss value computed on the training set.
    * @param testLoss  The loss value computed on the test set.
+   * @param epoch     The actual epoch
    */
   case class MetricsCalculated(
     trainLoss: Double,
-    testLoss: Double
+    testLoss: Double,
+    epoch: Int
   )
 
 
@@ -56,6 +60,17 @@ object TrainerProtocol:
 
   /** Protocol for the TrainerActor. */
   object TrainerCommand:
+
+    /**
+     * Registers the references to auxiliary services (Monitor and Gossip).
+     *
+     * @param monitor The reference to the local [[MonitorActor]].
+     * @param gossip  The reference to the local [[GossipActor]].
+     */
+    final case class RegisterServices(
+      monitor: ActorRef[MonitorCommand],
+      gossip: ActorRef[GossipCommand]
+    ) extends TrainerCommand
 
     /** 
      * Starts the training process with the provided datasets. 
@@ -111,7 +126,6 @@ object TrainerProtocol:
     final case class SetTrainConfig(
       trainConfig: TrainingConfig
     ) extends TrainerCommand
-
 
   /**
    * Trait for all private commands handled by the TrainerActor.

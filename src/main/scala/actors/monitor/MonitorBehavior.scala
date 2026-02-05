@@ -1,25 +1,19 @@
 package actors.monitor
 
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
-
+import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import config.AppConfig
 import view.{ViewBoundary, ViewStateSnapshot}
-import actors.ModelActor.ModelCommand
-import actors.trainer.TrainerActor.TrainerCommand
-import actors.GossipActor.GossipCommand
+import actors.gossip.GossipActor.{GossipCommand, ControlCommand}
 import actors.root.RootActor.RootCommand
-import actors.monitor.MonitorActor.*
-import actors.monitor.MonitorProtocol.PrivateMonitorCommand
-
+import actors.monitor.MonitorProtocol._
+import actors.model.ModelActor.ModelCommand
 
 /**
  * Encapsulates the behavior logic for the MonitorActor.
  *
- * @param context       The actor context providing access to the actor system.
  * @param timers        The scheduler for managing timed messages.
  * @param modelActor    Reference to the local ModelActor.
- * @param trainerActor  Reference to the local TrainerActor.
  * @param gossipActor   Reference to the local GossipActor.
  * @param rootActor     Reference to the local RootActor.
  * @param boundary      The abstraction acting as a bridge to the View.
@@ -27,10 +21,8 @@ import actors.monitor.MonitorProtocol.PrivateMonitorCommand
  * @param appConfig     Implicit application global configuration.
  */
 private[monitor] class MonitorBehavior(
-  context: ActorContext[MonitorMessage],
   timers: TimerScheduler[MonitorMessage],
   modelActor: ActorRef[ModelCommand],
-  trainerActor: ActorRef[TrainerCommand],
   gossipActor: ActorRef[GossipCommand],
   rootActor: ActorRef[RootCommand],
   boundary: ViewBoundary,
@@ -64,6 +56,12 @@ private[monitor] class MonitorBehavior(
           boundary.updatePeerDisplay(active, total)
           connecting(snapshot.copy(activePeers = active, totalPeers = total))
 
+        case MonitorCommand.InternalStop =>
+          context.log.info("Monitor: Remote STOP command.")
+          boundary.stopSimulation()
+          timers.cancelAll()
+          Behaviors.stopped
+
         case _ => Behaviors.same
 
   /**
@@ -95,6 +93,12 @@ private[monitor] class MonitorBehavior(
           boundary.updatePeerDisplay(active, total)
           idle(snapshot.copy(activePeers = active, totalPeers = total))
 
+        case MonitorCommand.InternalStop =>
+          context.log.info("Monitor: Remote STOP command.")
+          boundary.stopSimulation()
+          timers.cancelAll()
+          Behaviors.stopped
+
         case _ => Behaviors.unhandled
 
   /**
@@ -112,7 +116,7 @@ private[monitor] class MonitorBehavior(
 
           boundary.plotMetrics(epoch, trainLoss, testLoss, consensus)
           boundary.plotDecisionBoundary(model)
-
+          
           active(snapshot.copy(
             epoch = epoch,
             model = Some(model),
@@ -123,17 +127,17 @@ private[monitor] class MonitorBehavior(
 
         case MonitorCommand.PauseSimulation =>
           context.log.info("Monitor: User requested PAUSE. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GossipCommand.GlobalPause)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
           Behaviors.same
 
         case MonitorCommand.InternalPause =>
           context.log.info("Monitor: Remote PAUSE command.")
           boundary.setPausedState(true)
-          Behaviors.same
+          paused(snapshot)
 
         case MonitorCommand.StopSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GossipCommand.GlobalStop)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 
         case MonitorCommand.InternalStop =>
@@ -156,6 +160,12 @@ private[monitor] class MonitorBehavior(
           context.system.terminate()
           Behaviors.stopped
 
+        case MonitorCommand.SimulationFinished =>
+          context.log.info("Monitor: Simulation Finished naturally.")
+          timers.cancelAll()
+          boundary.simulationFinished()
+          paused(snapshot)
+
         case _ => Behaviors.unhandled
 
   /**
@@ -166,7 +176,7 @@ private[monitor] class MonitorBehavior(
       message match
         case MonitorCommand.ResumeSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GossipCommand.GlobalResume)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
           Behaviors.same
 
         case MonitorCommand.InternalResume =>
@@ -177,14 +187,14 @@ private[monitor] class MonitorBehavior(
 
         case MonitorCommand.StopSimulation =>
           context.log.info("Monitor: User requested STOP. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(GossipCommand.GlobalStop)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 
         case MonitorCommand.InternalStop =>
           context.log.info("Monitor: Remote STOP command.")
           boundary.stopSimulation()
           timers.cancelAll()
-          idle(snapshot)
+          Behaviors.stopped
 
         case MonitorCommand.PeerCountChanged(active, total) =>
           boundary.updatePeerDisplay(active, total)

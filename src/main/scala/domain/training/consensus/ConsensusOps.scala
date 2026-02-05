@@ -3,8 +3,20 @@ package domain.training.consensus
 import domain.network.Network
 import domain.training.{NetworkGradient, LayerGradient}
 
+/**
+ * Low-level operations for aggregating network states and gradients.
+ */
 object ConsensusOps:
 
+  /**
+   * Computes the parameter-wise arithmetic mean of two neural networks.
+   * Both networks must share the exact same topology.
+   *
+   * @param n1 The first [[Network]].
+   * @param n2 The second [[Network]].
+   * @return A new [[Network]] instance containing the averaged weights and biases.
+   * @throws IllegalArgumentException if the network topologies differ.
+   */
   def averageModels(n1: Network, n2: Network): Network =
     require(n1.layers.length == n2.layers.length, "Topology mismatch")
 
@@ -18,6 +30,13 @@ object ConsensusOps:
     }
     Network(newLayers)
 
+  /**
+   * Aggregates a list of [[NetworkGradient]]s into a single average [[NetworkGradient]].
+   *
+   * @param grads The list of gradients to combine. Must not be empty.
+   * @return A single [[NetworkGradient]] representing the average direction and magnitude.
+   * @throws IllegalArgumentException if the list of gradients is empty.
+   */
   def averageGradients(grads: List[NetworkGradient]): NetworkGradient =
     require(grads.nonEmpty, "Cannot average empty gradients")
     if grads.length == 1 then return grads.head
