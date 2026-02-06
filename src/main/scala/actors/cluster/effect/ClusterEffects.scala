@@ -4,7 +4,7 @@ import actors.cluster.ClusterState
 import actors.cluster.effect.*
 import actors.cluster.ClusterProtocol.ClusterMemberCommand
 import actors.cluster.timer.ClusterTimers
-import actors.discovery.GossipPeerDiscovery.DiscoveryCommand
+import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.RootCommand

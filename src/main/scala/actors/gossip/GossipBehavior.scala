@@ -4,7 +4,8 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
-import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation, StopSimulation}
+import actors.cluster.ClusterProtocol.{ClusterMemberCommand, StartSimulation, StopSimulation}
+import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.monitor.MonitorActor.MonitorCommand
 import akka.actor.typed.scaladsl.TimerScheduler
@@ -27,7 +28,8 @@ private[gossip] class GossipBehavior(
                                       modelActor: ActorRef[ModelCommand],
                                       monitorActor: ActorRef[MonitorCommand],
                                       trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterCommand],
+                                      clusterManager: ActorRef[ClusterMemberCommand],
+                                      discoveryActor: ActorRef[DiscoveryCommand],
                                       timers: TimerScheduler[GossipCommand],
                                       config: AppConfig
                                     ):
@@ -54,13 +56,13 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.TickGossip =>
-          clusterManager ! NodesRefRequest(
+          discoveryActor ! NodesRefRequest(
             replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
           Behaviors.same
 
         case GossipCommand.DistributeDataset(trainSet , testSet) =>
-          clusterManager ! NodesRefRequest(
+          discoveryActor ! NodesRefRequest(
             replyTo = context.messageAdapter(peers =>
               GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)
             )
@@ -104,7 +106,7 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.SpreadCommand(cmd) =>
-          clusterManager ! NodesRefRequest(
+          discoveryActor ! NodesRefRequest(
             replyTo = context.messageAdapter(peers =>
               GossipCommand.WrappedSpreadCommand(peers, cmd)
             )

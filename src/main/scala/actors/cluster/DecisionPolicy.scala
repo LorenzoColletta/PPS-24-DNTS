@@ -4,6 +4,7 @@ import actors.cluster.ClusterProtocol.*
 import actors.cluster.effect.*
 import actors.cluster.timer.{BootstrapTimerId, UnreachableTimerId}
 import actors.cluster.{ClusterState, Joining, Running}
+import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode}
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.NodeRole
 import actors.root.RootProtocol.RootCommand.{ClusterFailed, ClusterReady}
@@ -42,7 +43,7 @@ object JoiningPolicy extends DecisionPolicy :
       case NodeUp(node) =>
         List(
           NotifyMonitor,
-          NotifyReceptionist(node.member.address)
+          NotifyReceptionist(NotifyAddNode(node.member.address))
         )
 
       case NodeUnreachable(node) if node.member.roles.contains(NodeRole.Seed.id) =>
@@ -56,7 +57,7 @@ object JoiningPolicy extends DecisionPolicy :
           RemoveNodeFromCluster(node.member.address),
           RemoveNodeFromMembership(node.member.address),
           NotifyMonitor,
-          NotifyReceptionist(NodeUnavailable(node.member.address)),
+          NotifyReceptionist(NotifyRemoveNode(node.member.address)),
           DownNode(node.member.address)
         )
 
@@ -81,21 +82,21 @@ object RunningPolicy extends DecisionPolicy :
         List(
           StartTimer(UnreachableTimerId(node.member.address), SeedUnreachableTimeout),
           NotifyMonitor,
-          NotifyReceptionist()
+          NotifyReceptionist(NotifyRemoveNode(node.member.address))
         )
 
       case NodeUnreachable(node) =>
         List(
           StartTimer(UnreachableTimerId(node.member.address), UnreachableTimeout(node.member.address)),
           NotifyMonitor,
-          NotifyReceptionist()
+          NotifyReceptionist(NotifyRemoveNode(node.member.address))
         )
 
       case NodeReachable(node) =>
         List(
           CancelTimer(UnreachableTimerId(node.member.address)),
           NotifyMonitor,
-          NotifyReceptionist()
+          NotifyReceptionist(NotifyAddNode(node.member.address))
         )
 
       case StopSimulation =>

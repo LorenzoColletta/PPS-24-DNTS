@@ -7,7 +7,7 @@ import actors.cluster.*
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.monitor.MonitorActor.MonitorCommand.PeerCountChanged
 import actors.gossip.GossipActor.GossipCommand
-import actors.discovery.GossipPeerDiscovery.DiscoveryCommand
+import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*

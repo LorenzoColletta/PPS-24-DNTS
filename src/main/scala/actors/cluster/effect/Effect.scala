@@ -3,7 +3,7 @@ package actors.cluster.effect
 import actors.cluster.Phase
 import actors.cluster.ClusterProtocol.InternalEvent
 import actors.cluster.timer.TimerKey
-import actors.discovery.GossipPeerDiscovery.DiscoveryCommand
+import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.root.RootProtocol.RootCommand
 import akka.actor.Address
