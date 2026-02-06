@@ -21,9 +21,6 @@ object GossipProtocol:
 
   object ControlCommand:
 
-    /** Signal to start the simulation globally. */
-    case object GlobalStart extends ControlCommand
-
     /** Signal to pause the simulation globally. */
     case object GlobalPause extends ControlCommand
 

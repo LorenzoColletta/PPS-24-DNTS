@@ -12,7 +12,6 @@ object ControlCommandSerializers:
     def deserialize(bytes: Array[Byte]): Try[ControlCommand] = Try {
       val name = new String(bytes, StandardCharsets.UTF_8)
       name match
-        case "GlobalStart"  => ControlCommand.GlobalStart
         case "GlobalPause"  => ControlCommand.GlobalPause
         case "GlobalResume" => ControlCommand.GlobalResume
         case "GlobalStop"   => ControlCommand.GlobalStop

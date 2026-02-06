@@ -9,7 +9,6 @@ import domain.data.{Label, LabeledPoint2D, Point2D}
 import actors.gossip.GossipActor
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
-import actors.monitor.MonitorActor.MonitorCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.cluster.{ClusterCommand, NodesRefRequest, StartSimulation}
 import config.{AppConfig, ProductionConfig}
@@ -32,24 +31,22 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
     LabeledPoint2D(Point2D(0.2, 0.2), Label.Positive)
   )
 
-  def setupGossip(): (ActorRef[GossipCommand], TestProbe[ModelCommand], TestProbe[MonitorCommand], TestProbe[TrainerCommand], TestProbe[ClusterCommand]) = {
+  def setupGossip(): (ActorRef[GossipCommand], TestProbe[ModelCommand], TestProbe[TrainerCommand], TestProbe[ClusterCommand]) = {
     val modelProbe = createTestProbe[ModelCommand]()
-    val monitorProbe = createTestProbe[MonitorCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
     val clusterProbe = createTestProbe[ClusterCommand]()
 
     val gossipActor = spawn(GossipActor(
       modelProbe.ref,
-      monitorProbe.ref,
       trainerProbe.ref,
       clusterProbe.ref
     ))
 
-    (gossipActor, modelProbe, monitorProbe, trainerProbe, clusterProbe)
+    (gossipActor, modelProbe, trainerProbe, clusterProbe)
   }
 
   test("GossipActor should start periodic gossip when receiving StartGossipTick") {
-    val (gossipActor, _, _, _, clusterProbe) = setupGossip()
+    val (gossipActor, _, _, clusterProbe) = setupGossip()
 
     gossipActor ! GossipCommand.StartGossipTick
 
@@ -57,7 +54,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should stop periodic gossip when receiving StopGossipTick") {
-    val (gossipActor, _, _, _, clusterProbe) = setupGossip()
+    val (gossipActor, _, _, clusterProbe) = setupGossip()
 
     gossipActor ! GossipCommand.StartGossipTick
 
@@ -69,7 +66,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should initiate gossip cycle on Tick: Request Nodes -> Get Model -> Send to Peer") {
-    val (gossipActor, modelProbe, _, _, clusterProbe) = setupGossip()
+    val (gossipActor, modelProbe, _, clusterProbe) = setupGossip()
 
     val peerProbe = createTestProbe[GossipCommand]()
 
@@ -87,7 +84,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should propagate remote models to the local ModelActor for synchronization") {
-    val (gossipActor, modelProbe, _, _, _) = setupGossip()
+    val (gossipActor, modelProbe, _, _) = setupGossip()
 
     gossipActor ! GossipCommand.HandleRemoteModel(dummyModel)
 
@@ -96,7 +93,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should shard and distribute dataset to peers") {
-    val (gossipActor, _, _, _, clusterProbe) = setupGossip()
+    val (gossipActor, _, _, clusterProbe) = setupGossip()
 
     val peer1 = createTestProbe[GossipCommand]()
     val peer2 = createTestProbe[GossipCommand]()
@@ -116,7 +113,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should start Trainer when receiving a dataset shard") {
-    val (gossipActor, _, _, trainerProbe, _) = setupGossip()
+    val (gossipActor, _, trainerProbe, _) = setupGossip()
 
     val shard = dummyData.take(2)
 
@@ -127,7 +124,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should propagate ControlCommand (e.g., Pause) to peers") {
-    val (gossipActor, _, _, _, clusterProbe) = setupGossip()
+    val (gossipActor, _, _, clusterProbe) = setupGossip()
     val peerProbe = createTestProbe[GossipCommand]()
 
     gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
@@ -140,29 +137,26 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   }
 
   test("GossipActor should execute ControlCommand locally (Pause)") {
-    val (gossipActor, _, monitorProbe, trainerProbe, _) = setupGossip()
+    val (gossipActor, _, trainerProbe, _) = setupGossip()
 
     gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalPause)
 
-    monitorProbe.expectMessageType[MonitorCommand.InternalPause.type]
     trainerProbe.expectMessageType[TrainerCommand.Pause.type]
   }
 
   test("GossipActor should execute ControlCommand locally (GlobalStart)") {
-    val (gossipActor, _, monitorProbe, _, clusterProbe) = setupGossip()
+    val (gossipActor, _, _, clusterProbe) = setupGossip()
 
     gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStart)
 
     clusterProbe.expectMessageType[StartSimulation.type]
-    monitorProbe.expectMessageType[MonitorCommand.StartSimulation.type]
   }
 
   test("GossipActor should execute ControlCommand locally (Stop)") {
-    val (gossipActor, _, monitorProbe, trainerProbe, _) = setupGossip()
+    val (gossipActor, _, trainerProbe, _) = setupGossip()
 
     gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStop)
 
-    monitorProbe.expectMessageType[MonitorCommand.InternalStop.type]
     trainerProbe.expectMessageType[TrainerCommand.Stop.type]
   }
 }
