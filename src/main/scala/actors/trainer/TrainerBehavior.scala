@@ -53,6 +53,8 @@ private[trainer] class TrainerBehavior(
           Behaviors.same
 
         case TrainerCommand.Stop =>
+          monitor.foreach(_ ! MonitorCommand.InternalStop)
+          
           timers.cancelAll()
           Behaviors.stopped
 
@@ -157,6 +159,9 @@ private[trainer] class TrainerBehavior(
 
         case TrainerCommand.Pause =>
           ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
+
+          monitor.foreach(_ ! MonitorCommand.InternalPause)
+          
           timers.cancelAll()
           paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
 
@@ -182,6 +187,9 @@ private[trainer] class TrainerBehavior(
       msg match
         case TrainerCommand.Resume =>
           ctx.log.info(s"Trainer: Resuming from Epoch ${resumePos._1}, Index ${resumePos._2}")
+
+          monitor.foreach(_ ! MonitorCommand.InternalResume)
+          
           ctx.self ! PrivateTrainerCommand.NextBatch(resumePos._1, resumePos._2)
           training(trainConfig, currentDataset, rand, resumePos._1, resumePos._2, monitor, gossip)
 
