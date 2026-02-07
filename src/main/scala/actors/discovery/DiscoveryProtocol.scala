@@ -47,3 +47,11 @@ object DiscoveryProtocol :
    * @param node the address of the node no longer accessible
    */
   final case class NotifyRemoveNode(node: Address) extends DiscoveryCommand
+
+
+  /**
+   * Signals the gossip reference.
+   * 
+   * @param gossip the gossip reference
+   */
+  final case class RegisterGossip(gossip: ActorRef[GossipCommand]) extends DiscoveryCommand
