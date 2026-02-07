@@ -20,3 +20,6 @@ final case class ClusterState(
   view: ClusterMembership
 )
 
+object ClusterState:
+  def initialState(role: NodeRole): ClusterState =
+    ClusterState(Bootstrap, role, ClusterMembership.empty)
