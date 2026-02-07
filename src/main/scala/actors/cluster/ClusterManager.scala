@@ -41,7 +41,7 @@ object ClusterManager:
   def apply(
     initialState: ClusterState,
     timersDuration: ClusterTimers,
-    monitorActor: ActorRef[MonitorCommand],
+    monitorActor: Option[ActorRef[MonitorCommand]],
     receptionistManager: ActorRef[DiscoveryCommand],
     rootActor: ActorRef[RootCommand]
   ): Behavior[ClusterMemberCommand] =
@@ -70,38 +70,50 @@ object ClusterManager:
     timers: TimerScheduler[ClusterMemberCommand],
     state: ClusterState,
     timersDuration: ClusterTimers,
-    monitorActor: ActorRef[MonitorCommand],
+    monitorActor: Option[ActorRef[MonitorCommand]],
     receptionistManager: ActorRef[DiscoveryCommand],
     rootActor: ActorRef[RootCommand]
   ): Behavior[ClusterMemberCommand] =
-    Behaviors.receiveMessage { msg =>
+    Behaviors.receiveMessage {
+      case RegisterMonitor(ref) =>
+        runningBehavior(
+          context,
+          timers,
+          state,
+          timersDuration,
+          Some(ref),
+          receptionistManager,
+          rootActor
+        )
 
-      val (stateAfterHandle, effects) = handle(state, msg)
+      case message =>
 
-      val newState = effects.foldLeft(stateAfterHandle) {
-        case (state, ChangePhase(to)) =>
-          state.copy(phase = to)
+        val (stateAfterHandle, effects) = handle(state, message)
 
-        case (state, RemoveNodeFromMembership(nodeId)) =>
-          state.copy(view = state.view.removeNode(nodeId))
+        val newState = effects.foldLeft(stateAfterHandle) {
+          case (state, ChangePhase(to)) =>
+            state.copy(phase = to)
 
-        case (state, _) => state
-      }
+          case (state, RemoveNodeFromMembership(nodeId)) =>
+            state.copy(view = state.view.removeNode(nodeId))
 
-      effects.collect { case e: Action => e }
-        .foreach(effect => ClusterEffects(state, context, timers, effect, timersDuration, monitorActor,
-          receptionistManager, rootActor))
+          case (state, _) => state
+        }
 
-      runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
+        effects.collect { case e: Action => e }
+          .foreach(effect => ClusterEffects(state, context, timers, effect, timersDuration, monitorActor,
+            receptionistManager, rootActor))
+
+        runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
     }
 
   private def handle(
     state: ClusterState,
-    msg: ClusterMemberCommand
+    message: ClusterMemberCommand
   ): (ClusterState, List[Effect]) = {
 
     val newView =
-      msg match
+      message match
         case e: NodeEvent =>
           membership.MembershipPolicy.update(state.view, e)
         case _ => state.view
@@ -114,7 +126,7 @@ object ClusterManager:
       case Running   => RunningPolicy
 
 
-    val effects = policy.decide(newState, msg)
+    val effects = policy.decide(newState, message)
 
     (newState, effects)
   }

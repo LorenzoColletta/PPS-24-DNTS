@@ -35,7 +35,7 @@ object ClusterEffects:
              timers: TimerScheduler[ClusterMemberCommand],
              effect: Effect,
              timersDuration: ClusterTimers,
-             monitorActor: ActorRef[MonitorCommand],
+             monitorActor: Option[ActorRef[MonitorCommand]],
              receptionistManager: ActorRef[DiscoveryCommand],
              rootActor: ActorRef[RootCommand]
   ): Unit = effect match
@@ -44,7 +44,8 @@ object ClusterEffects:
         rootActor ! event
 
       case NotifyMonitor =>
-        monitorActor ! PeerCountChanged(state.view.available, state.view.total)
+        if monitorActor.isDefined then
+          monitorActor.get ! PeerCountChanged(state.view.available, state.view.total)
 
       case NotifyReceptionist(event) =>
         receptionistManager ! event
