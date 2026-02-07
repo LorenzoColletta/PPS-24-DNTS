@@ -7,7 +7,6 @@ import actors.model.ModelActor.ModelCommand
 import actors.cluster.ClusterProtocol.{ClusterMemberCommand, StartSimulation, StopSimulation}
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.monitor.MonitorActor.MonitorCommand
 import akka.actor.typed.scaladsl.TimerScheduler
 import config.AppConfig
 import domain.network.Model
@@ -18,21 +17,19 @@ import scala.util.Random
  * Encapsulates the behavior logic for the GossipActor.
  *
  * @param modelActor     Reference to the local ModelActor.
- * @param monitorActor   Reference to the local MonitorActor.
  * @param trainerActor   Reference to the local TrainerActor.
  * @param clusterManager Reference to the Cluster Manager.
  * @param timers         The scheduler for managing periodic gossip ticks.
  * @param config         Global application configuration.
  */
 private[gossip] class GossipBehavior(
-                                      modelActor: ActorRef[ModelCommand],
-                                      monitorActor: ActorRef[MonitorCommand],
-                                      trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterMemberCommand],
-                                      discoveryActor: ActorRef[DiscoveryCommand],
-                                      timers: TimerScheduler[GossipCommand],
-                                      config: AppConfig
-                                    ):
+  modelActor: ActorRef[ModelCommand],
+  trainerActor: ActorRef[TrainerCommand],
+  clusterManager: ActorRef[ClusterMemberCommand],
+  discoveryActor: ActorRef[DiscoveryCommand],
+  timers: TimerScheduler[GossipCommand],
+  config: AppConfig
+):
 
   /**
    * Main operational state of the GossipActor.
@@ -85,6 +82,7 @@ private[gossip] class GossipBehavior(
 
         case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
           trainerActor ! TrainerCommand.Start(trainShard, testSet)
+          clusterManager ! StartSimulation
           Behaviors.same
 
         case GossipCommand.WrappedPeers(peers) =>
@@ -121,28 +119,22 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.HandleControlCommand(cmd) =>
-
-          context.log.info(s"Executing remote control command: $cmd")
+          context.log.info(s"Gossip: Executing remote control command: $cmd")
 
           cmd match
-            case ControlCommand.GlobalStart =>
-              clusterManager ! StartSimulation
-              monitorActor ! MonitorCommand.StartSimulation
             case ControlCommand.GlobalPause =>
-              monitorActor ! MonitorCommand.InternalPause
               trainerActor ! TrainerCommand.Pause
             case ControlCommand.GlobalResume =>
-              monitorActor ! MonitorCommand.InternalResume
               trainerActor ! TrainerCommand.Resume
             case ControlCommand.GlobalStop =>
               clusterManager ! StopSimulation
-              monitorActor ! MonitorCommand.InternalStop
               trainerActor ! TrainerCommand.Stop
             case _ =>
-              context.log.info(s"Not found remote control command: $cmd")
+              context.log.info(s"Gossip: Not found remote control command: $cmd")
 
           Behaviors.same
 
         case _ =>
-          context.log.warn("Received unhandled gossip message.")
+          context.log.warn("Gossip: Received unhandled gossip message.")
           Behaviors.unhandled
+          
