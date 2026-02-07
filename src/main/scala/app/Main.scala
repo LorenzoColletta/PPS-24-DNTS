@@ -1,9 +1,10 @@
 package app
 
 import akka.actor.typed.ActorSystem
-import config.{AppConfig, ProductionConfig}
+import config.{AkkaConfig, AppConfig, ProductionConfig}
 import actors.root.RootActor
 import cli.{CliParser, ParseResult}
+import com.typesafe.config.ConfigFactory
 
 /**
  * Application Entry Point.
@@ -51,11 +52,12 @@ object Main:
 
             given appConfig: AppConfig = ProductionConfig
 
+            val akkaConfig = AkkaConfig.load(role, clusterIp, clusterPort)
+
             val rootBehavior = RootActor(
               role = role,
               configPath = configPath,
-              //clusterIp = clusterIp,
-              //clusterPort = clusterPort,
+              akkaConfig
             )
 
-            ActorSystem(rootBehavior, "ClusterSystem")
+            ActorSystem(rootBehavior, "ClusterSystem", akkaConfig)

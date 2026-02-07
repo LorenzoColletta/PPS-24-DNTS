@@ -2,16 +2,16 @@ package actors.root
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-
+import com.typesafe.config.Config
 import config.AppConfig
 
 
 /**
- * Actor responsible for bootstrapping the entire application 
+ * Actor responsible for bootstrapping the entire application
  * hierarchy based on the provided [[NodeRole]].
  */
 object RootActor:
-  
+
   export RootProtocol.*
 
   /**
@@ -22,8 +22,9 @@ object RootActor:
    * @param appConfig  Implicit application configuration.
    */
   def apply(
-    role: NodeRole, 
+    role: NodeRole,
     configPath: Option[String],
+    akkaConfig: Config
   )(using appConfig: AppConfig): Behavior[RootCommand] =
     Behaviors.setup: context =>
-      new RootBehavior(context, role, configPath).start()
+      new RootBehavior(context, role, configPath, akkaConfig).start()
