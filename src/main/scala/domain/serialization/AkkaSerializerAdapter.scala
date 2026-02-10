@@ -2,16 +2,17 @@ package domain.serialization
 
 import scala.util.{Failure, Success}
 import akka.serialization.SerializerWithStringManifest
-
 import domain.network.Model
 import domain.network.Activations.given
 import domain.serialization.NetworkSerializers.given
 import domain.serialization.LinearAlgebraSerializers.given
 import domain.serialization.Serializer as DomainSerializer
-
+import domain.serialization.GossipSerializers.given
 import domain.serialization.ModelSerializers.given
 import domain.serialization.ControlCommandSerializers.given
+import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor.ControlCommand
+import actors.gossip.GossipProtocol.GossipCommand.HandleDistributeDataset
 
 /**
  * Registry and configuration container for the [[AkkaSerializationAdapter]].
@@ -23,6 +24,8 @@ object AkkaSerializerAdapter:
   final val ManifestModel = "M"
   /** Manifest code for [[ControlCommand]]. */
   final val ManifestControl = "C"
+  final val ManifestDistributeDataset = "D"
+
 
   /**
    * Internal mapping connecting a specific Class type to its Manifest string
@@ -39,7 +42,12 @@ object AkkaSerializerAdapter:
    */
   private val registry: List[TypeBinding[?]] = List(
     TypeBinding(ManifestModel, classOf[Model], summon[DomainSerializer[Model]]),
-    TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]])
+    TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]]),
+    TypeBinding(
+      ManifestDistributeDataset,
+      classOf[HandleDistributeDataset],
+      GossipSerializers.distributeDatasetSerializer
+    )
   )
 
 
