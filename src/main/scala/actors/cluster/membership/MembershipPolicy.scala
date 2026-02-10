@@ -19,7 +19,12 @@ object MembershipPolicy:
    */
   def update(membership: ClusterMembership, event: NodeEvent): ClusterMembership = event match
 
-    case NodeUp(node) => membership.addNode(node.member.address)
+    case NodeUp(node) =>
+      val updated = membership.addNode(node.member.address)
+      if (node.member.roles.contains("seed")) then
+        updated.setMaster(node.member.address)
+      else
+        updated
 
     case NodeUnreachable(node) => membership.markUnreachable(node.member.address)
 

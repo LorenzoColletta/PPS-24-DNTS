@@ -65,3 +65,19 @@ object RootProtocol:
      * Triggered by the Seed Node to start the simulation.
      */
     case object SeedStartSimulation extends RootCommand
+
+    /**
+     * Triggered in case the cluster connection has been confirmed
+     */
+    case object ClusterReady extends RootCommand
+
+    /**
+     * Triggered in case the cluster is not reachable.
+     * */
+    case object ClusterFailed extends RootCommand
+
+    case object InvalidCommandInBootstrap extends RootCommand
+
+    case object InvalidCommandInJoining extends  RootCommand
+
+    case object SeedLost extends RootCommand

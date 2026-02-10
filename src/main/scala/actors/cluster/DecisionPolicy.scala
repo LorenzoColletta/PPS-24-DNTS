@@ -7,7 +7,8 @@ import actors.cluster.{ClusterState, Joining, Running}
 import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode}
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.NodeRole
-import actors.root.RootProtocol.RootCommand.{ClusterFailed, ClusterReady}
+import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady, InvalidCommandInBootstrap, InvalidCommandInJoining, SeedLost}
+import actors.root.RootProtocol.RootCommand.SeedLost
 
 sealed trait DecisionPolicy {
   def decide(state: ClusterState, msg: ClusterMemberCommand): List[Effect]
@@ -103,7 +104,7 @@ object RunningPolicy extends DecisionPolicy :
         List(LeaveCluster)
 
       case SeedUnreachableTimeout =>
-        List(NotifyRoot(), StopBehavior)
+        List(NotifyRoot(SeedLost), StopBehavior)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))

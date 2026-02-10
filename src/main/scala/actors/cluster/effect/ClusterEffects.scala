@@ -72,4 +72,4 @@ object ClusterEffects:
           cluster.manager ! Leave(cluster.selfMember.address)
 
       case StopBehavior =>
-        context.stop(context.self)
+        Behaviors.stopped

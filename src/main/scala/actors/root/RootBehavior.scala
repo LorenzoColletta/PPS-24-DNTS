@@ -1,6 +1,6 @@
 package actors.root
 
-import actors.cluster.ClusterProtocol.RegisterMonitor
+import actors.cluster.ClusterProtocol.{ClusterMemberCommand, RegisterMonitor}
 import actors.cluster.timer.ClusterTimers
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
@@ -18,11 +18,14 @@ import actors.gossip.GossipProtocol.GossipCommand
 import actors.model.ModelActor
 import actors.model.ModelProtocol.ModelCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
-import actors.trainer.{TrainerActor, TrainerProtocol}
+import actors.trainer.TrainerActor
+import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
-import com.typesafe.config.Config
-import domain.pattern.SpiralCurve
+import actors.cluster.ClusterManager
+import actors.discovery.DiscoveryProtocol.DiscoveryCommand
+import domain.data.LabeledPoint2D
 import domain.util.Space
+import com.typesafe.config.Config
 import view.*
 
 /**
@@ -66,25 +69,28 @@ class RootBehavior(context: ActorContext[RootCommand],
         context.log.info("Root: Client node started. Waiting for cluster configuration...")
         None
 
-    given LossFunction = appConfig.lossFunction
-
-    val modelActor = context.spawn(ModelActor(), "modelActor")
-    val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
-    val guiView = GuiView()
-
     val discoveryActor = context.spawn(DiscoveryActor(GossipPeerState.empty), "discoveryActor")
 
     val clusterManager = context.spawn(
       ClusterManager(
         ClusterState.initialState(role),
-        ClusterTimers.fromConfig(akkaConfig),
+        ClusterTimers.fromConfig(akkaConfig.getConfig("akka")),
         None,
         discoveryActor,
         context.self
       ),
       "clusterManager")
 
-    val gossipActor = context.spawn(GossipActor(modelActor, trainerActor, clusterManager, discoveryActor ), "gossipActor")
+    val guiView = GuiView()
+
+    val modelActor = context.spawn(ModelActor(), "modelActor")
+
+    given LossFunction = appConfig.lossFunction
+
+    val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
+
+    val gossipActor = context.spawn(GossipActor(modelActor, trainerActor, clusterManager, discoveryActor), "gossipActor")
+    gossipActor ! GossipCommand.StartGossipTick
 
     val monitorActor = context.spawn(
       MonitorActor(
@@ -99,35 +105,29 @@ class RootBehavior(context: ActorContext[RootCommand],
 
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
-    seedDataPayload.foreach { case (model, _, trainConfig, optimizer, _) =>
-      modelActor ! ModelCommand.Initialize(model, optimizer, trainerActor)
-
-      monitorActor ! MonitorCommand.Initialize(
-        seed = "LocalMaster",
-        model = model,
-        config = trainConfig
-      )
-    }
-
-    val (startModel, startData, startConf) = seedDataPayload.map(p =>
-      (Some(p._1), Some(p._2), Some(p._5))
-    ).getOrElse((None, None, None))
-    waitingForStart(gossipActor, startModel, startData, startConf)
-
+    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor, guiView)
 
   /**
    * State: Waiting for the Seed Start Simulation command.
    */
   private def waitingForStart(
-                               gossipActor: ActorRef[GossipActor.GossipCommand],
-                               model: Option[Model],
-                               dataset: Option[List[domain.data.LabeledPoint2D]],
-                               fileConfig: Option[FileConfig]
+                               seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
+                               gossipActor: ActorRef[GossipCommand],
+                               modelActor: ActorRef[ModelCommand],
+                               trainerActor: ActorRef[TrainerCommand],
+                               monitorActor: ActorRef[MonitorCommand],
+                               clusterManager: ActorRef[ClusterMemberCommand],
+                               discoveryActor: ActorRef[DiscoveryCommand],
+                               guiView: GuiView
                              ): Behavior[RootCommand] =
 
     Behaviors.receive: (ctx, msg) =>
       msg match
         case RootCommand.SeedStartSimulation =>
+          val (model, dataset, fileConfig) = seedDataPayload.map(p =>
+            (Some(p._1), Some(p._2), Some(p._5))
+          ).getOrElse((None, None, None))
+
           (role, model, dataset, fileConfig) match
             case (NodeRole.Seed, Some(m), Some(d), Some(conf)) =>
               context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
@@ -137,12 +137,46 @@ class RootBehavior(context: ActorContext[RootCommand],
 
               context.log.info(s"Root: Data Split - Train: ${globalTrain.size}, Test: ${globalTest.size}")
 
-              gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest)
+              gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest, m, createTrainConfig(conf))
+
               Behaviors.same
 
             case _ =>
               context.log.warn("Root: Received Start command but I am a Worker or Data is missing.")
               Behaviors.same
+        case RootCommand.ClusterReady =>
+
+          context.log.info(s"Root: Node $role is now fully connected to the cluster.")
+
+          seedDataPayload match
+            case Some((model, _, trainConfig, optimizer, _)) =>
+              modelActor   ! ModelCommand.Initialize(model, optimizer, trainerActor)
+              monitorActor ! MonitorCommand.Initialize("LocalMaster", model, trainConfig)
+
+            case None =>
+              context.log.info("Root: Client ready. Waiting for data/model from Seed...")
+
+          /*seedDataPayload.foreach { case (model, _, trainConfig, optimizer, _) =>
+            modelActor ! ModelCommand.Initialize(model, optimizer,  trainerActor)
+
+            monitorActor ! MonitorCommand.Initialize(
+              seed = "LocalMaster",
+              model = model,
+              config = trainConfig
+            )
+          }*/
+          Behaviors.same
+
+        case RootCommand.ClusterFailed =>
+          context.log.error("Root: Critical failure during cluster join. Stopping actor.")
+          Behaviors.stopped
+        case RootCommand.SeedLost =>
+          context.log.warn("Root: Detected loss of Seed node.")
+          Behaviors.same
+        case RootCommand.InvalidCommandInBootstrap | RootCommand.InvalidCommandInJoining =>
+          context.log.error(s"Root: Protocol error - received $msg in an invalid state.")
+          Behaviors.same
+
 
 
   private def createModel(conf: FileConfig): Model =
@@ -162,8 +196,8 @@ class RootBehavior(context: ActorContext[RootCommand],
     context.log.info(s"Root: Generated Global Dataset with ${data.size} samples.")
     data
 
-  private def createTrainConfig(conf: FileConfig): TrainerProtocol.TrainingConfig =
-    TrainerProtocol.TrainingConfig(
+  private def createTrainConfig(conf: FileConfig): TrainingConfig =
+    TrainingConfig(
       trainSet = Nil,
       testSet = Nil,
       features = conf.features,
