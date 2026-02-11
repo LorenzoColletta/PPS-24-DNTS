@@ -43,8 +43,8 @@ Application Bootstrap,monitor and trainer ref. with pipeline adjustment,Fantilli
 >>> SPRINT 4: 26 Gennaio - 01 Febbraio,,,,,,,,,
 Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,6
 Application Bootstrap,main function,Fantilli,3,0,0,0,0,0,0
-,Root actor and bootstrap,Fantilli,,,,,,,
-,...,Fantilli,,,,,,,
+,pipeline adjustment and final fixing,Fantilli,5,5,3,0,0,0,0
+View,gui and controls,Fantilli,5,5,5,2,0,0,0
 ,,,,,,,,,
 ,,,,,,,,,
 ,,,,,,,,,
