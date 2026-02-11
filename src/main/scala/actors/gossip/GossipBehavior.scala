@@ -58,15 +58,15 @@ private[gossip] class GossipBehavior(
           )
           Behaviors.same
 
-        case GossipCommand.DistributeDataset(trainSet , testSet, model, trainConfig) =>
+        case GossipCommand.DistributeDataset(trainSet , testSet) =>
           discoveryActor ! NodesRefRequest(
             replyTo = context.messageAdapter(peers =>
-              GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet, model, trainConfig)
+              GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)
             )
           )
           Behaviors.same
 
-        case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet, model, trainConfig)  =>
+        case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
           val totalNodes = peers.size
           if totalNodes > 0 then
             val chunkSize = trainSet.size / totalNodes
@@ -77,10 +77,10 @@ private[gossip] class GossipBehavior(
 
               val trainShard = trainSet.slice(from, until)
 
-              peer ! GossipCommand.HandleDistributeDataset(trainShard, testSet, model, trainConfig)
+              peer ! GossipCommand.HandleDistributeDataset(trainShard, testSet)
           Behaviors.same
 
-        case GossipCommand.HandleDistributeDataset(trainShard, testSet, model, trainConfig) =>
+        case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
           trainerActor ! TrainerCommand.Start(trainShard, testSet)
           clusterManager ! StartSimulation
           Behaviors.same

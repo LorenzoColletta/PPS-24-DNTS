@@ -25,7 +25,7 @@ object AkkaSerializerAdapter:
   /** Manifest code for [[ControlCommand]]. */
   final val ManifestControl = "C"
   final val ManifestDistributeDataset = "D"
-
+  final val ManifestRemoteModel = "R"
 
   /**
    * Internal mapping connecting a specific Class type to its Manifest string
@@ -47,6 +47,11 @@ object AkkaSerializerAdapter:
       ManifestDistributeDataset,
       classOf[HandleDistributeDataset],
       GossipSerializers.distributeDatasetSerializer
+    ),
+    TypeBinding(
+      ManifestRemoteModel,
+      classOf[GossipCommand.HandleRemoteModel],
+      GossipSerializers.handleRemoteModelSerializer
     )
   )
 

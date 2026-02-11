@@ -1,11 +1,24 @@
 package domain.serialization
 
-import actors.gossip.GossipProtocol.GossipCommand.HandleDistributeDataset
-import domain.data.{LabeledPoint2D, Point2D, Label}
+import actors.gossip.GossipProtocol.GossipCommand.{HandleDistributeDataset, HandleRemoteModel}
+import domain.data.{Label, LabeledPoint2D, Point2D}
+import domain.network.Model
 import scala.util.Try
 import java.nio.ByteBuffer
 
+import domain.serialization.LinearAlgebraSerializers.given
+import domain.serialization.NetworkSerializers.given
+import domain.serialization.ModelSerializers.given
+import domain.network.Activations.given
+
 object GossipSerializers:
+
+  given handleRemoteModelSerializer: Serializer[HandleRemoteModel] with
+    override def serialize(t: HandleRemoteModel): Array[Byte] =
+      summon[Serializer[Model]].serialize(t.remoteModel)
+
+    override def deserialize(bytes: Array[Byte]): Try[HandleRemoteModel] =
+      summon[Serializer[Model]].deserialize(bytes).map(model => HandleRemoteModel(model))
 
   given distributeDatasetSerializer: Serializer[HandleDistributeDataset] with
 

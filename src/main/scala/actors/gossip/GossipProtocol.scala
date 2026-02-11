@@ -54,7 +54,7 @@ object GossipProtocol:
      * @param trainSet The complete training dataset.
      * @param testSet  The complete test dataset.
      */
-    final case class DistributeDataset(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D], model: Model, config: TrainingConfig) extends GossipCommand
+    final case class DistributeDataset(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
 
     /**
      *
@@ -64,7 +64,7 @@ object GossipProtocol:
      * @param trainSet The complete training dataset.
      * @param testSet The complete test dataset.
      * */
-    final case class WrappedDistributeDataset(peers: List[ActorRef[GossipCommand]], trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D], model: Model, config: TrainingConfig) extends GossipCommand
+    final case class WrappedDistributeDataset(peers: List[ActorRef[GossipCommand]], trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
 
     /**
      * Message received by a Client node containing its portion of the data.
@@ -72,7 +72,7 @@ object GossipProtocol:
      * @param trainShard The slice of training data for the local node.
      * @param testSet    The full test set for local evaluation.
      */
-    final case class HandleDistributeDataset(trainShard: List[LabeledPoint2D], testSet: List[LabeledPoint2D], model: Model, config: TrainingConfig) extends GossipCommand
+    final case class HandleDistributeDataset(trainShard: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
 
     /**
      * Wrapper for the list of discovered peers from the ClusterManager.

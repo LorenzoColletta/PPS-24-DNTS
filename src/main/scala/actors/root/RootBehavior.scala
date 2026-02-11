@@ -14,7 +14,7 @@ import actors.monitor.MonitorActor.MonitorCommand
 import actors.cluster.{ClusterManager, ClusterProtocol, ClusterState}
 import actors.discovery.{DiscoveryActor, GossipPeerState}
 import actors.gossip.GossipActor
-import actors.gossip.GossipProtocol.GossipCommand
+import actors.gossip.GossipProtocol.{ControlCommand, GossipCommand}
 import actors.model.ModelActor
 import actors.model.ModelProtocol.ModelCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
@@ -137,7 +137,9 @@ class RootBehavior(context: ActorContext[RootCommand],
 
               context.log.info(s"Root: Data Split - Train: ${globalTrain.size}, Test: ${globalTest.size}")
 
-              gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest, m, createTrainConfig(conf))
+              gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest)
+
+              gossipActor ! GossipCommand.StartGossipTick
 
               Behaviors.same
 
@@ -165,6 +167,8 @@ class RootBehavior(context: ActorContext[RootCommand],
               config = trainConfig
             )
           }*/
+
+          monitorActor ! MonitorCommand.StartSimulation
           Behaviors.same
 
         case RootCommand.ClusterFailed =>
