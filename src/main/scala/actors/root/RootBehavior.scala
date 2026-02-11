@@ -23,6 +23,7 @@ import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.cluster.ClusterManager
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
+import actors.gossip.GossipProtocol.ControlCommand.GlobalStop
 import domain.data.LabeledPoint2D
 import domain.util.Space
 import com.typesafe.config.Config
@@ -48,21 +49,21 @@ class RootBehavior(context: ActorContext[RootCommand],
   def start(): Behavior[RootCommand] =
     context.log.info(s"Root: Bootstrapping system with role $role...")
 
+    val path = configPath.getOrElse("simulation.conf")
+    val fileConf = ConfigLoader.load(path)
+    context.log.info(s"Root: Configuration loaded from $path")
+
+    val model = createModel(fileConf)
+    val data = generateDataset(fileConf)
+    val tConfig = createTrainConfig(fileConf)
+
+    val optimizer = new Optimizers.SGD(
+      fileConf.hyperParams.learningRate,
+      Regularizers.fromConfig(fileConf.hyperParams.regularization)
+    )
+
     val seedDataPayload = role match
       case NodeRole.Seed =>
-        val path = configPath.getOrElse("simulation.conf")
-        val fileConf = ConfigLoader.load(path)
-        context.log.info(s"Root: Configuration loaded from $path")
-
-        val model = createModel(fileConf)
-        val data = generateDataset(fileConf)
-        val tConfig = createTrainConfig(fileConf)
-
-        val optimizer = new Optimizers.SGD(
-          fileConf.hyperParams.learningRate,
-          Regularizers.fromConfig(fileConf.hyperParams.regularization)
-        )
-
         Some((model, data, tConfig, optimizer, fileConf))
 
       case NodeRole.Client =>
@@ -85,6 +86,7 @@ class RootBehavior(context: ActorContext[RootCommand],
 
     val modelActor = context.spawn(ModelActor(), "modelActor")
 
+
     given LossFunction = appConfig.lossFunction
 
     val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
@@ -102,6 +104,7 @@ class RootBehavior(context: ActorContext[RootCommand],
       ),
       "monitorActor"
     )
+
 
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
@@ -139,13 +142,12 @@ class RootBehavior(context: ActorContext[RootCommand],
 
               gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest)
 
-              gossipActor ! GossipCommand.StartGossipTick
-
               Behaviors.same
 
             case _ =>
               context.log.warn("Root: Received Start command but I am a Worker or Data is missing.")
               Behaviors.same
+
         case RootCommand.ClusterReady =>
 
           context.log.info(s"Root: Node $role is now fully connected to the cluster.")
@@ -168,18 +170,27 @@ class RootBehavior(context: ActorContext[RootCommand],
             )
           }*/
 
-          monitorActor ! MonitorCommand.StartSimulation
+          gossipActor ! GossipCommand.StartGossipTick
+
           Behaviors.same
 
-        case RootCommand.ClusterFailed =>
-          context.log.error("Root: Critical failure during cluster join. Stopping actor.")
+        case RootCommand.ClusterFailed |
+             RootCommand.SeedLost |
+             RootCommand.InvalidCommandInBootstrap |
+             RootCommand.InvalidCommandInJoining =>
+
+          gossipActor ! GossipCommand.SpreadCommand(GlobalStop)
+          guiView.stopSimulation()
+
+          ctx.stop(gossipActor)
+          ctx.stop(modelActor)
+          ctx.stop(trainerActor)
+          ctx.stop(monitorActor)
+          ctx.stop(clusterManager)
+          ctx.stop(discoveryActor)
+          
+          context.log.error("Root: Critical failure. Stopping actor.")
           Behaviors.stopped
-        case RootCommand.SeedLost =>
-          context.log.warn("Root: Detected loss of Seed node.")
-          Behaviors.same
-        case RootCommand.InvalidCommandInBootstrap | RootCommand.InvalidCommandInJoining =>
-          context.log.error(s"Root: Protocol error - received $msg in an invalid state.")
-          Behaviors.same
 
 
 

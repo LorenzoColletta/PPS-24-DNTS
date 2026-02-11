@@ -8,7 +8,6 @@ import domain.training.LossFunction
 import actors.trainer.TrainerBehavior
 import actors.model.ModelActor.ModelCommand
 
-
 /**
  * Actor responsible for the actual training loop logic.
  * It manages the dataset iteration (epochs/batches), computes gradients using the
