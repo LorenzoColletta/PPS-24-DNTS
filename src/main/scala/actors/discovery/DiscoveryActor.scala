@@ -2,7 +2,6 @@ package actors.discovery
 
 import actors.gossip.GossipActor.GossipCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip}
-import actors.gossip.GossipProtocol.GossipCommand.WrappedPeers
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
@@ -34,7 +33,7 @@ object DiscoveryActor:
     gossip: Option[ActorRef[GossipCommand]]
   ): Behavior[DiscoveryCommand] =
     Behaviors.receive { (context, message) =>
-      message match {
+      message match
 
         case RegisterGossip(gossipRef) if gossip.isEmpty =>
           context.system.receptionist ! Receptionist.Register(GossipServiceKey, gossipRef)
@@ -53,5 +52,9 @@ object DiscoveryActor:
 
         case NotifyRemoveNode(node) =>
           running(state.removeNode(node), gossip)
-      }
+
+        case ListingUpdated(_) => Behaviors.same
+
+        case RegisterGossip(_) => Behaviors.same
+
     }
