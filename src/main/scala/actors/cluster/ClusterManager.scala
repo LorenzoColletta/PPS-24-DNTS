@@ -4,6 +4,7 @@ import actors.cluster.ClusterProtocol.*
 import actors.cluster.effect.*
 import actors.cluster.timer.*
 import actors.cluster.*
+import actors.cluster.adapter.ClusterEventAdapter
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.monitor.MonitorActor.MonitorCommand.PeerCountChanged
 import actors.gossip.GossipActor.GossipCommand
@@ -14,6 +15,7 @@ import akka.actor.typed.scaladsl.*
 import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 import akka.cluster.ClusterEvent
 import akka.cluster.typed.{Cluster, Down, Leave, Subscribe}
+import actors.cluster.adapter.given
 
 /**
  * Actor responsible to the management of the cluster.
@@ -49,15 +51,15 @@ object ClusterManager:
 
       val cluster = Cluster(context.system)
 
-      val adapterMemberUp: ActorRef[ClusterEvent.MemberUp] = context.messageAdapter(NodeUp.apply)
-      val adapterMemberRemoved: ActorRef[ClusterEvent.MemberRemoved] = context.messageAdapter(NodeRemoved.apply)
-      val adapterMemberReachable: ActorRef[ClusterEvent.ReachableMember] = context.messageAdapter(NodeReachable .apply)
-      val adapterMemberUnreachable: ActorRef[ClusterEvent.UnreachableMember] = context.messageAdapter(NodeUnreachable.apply)
+      val nodeUpAdapter = ClusterEventAdapter.adapt[ClusterEvent.MemberUp, ClusterMemberCommand](context)(NodeUp.apply)
+      val nodeRemovedAdapter = ClusterEventAdapter.adapt[ClusterEvent.MemberRemoved, ClusterMemberCommand](context)(NodeRemoved.apply)
+      val nodeReachableAdapter = ClusterEventAdapter.adapt[ClusterEvent.ReachableMember, ClusterMemberCommand](context)(NodeReachable.apply)
+      val nodeUnreachableAdapter = ClusterEventAdapter.adapt[ClusterEvent.UnreachableMember, ClusterMemberCommand](context)(NodeUnreachable.apply)
 
-      cluster.subscriptions ! Subscribe(adapterMemberUp, classOf[ClusterEvent.MemberUp])
-      cluster.subscriptions ! Subscribe(adapterMemberRemoved, classOf[ClusterEvent.MemberRemoved])
-      cluster.subscriptions ! Subscribe(adapterMemberReachable, classOf[ClusterEvent.ReachableMember]      )
-      cluster.subscriptions ! Subscribe(adapterMemberUnreachable, classOf[ClusterEvent.UnreachableMember])
+      cluster.subscriptions ! Subscribe(nodeUpAdapter, classOf[ClusterEvent.MemberUp])
+      cluster.subscriptions ! Subscribe(nodeRemovedAdapter, classOf[ClusterEvent.MemberRemoved])
+      cluster.subscriptions ! Subscribe(nodeReachableAdapter, classOf[ClusterEvent.ReachableMember]      )
+      cluster.subscriptions ! Subscribe(nodeUnreachableAdapter, classOf[ClusterEvent.UnreachableMember])
 
       Behaviors.withTimers { timers =>
         timers.startSingleTimer(BootstrapTimerId, JoinTimeout, timersDuration.bootstrapCheck)
