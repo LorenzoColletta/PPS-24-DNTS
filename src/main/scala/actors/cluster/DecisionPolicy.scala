@@ -5,14 +5,33 @@ import actors.cluster.effect.*
 import actors.cluster.timer.{BootstrapTimerId, UnreachableTimerId}
 import actors.cluster.{ClusterState, Joining, Running}
 import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode}
-import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.NodeRole
-import actors.root.RootProtocol.RootCommand.{ClusterFailed, ClusterReady}
+import actors.root.RootProtocol.RootCommand.{NotifyClusterFailed, NotifyClusterReady}
 
+
+/**
+ * Defines the decision-making logic for the ClusterManager.
+ *
+ * A DecisionPolicy encapsulates how the cluster reacts to incoming
+ * ClusterMemberCommand messages depending on the current cluster phase.
+ *
+ * The returned Effects describe the actions to be executed by the ClusterManager.
+ */
 sealed trait DecisionPolicy {
   def decide(state: ClusterState, msg: ClusterMemberCommand): List[Effect]
 }
 
+/**
+ * Decision policy active during the bootstrap phase.
+ *
+ * In this phase the ClusterManager:
+ *  - waits for the initial cluster connection
+ *  - determines whether the node can successfully join the cluster
+ *  - transitions to the Joining phase once a master node is detected
+ *
+ * Failure to establish a connection within the bootstrap timeout
+ * results in cluster startup failure.
+ */
 object BootstrapPolicy extends DecisionPolicy :
 
   def decide(state: ClusterState, message: ClusterMemberCommand): List[Effect] =
@@ -21,21 +40,29 @@ object BootstrapPolicy extends DecisionPolicy :
 
     message match
       case JoinTimeout if checkClusterConnection(state) =>
-          List(CancelTimer(BootstrapTimerId), NotifyRoot(ClusterReady), ChangePhase(Joining))
+        List(CancelTimer(BootstrapTimerId), NotifyRoot(NotifyClusterReady), ChangePhase(Joining))
 
       case JoinTimeout =>
-          List(NotifyRoot(ClusterFailed), StopBehavior)
+        List(NotifyRoot(NotifyClusterFailed), StopBehavior)
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
-          joiningEffects ++ List(NotifyRoot(ClusterReady), ChangePhase(Joining))
+          joiningEffects ++ List(NotifyRoot(NotifyClusterReady), ChangePhase(Joining))
         else
           joiningEffects
 
-      case _: AppClusterCommand =>
-        List(NotifyRoot(InvalidCommandInBootstrap))
+      case _ => Nil
 
-
+/**
+ * Decision policy active while application is waiting for nodes to join the cluster.
+ *
+ * In this phase the ClusterManager:
+ *  - reacts to new members joining or becoming unreachable
+ *  - updates cluster membership 
+ *  - waits for the application to start the simulation
+ *
+ * Once the simulation starts, the policy transitions to Running.
+ */
 object JoiningPolicy extends DecisionPolicy :
 
   def decide(state: ClusterState, message: ClusterMemberCommand): List[Effect] =
@@ -43,67 +70,73 @@ object JoiningPolicy extends DecisionPolicy :
       case NodeUp(node) =>
         List(
           NotifyMonitor,
-          NotifyReceptionist(NotifyAddNode(node.member.address))
+          NotifyReceptionist(NotifyAddNode(node.address))
         )
 
-      case NodeUnreachable(node) if node.member.roles.contains(NodeRole.Seed.id) =>
+      case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
         List(
-          NotifyRoot(SeedLost),
+          NotifyRoot(NotifyClusterFailed),
           StopBehavior
         )
 
       case NodeUnreachable(node) =>
         List(
-          RemoveNodeFromCluster(node.member.address),
-          RemoveNodeFromMembership(node.member.address),
+          RemoveNodeFromCluster(node.address),
+          RemoveNodeFromMembership(node.address),
           NotifyMonitor,
-          NotifyReceptionist(NotifyRemoveNode(node.member.address)),
-          DownNode(node.member.address)
+          NotifyReceptionist(NotifyRemoveNode(node.address)),
+          DownNode(node.address)
         )
 
       case StartSimulation =>
         List(ChangePhase(Running))
 
-      case StopSimulation =>
-        List(NotifyRoot(InvalidCommandInJoining))
-
       case _ => Nil
 
-
+/**
+ * Decision policy active during normal cluster operation.
+ *
+ * In this phase the ClusterManager:
+ *  - monitors node reachability
+ *  - handles node failures and recoveries
+ *  - manages timers for unreachable members
+ *  - coordinates cluster shutdown scenarios
+ */
 object RunningPolicy extends DecisionPolicy :
 
   def decide(state: ClusterState, message: ClusterMemberCommand): List[Effect] =
     message match
 
       case NodeUp(node) =>
-        List(RemoveNodeFromCluster(node.member.address), RemoveNodeFromMembership(node.member.address))
+        List(RemoveNodeFromCluster(node.address), RemoveNodeFromMembership(node.address))
 
-      case NodeUnreachable(node) if node.member.roles.contains(NodeRole.Seed.id) =>
+      case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
         List(
-          StartTimer(UnreachableTimerId(node.member.address), SeedUnreachableTimeout),
+          StartTimer(UnreachableTimerId(node.address), SeedUnreachableTimeout),
           NotifyMonitor,
-          NotifyReceptionist(NotifyRemoveNode(node.member.address))
+          NotifyReceptionist(NotifyRemoveNode(node.address))
         )
 
       case NodeUnreachable(node) =>
         List(
-          StartTimer(UnreachableTimerId(node.member.address), UnreachableTimeout(node.member.address)),
+          StartTimer(UnreachableTimerId(node.address), UnreachableTimeout(node.address)),
           NotifyMonitor,
-          NotifyReceptionist(NotifyRemoveNode(node.member.address))
+          NotifyReceptionist(NotifyRemoveNode(node.address))
         )
 
       case NodeReachable(node) =>
         List(
-          CancelTimer(UnreachableTimerId(node.member.address)),
+          CancelTimer(UnreachableTimerId(node.address)),
           NotifyMonitor,
-          NotifyReceptionist(NotifyAddNode(node.member.address))
+          NotifyReceptionist(NotifyAddNode(node.address))
         )
 
       case StopSimulation =>
         List(LeaveCluster)
 
       case SeedUnreachableTimeout =>
-        List(NotifyRoot(), StopBehavior)
+        //TODO change rootActor message
+        List(NotifyRoot(NotifyClusterFailed), StopBehavior)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))
