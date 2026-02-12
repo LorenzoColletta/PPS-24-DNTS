@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef
 import domain.data.LabeledPoint2D
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
+import actors.monitor.MonitorActor.MonitorCommand
 
 /**
  * Defines the public API and data structures for the Gossip component.
@@ -31,6 +32,12 @@ object GossipProtocol:
     /** Signal to stop the simulation and cleanup globally. */
     case object GlobalStop extends ControlCommand
 
+    final case class PrepareClient(
+                                    seedID: String,
+                                    model: Model,
+                                    trainConfig: TrainingConfig
+                                  ) extends ControlCommand
+
   /** Protocol for the GossipActor. */
   object GossipCommand:
 
@@ -39,6 +46,18 @@ object GossipProtocol:
 
     /** Starts the periodic gossip timer. */
     case object StopGossipTick extends GossipCommand
+
+    final case class RegisterMonitor(ref: ActorRef[MonitorCommand]) extends GossipCommand
+
+    final case class ShareConfig(
+                                  seedID: String,
+                                  model: Model,
+                                  config: TrainingConfig
+                                ) extends GossipCommand
+
+    final case class RequestInitialConfig(replyTo: ActorRef[GossipCommand]) extends GossipCommand
+
+    final case class WrappedRequestConfig(peers: Set[ActorRef[GossipCommand]]) extends GossipCommand
 
     /**
      * Triggered periodically to request the list of active peers from the ClusterManager

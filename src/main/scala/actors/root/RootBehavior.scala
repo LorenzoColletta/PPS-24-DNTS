@@ -108,6 +108,8 @@ class RootBehavior(context: ActorContext[RootCommand],
 
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
+    gossipActor ! GossipCommand.RegisterMonitor(monitorActor)
+
     waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor, guiView)
 
   /**
@@ -149,17 +151,17 @@ class RootBehavior(context: ActorContext[RootCommand],
               Behaviors.same
 
         case RootCommand.ClusterReady =>
-
+          val myAddress = ctx.system.address.toString
           context.log.info(s"Root: Node $role is now fully connected to the cluster.")
 
           seedDataPayload match
             case Some((model, _, trainConfig, optimizer, _)) =>
               modelActor   ! ModelCommand.Initialize(model, optimizer, trainerActor)
               monitorActor ! MonitorCommand.Initialize("LocalMaster", model, trainConfig)
-
+              gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
+              gossipActor ! GossipCommand.StartGossipTick
             case None =>
-              context.log.info("Root: Client ready. Waiting for data/model from Seed...")
-
+              context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
           /*seedDataPayload.foreach { case (model, _, trainConfig, optimizer, _) =>
             modelActor ! ModelCommand.Initialize(model, optimizer,  trainerActor)
 
@@ -169,8 +171,6 @@ class RootBehavior(context: ActorContext[RootCommand],
               config = trainConfig
             )
           }*/
-
-          gossipActor ! GossipCommand.StartGossipTick
 
           Behaviors.same
 
@@ -182,12 +182,12 @@ class RootBehavior(context: ActorContext[RootCommand],
           gossipActor ! GossipCommand.SpreadCommand(GlobalStop)
           guiView.stopSimulation()
 
-          ctx.stop(gossipActor)
-          ctx.stop(modelActor)
-          ctx.stop(trainerActor)
-          ctx.stop(monitorActor)
-          ctx.stop(clusterManager)
-          ctx.stop(discoveryActor)
+          context.stop(gossipActor)
+          context.stop(modelActor)
+          context.stop(trainerActor)
+          context.stop(monitorActor)
+          context.stop(clusterManager)
+          context.stop(discoveryActor)
           
           context.log.error("Root: Critical failure. Stopping actor.")
           Behaviors.stopped

@@ -42,5 +42,5 @@ object GossipActor:
           discoveryActor,
           timers,
           config
-        ).active()
+        ).active(monitorInitialized = false, monitorOptionActor = None, cachedConfig = None)
         
