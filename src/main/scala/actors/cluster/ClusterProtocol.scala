@@ -32,7 +32,7 @@ object ClusterProtocol:
    * @param node
    * The original cluster member event.
    */
-  final case class NodeUp(node: MemberUp) extends NodeEvent
+  final case class NodeUp(node: ClusterNode) extends NodeEvent
 
   /**
    * Wraps an Akka Cluster [[MemberRemoved]] for internal handling.
@@ -40,14 +40,14 @@ object ClusterProtocol:
    * @param node
    * The original cluster member event.
    */
-  final case class NodeRemoved(node: MemberRemoved) extends NodeEvent
+  final case class NodeRemoved(node: ClusterNode) extends NodeEvent
 
   /**
    * Signals that a previously unreachable cluster member has become reachable again.
    *
    * @param node the cluster member that is now reachable
    */
-  final case class NodeReachable(node: ReachableMember) extends NodeEvent
+  final case class NodeReachable(node: ClusterNode) extends NodeEvent
 
   /**
    * Wraps an Akka Cluster [[UnreachableMember]] for internal handling.
@@ -55,7 +55,7 @@ object ClusterProtocol:
    * @param node
    * The original cluster member event.
    */
-  final case class NodeUnreachable(node: UnreachableMember) extends NodeEvent
+  final case class NodeUnreachable(node: ClusterNode) extends NodeEvent
 
   /**
    * Application-level commands used to control the behavior of the ClusterManager.

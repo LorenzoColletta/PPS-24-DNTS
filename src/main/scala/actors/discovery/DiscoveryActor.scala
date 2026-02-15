@@ -1,8 +1,12 @@
 package actors.discovery
 
 import actors.gossip.GossipActor.GossipCommand
+<<<<<<< HEAD
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip, RegisterGossipPermit}
 import actors.gossip.GossipProtocol.GossipCommand.WrappedPeers
+=======
+import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip}
+>>>>>>> develop
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
@@ -35,7 +39,7 @@ object DiscoveryActor:
     registerGossipPermit: Boolean
   ): Behavior[DiscoveryCommand] =
     Behaviors.receive { (context, message) =>
-      message match {
+      message match
 
         case RegisterGossip(gossipRef) if gossip.isEmpty =>
           if registerGossipPermit then
@@ -60,5 +64,4 @@ object DiscoveryActor:
 
         case NotifyRemoveNode(node) =>
           running(state.removeNode(node), gossip, registerGossipPermit)
-      }
     }

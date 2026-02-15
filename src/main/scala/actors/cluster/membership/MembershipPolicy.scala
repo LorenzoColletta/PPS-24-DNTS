@@ -18,7 +18,6 @@ object MembershipPolicy:
    * The updated [[ClusterMembership]] after applying the change.
    */
   def update(membership: ClusterMembership, event: NodeEvent): ClusterMembership = event match
-
     case NodeUp(node) =>
       val updated = membership.addNode(node.member.address)
       if (node.member.roles.contains("seed")) then
@@ -26,9 +25,9 @@ object MembershipPolicy:
       else
         updated
 
-    case NodeUnreachable(node) => membership.markUnreachable(node.member.address)
+    case NodeUnreachable(node) => membership.markUnreachable(node.address)
 
-    case NodeReachable(node) => membership.markReachable(node.member.address)
+    case NodeReachable(node) => membership.markReachable(node.address)
 
-    case NodeRemoved(node) => membership.removeNode(node.member.address)
+    case NodeRemoved(node) => membership.removeNode(node.address)
 
