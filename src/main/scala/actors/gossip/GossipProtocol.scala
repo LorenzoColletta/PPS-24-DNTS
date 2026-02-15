@@ -47,8 +47,6 @@ object GossipProtocol:
     /** Starts the periodic gossip timer. */
     case object StopGossipTick extends GossipCommand
 
-    final case class RegisterMonitor(ref: ActorRef[MonitorCommand]) extends GossipCommand
-
     final case class ShareConfig(
                                   seedID: String,
                                   model: Model,

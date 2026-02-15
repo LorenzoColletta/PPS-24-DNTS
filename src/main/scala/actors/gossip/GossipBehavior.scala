@@ -9,12 +9,11 @@ import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.monitor.MonitorActor.MonitorCommand
+import actors.root.RootActor.RootCommand
 import akka.actor.typed.scaladsl.TimerScheduler
 import config.AppConfig
 import domain.network.Model
 import domain.training.Strategies.{Optimizers, Regularizers}
-
-
 
 import scala.util.Random
 
@@ -28,27 +27,23 @@ import scala.util.Random
  * @param config         Global application configuration.
  */
 private[gossip] class GossipBehavior(
-  modelActor: ActorRef[ModelCommand],
-  trainerActor: ActorRef[TrainerCommand],
-  clusterManager: ActorRef[ClusterMemberCommand],
-  discoveryActor: ActorRef[DiscoveryCommand],
-  timers: TimerScheduler[GossipCommand],
-  config: AppConfig
+                                      rootActor: ActorRef[RootCommand],
+                                      modelActor: ActorRef[ModelCommand],
+                                      trainerActor: ActorRef[TrainerCommand],
+                                      clusterManager: ActorRef[ClusterMemberCommand],
+                                      discoveryActor: ActorRef[DiscoveryCommand],
+                                      timers: TimerScheduler[GossipCommand],
+                                      config: AppConfig
 ):
 
   /**
    * Main operational state of the GossipActor.
    */
   def active(
-              monitorInitialized: Boolean,
-              monitorOptionActor: Option[ActorRef[MonitorCommand]],
               cachedConfig: Option[(String, Model, TrainingConfig)] = None
             ): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
-
-        case GossipCommand.RegisterMonitor(monitorActor) =>
-          active(monitorInitialized, Some(monitorActor), cachedConfig)
 
         case GossipCommand.ShareConfig(seedID, model, trainConfig) =>
           context.log.info("Gossip: Received Config from Root. Broadcasting to Cluster...")
@@ -59,7 +54,7 @@ private[gossip] class GossipBehavior(
             context.messageAdapter(peers => GossipCommand.WrappedSpreadCommand(peers, cmd))
           )
 
-          active(monitorInitialized = true, monitorOptionActor, Some((seedID, model, trainConfig)))
+          active(Some((seedID, model, trainConfig)))
 
         case GossipCommand.StartGossipTick =>
           context.log.info("Gossip: Received Start signal. Starting gossip polling.")
@@ -79,7 +74,8 @@ private[gossip] class GossipBehavior(
           discoveryActor ! NodesRefRequest(
             replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
-          if !monitorInitialized then
+
+          if cachedConfig.isEmpty then
             context.log.debug("Gossip: Not initialized yet. Asking peers for Config...")
             discoveryActor ! NodesRefRequest(
               context.messageAdapter(peers => GossipCommand.WrappedRequestConfig(peers.toSet))
@@ -126,13 +122,12 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
-          trainerActor ! TrainerCommand.Start(trainShard, testSet)
-          clusterManager ! StartSimulation
+          rootActor ! RootCommand.DistributedDataset(trainShard, testSet)
           Behaviors.same
 
         case GossipCommand.WrappedPeers(peers) =>
           val potentialPeers = peers.filter(_ != context.self)
-          if monitorInitialized && potentialPeers.nonEmpty then
+          if potentialPeers.nonEmpty then
             val target = potentialPeers(Random.nextInt(potentialPeers.size))
             modelActor ! ModelCommand.GetModel(
               replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
@@ -145,7 +140,7 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.HandleRemoteModel(remoteModel) =>
-          if monitorInitialized then modelActor ! ModelCommand.SyncModel(remoteModel)
+          modelActor ! ModelCommand.SyncModel(remoteModel)
           Behaviors.same
 
         case GossipCommand.SpreadCommand(cmd) =>
@@ -168,29 +163,22 @@ private[gossip] class GossipBehavior(
 
           cmd match
             case ControlCommand.PrepareClient(seedID, model, trainConfig) =>
-              if !monitorInitialized then
-                context.log.info(s"Gossip (CLIENT): Received Init Config from $seedID")
-
-                monitorOptionActor.foreach(_ ! MonitorCommand.Initialize(seedID, model, trainConfig))
-
-                val regularizationStrategy = Regularizers.fromConfig(trainConfig.hp.regularization)
-                val optimizer = Optimizers.SGD(trainConfig.hp.learningRate, regularizationStrategy)
-                modelActor ! ModelCommand.Initialize(model, optimizer, trainerActor)
-
-                active(true, monitorOptionActor, Some((seedID, model, trainConfig)))
-              else
-                Behaviors.same
+              context.log.info(s"Gossip (CLIENT): Received Init Config from $seedID")
+              rootActor ! RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig)
+              active(Some((seedID, model, trainConfig)))
             case ControlCommand.GlobalPause =>
               trainerActor ! TrainerCommand.Pause
+              Behaviors.same
             case ControlCommand.GlobalResume =>
               trainerActor ! TrainerCommand.Resume
+              Behaviors.same
             case ControlCommand.GlobalStop =>
               clusterManager ! StopSimulation
               trainerActor ! TrainerCommand.Stop
+              Behaviors.same
             case _ =>
               context.log.info(s"Gossip: Not found remote control command: $cmd")
-
-          Behaviors.same
+              Behaviors.same
 
         case _ =>
           context.log.warn("Gossip: Received unhandled gossip message.")

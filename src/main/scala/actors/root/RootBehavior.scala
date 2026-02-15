@@ -1,6 +1,6 @@
 package actors.root
 
-import actors.cluster.ClusterProtocol.{ClusterMemberCommand, RegisterMonitor}
+import actors.cluster.ClusterProtocol.{ClusterMemberCommand, RegisterMonitor, StartSimulation}
 import actors.cluster.timer.ClusterTimers
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
@@ -12,18 +12,20 @@ import domain.training.Strategies.{Optimizers, Regularizers}
 import actors.monitor.MonitorActor
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.cluster.{ClusterManager, ClusterProtocol, ClusterState}
+import actors.cluster.ClusterProtocol.StartSimulation
 import actors.discovery.{DiscoveryActor, GossipPeerState}
+import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor
 import actors.gossip.GossipProtocol.{ControlCommand, GossipCommand}
 import actors.model.ModelActor
-import actors.model.ModelProtocol.ModelCommand
+import actors.model.ModelActor.ModelCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
 import actors.trainer.TrainerActor
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.cluster.ClusterManager
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
-import actors.gossip.GossipProtocol.ControlCommand.GlobalStop
+import actors.gossip.GossipActor.ControlCommand.GlobalStop
 import domain.data.LabeledPoint2D
 import domain.util.Space
 import com.typesafe.config.Config
@@ -91,8 +93,7 @@ class RootBehavior(context: ActorContext[RootCommand],
 
     val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
 
-    val gossipActor = context.spawn(GossipActor(modelActor, trainerActor, clusterManager, discoveryActor), "gossipActor")
-    gossipActor ! GossipCommand.StartGossipTick
+    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, clusterManager, discoveryActor), "gossipActor")
 
     val monitorActor = context.spawn(
       MonitorActor(
@@ -105,10 +106,8 @@ class RootBehavior(context: ActorContext[RootCommand],
       "monitorActor"
     )
 
-
+    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
-
-    gossipActor ! GossipCommand.RegisterMonitor(monitorActor)
 
     waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor, guiView)
 
@@ -128,6 +127,18 @@ class RootBehavior(context: ActorContext[RootCommand],
 
     Behaviors.receive: (ctx, msg) =>
       msg match
+        case RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig) =>
+          val regularizationStrategy = Regularizers.fromConfig(trainConfig.hp.regularization)
+          val optimizer = Optimizers.SGD(trainConfig.hp.learningRate, regularizationStrategy)
+          modelActor ! ModelCommand.Initialize(model, optimizer, trainerActor)
+          monitorActor ! MonitorCommand.Initialize(seedID, model, trainConfig)
+          trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
+          Behaviors.same
+
+        case RootCommand.DistributedDataset(trainShard, testSet) =>
+          trainerActor ! TrainerCommand.Start(trainShard, testSet)
+          Behaviors.same
+
         case RootCommand.SeedStartSimulation =>
           val (model, dataset, fileConfig) = seedDataPayload.map(p =>
             (Some(p._1), Some(p._2), Some(p._5))
@@ -135,15 +146,11 @@ class RootBehavior(context: ActorContext[RootCommand],
 
           (role, model, dataset, fileConfig) match
             case (NodeRole.Seed, Some(m), Some(d), Some(conf)) =>
-              context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
-
               val trainSize = (d.size * (1.0 - conf.testSplit)).toInt
               val (globalTrain, globalTest) = d.splitAt(trainSize)
 
               context.log.info(s"Root: Data Split - Train: ${globalTrain.size}, Test: ${globalTest.size}")
-
               gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest)
-
               Behaviors.same
 
             case _ =>
@@ -158,8 +165,9 @@ class RootBehavior(context: ActorContext[RootCommand],
             case Some((model, _, trainConfig, optimizer, _)) =>
               modelActor   ! ModelCommand.Initialize(model, optimizer, trainerActor)
               monitorActor ! MonitorCommand.Initialize("LocalMaster", model, trainConfig)
+              context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
+
               gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
-              gossipActor ! GossipCommand.StartGossipTick
             case None =>
               context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
           /*seedDataPayload.foreach { case (model, _, trainConfig, optimizer, _) =>
@@ -171,7 +179,7 @@ class RootBehavior(context: ActorContext[RootCommand],
               config = trainConfig
             )
           }*/
-
+          gossipActor ! GossipCommand.StartGossipTick
           Behaviors.same
 
         case RootCommand.ClusterFailed |

@@ -7,6 +7,7 @@ import actors.model.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.cluster.ClusterProtocol.ClusterMemberCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip}
+import actors.root.RootActor.RootCommand
 
 /**
  * Actor responsible for propagating patterns and control signals
@@ -27,6 +28,7 @@ object GossipActor:
    * @return A Behavior handling GossipCommand messages.
    */
   def apply(
+    rootActor: ActorRef[RootCommand],
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
     clusterManager: ActorRef[ClusterMemberCommand],
@@ -36,11 +38,12 @@ object GossipActor:
       discoveryActor ! RegisterGossip(context.self)
       Behaviors.withTimers: timers =>
         GossipBehavior(
+          rootActor,
           modelActor,
           trainerActor,
           clusterManager,
           discoveryActor,
           timers,
           config
-        ).active(monitorInitialized = false, monitorOptionActor = None, cachedConfig = None)
+        ).active(cachedConfig = None)
         
