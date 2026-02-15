@@ -4,7 +4,7 @@ import actors.cluster.ClusterProtocol.*
 import actors.cluster.effect.*
 import actors.cluster.timer.{BootstrapTimerId, UnreachableTimerId}
 import actors.cluster.{ClusterState, Joining, Running}
-import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode}
+import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode, RegisterGossipPermit}
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.NodeRole
 import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady, InvalidCommandInBootstrap, InvalidCommandInJoining, SeedLost}
@@ -22,14 +22,15 @@ object BootstrapPolicy extends DecisionPolicy :
 
     message match
       case JoinTimeout if checkClusterConnection(state) =>
-          List(CancelTimer(BootstrapTimerId), NotifyRoot(ClusterReady), ChangePhase(Joining))
+          List(CancelTimer(BootstrapTimerId), NotifyRoot(ClusterReady), NotifyReceptionist(RegisterGossipPermit), ChangePhase
+            (Joining))
 
       case JoinTimeout =>
           List(NotifyRoot(ClusterFailed), StopBehavior)
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
-          joiningEffects ++ List(NotifyRoot(ClusterReady), ChangePhase(Joining))
+          joiningEffects ++ List(NotifyRoot(ClusterReady), NotifyReceptionist(RegisterGossipPermit), ChangePhase(Joining))
         else
           joiningEffects
 
