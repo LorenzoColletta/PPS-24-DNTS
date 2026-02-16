@@ -1,10 +1,9 @@
 package config
 
+import domain.data.util.Space
 import scala.concurrent.duration.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
-import domain.util.Space
 import domain.training.LossFunction
 import domain.training.Strategies.Losses
 
@@ -46,7 +45,7 @@ object ProductionConfig extends AppConfig:
   override final val batchInterval: FiniteDuration = 10.millis
 
   /** P2P synchronization frequency. */
-  override final val gossipInterval: FiniteDuration = 2.seconds
+  override final val gossipInterval: FiniteDuration = 750.millis
 
   /** Dynamic log filename generation with timestamp. */
   override final val netLogFileName: String =
