@@ -1,5 +1,6 @@
 package view.components
 
+import domain.data.util.Space
 import java.awt.{BasicStroke, Color, Graphics, Graphics2D, RenderingHints}
 import java.awt.image.BufferedImage
 import javax.swing.{BorderFactory, JPanel, SwingUtilities}
@@ -8,7 +9,6 @@ import scala.util.{Success, Failure}
 
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.network.Model
-import domain.util.Space
 
 /**
  * Contains constants and static definitions for the [[BoundaryPlotter]].

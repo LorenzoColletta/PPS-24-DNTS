@@ -150,7 +150,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
     val state = baseState(Running)
 
     RunningPolicy.decide(state, SeedUnreachableTimeout) should contain allOf (
-      NotifyRoot(ClusterFailed),
+      NotifyRoot(SeedLost),
       StopBehavior
     )
 

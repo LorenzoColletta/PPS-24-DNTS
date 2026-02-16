@@ -1,9 +1,8 @@
 package domain.sampling
 
 import domain.data.Point2D
-import domain.pattern.Quadrant
-import domain.sampling.Domain
-
+import domain.data.pattern.Quadrant
+import domain.data.sampling.{Domain, XorSampler}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
