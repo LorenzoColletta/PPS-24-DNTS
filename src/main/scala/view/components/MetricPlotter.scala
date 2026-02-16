@@ -15,7 +15,7 @@ class MetricPlotter extends JPanel:
 
   private val trainLossSeries = new XYSeries("Train Loss")
   private val testLossSeries = new XYSeries("Test Loss")
-  private val consensusSeries = new XYSeries("Consensus Metric (0-1)")
+  private val consensusSeries = new XYSeries("Consensus Loss")
 
   private val dataset = new XYSeriesCollection()
   dataset.addSeries(trainLossSeries)

@@ -137,10 +137,13 @@ class BoundaryPlotter(
 
         val prediction = model.predict(Point2D(domainX, domainY))
 
+        val intensity = math.sqrt(math.abs(prediction - 0.5) * 2)
+        val alpha = (intensity * RenderConfig.HeatmapAlphaFactor).toFloat
+
         val color = if prediction > 0.5 then
-          new Color(1f, 0f, 0f, ((prediction - 0.5) * RenderConfig.HeatmapAlphaFactor).toFloat)
+          new Color(1f, 0f, 0f, alpha)
         else
-          new Color(0f, 0f, 1f, ((0.5 - prediction) * RenderConfig.HeatmapAlphaFactor).toFloat)
+          new Color(0f, 0f, 1f, alpha)
 
         img.setRGB(x, y, color.getRGB)
     img

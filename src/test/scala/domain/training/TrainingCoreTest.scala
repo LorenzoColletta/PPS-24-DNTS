@@ -1,13 +1,15 @@
 package domain.training
 
+import domain.data.util.Space
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
-import domain.network.{ModelBuilder, Activations, Feature}
-import domain.data.{LabeledPoint2D, Label, Point2D}
+import domain.network.{Activations, Feature, ModelBuilder}
+import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.training.Strategies.Losses.mse
 
 class TrainingCoreTest extends AnyFunSuite with Matchers {
+
+  given Space = Space(50.0, 50.0)
 
   private final val dummyModel = ModelBuilder.fromInputs(Feature.X)
     .addLayer(neurons = 1, activation = Activations.Sigmoid)
@@ -19,9 +21,7 @@ class TrainingCoreTest extends AnyFunSuite with Matchers {
     LabeledPoint2D(Point2D(1.0, 1.0), Label.Positive)
   )
   
-
-  //private final val dummyModel = Model(dummyNetwork, dummyFeatures)
-
+  
   test("computeBatchGradients should return a gradient with the same topology as the network") {
     val (avgGrad, _) = TrainingCore.computeBatchGradients(dummyModel, dummyBatch)
 

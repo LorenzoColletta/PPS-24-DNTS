@@ -2,11 +2,13 @@ package domain.network
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
 import domain.data.Point2D
+import domain.data.util.Space
 import domain.network.Activations
 
 class ModelBuilderTest extends AnyFunSuite with Matchers {
+
+  given Space = Space(50.0, 50.0)
 
   test("Builder correctly stores input features") {
     ModelBuilder.fromInputs(Feature.X, Feature.Y).features shouldBe List(Feature.X, Feature.Y)

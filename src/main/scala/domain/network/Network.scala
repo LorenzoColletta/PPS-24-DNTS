@@ -2,6 +2,7 @@ package domain.network
 
 import domain.data.Point2D
 import domain.data.LinearAlgebra.*
+import domain.data.util.Space
 
 /**
  * Configuration container for the hyperparams of the training process.
@@ -51,6 +52,17 @@ case class Network(layers: List[Layer]):
  * @param features The feature engineering pipeline configuration.
  */
 case class Model(network: Network, features: List[Feature]):
-  def predict(input: Point2D): Double =
+
+  /**
+   * Performs a prediction for a given 2D point.
+   *
+   * This method first transforms the raw input point into a feature vector
+   * according to the model's feature configuration, and then executes a
+   * forward pass through the neural network.
+   *
+   * @param input The raw 2D point to be evaluated.
+   * @return The scalar output of the network.
+   */
+  def predict(input: Point2D)(using Space): Double =
     val vec = FeatureTransformer.transform(input, features)
     network.forward(vec).headOption.getOrElse(0.0)
