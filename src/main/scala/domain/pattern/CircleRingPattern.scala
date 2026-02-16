@@ -7,6 +7,15 @@ import domain.util.UniformDistribution
 import scala.annotation.tailrec
 import scala.math.{cos, sin, sqrt, Pi}
 
+/**
+ * Implements a 2d point generation inside a circular area using a normal distribution.
+ *
+ * @param center the center of the area
+ * @param minRadius the minimum distance from the center
+ * @param maxRadius the maximum distance from the center
+ * @param domain the of valid values
+ * @param seed the seed used for random generation
+ */
 final case class CircleRingPattern(
   center: Point2D,
   minRadius: Double,
@@ -20,6 +29,11 @@ final case class CircleRingPattern(
 
   private val distribution = UniformDistribution(seed)
 
+  /**
+   * Generates a point in a circular area using a uniform distribution.
+   *
+   * @return the generated point
+   */
   @tailrec
   override def sample(): Point2D =
     val angle = distribution.sample(Domain(0, 2 * Pi))
