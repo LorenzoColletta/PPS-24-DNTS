@@ -47,7 +47,8 @@ final case class GossipPeerState(
   /**
    * The set of actor references of the valid nodes.
    */
-  def acceptedReferences: Set[ActorRef[GossipCommand]] = knownReferences.filter(ref => acceptedNodes.contains(ref.path.address))
+  def acceptedReferences: Set[ActorRef[GossipCommand]] = knownReferences.filter(ref => acceptedNodes.contains(ref
+    .path.address) || ref.path.address.hasLocalScope)
 
 
 object GossipPeerState:
