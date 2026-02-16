@@ -73,7 +73,7 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.StartSimulation if isMaster =>
           context.log.info("Monitor: Master requested Simulation Start...")
           rootActor ! RootCommand.SeedStartSimulation
-          active(snapshot)
+          idle(snapshot)
 
         case MonitorCommand.StartWithData(trainSet, testSet) =>
           context.log.info(s"Monitor: Received subsection of ${trainSet.size + testSet.size} points. Start training...")
