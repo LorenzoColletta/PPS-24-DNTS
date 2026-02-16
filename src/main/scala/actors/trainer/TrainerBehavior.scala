@@ -3,9 +3,9 @@ package actors.trainer
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
+
 import scala.concurrent.duration.*
 import scala.util.{Failure, Random, Success}
-
 import config.AppConfig
 import domain.data.LabeledPoint2D
 import domain.network.Model
@@ -14,6 +14,7 @@ import actors.trainer.TrainerActor.*
 import actors.model.ModelActor.ModelCommand
 import actors.gossip.GossipActor.GossipCommand
 import actors.monitor.MonitorActor.MonitorCommand
+import domain.data.util.Space
 
 /**
  * Encapsulates the behavior logic for the TrainerActor.
@@ -28,6 +29,7 @@ private[trainer] class TrainerBehavior(
   modelActor: ActorRef[ModelCommand]
 )(using lossFunction: LossFunction, config: AppConfig):
 
+  given Space = config.space
   implicit val timeout: Timeout = 3.seconds
 
   /**
