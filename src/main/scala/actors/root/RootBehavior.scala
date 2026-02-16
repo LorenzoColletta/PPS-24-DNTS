@@ -6,7 +6,6 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import config.{AppConfig, ConfigLoader, FileConfig}
 import domain.network.{Activations, Feature, Model, ModelBuilder}
-import domain.dataset.*
 import domain.training.{LossFunction, Optimizer}
 import domain.training.Strategies.{Optimizers, Regularizers}
 import actors.monitor.MonitorActor
@@ -27,8 +26,9 @@ import actors.cluster.ClusterManager
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.gossip.GossipActor.ControlCommand.GlobalStop
 import domain.data.LabeledPoint2D
-import domain.util.Space
 import com.typesafe.config.Config
+import domain.data.dataset.{DataModelFactory, DatasetGenerator, shuffle}
+import domain.data.util.Space
 import view.*
 
 /**
@@ -168,6 +168,7 @@ class RootBehavior(context: ActorContext[RootCommand],
               context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
 
               gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
+              trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
             case None =>
               context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
           /*seedDataPayload.foreach { case (model, _, trainConfig, optimizer, _) =>
@@ -215,7 +216,7 @@ class RootBehavior(context: ActorContext[RootCommand],
 
     val datasetModel = DataModelFactory.create(conf.datasetConf, seedPos)
 
-    val data = DatasetGenerator.generate(conf.datasetSize, datasetModel)
+    val data = DatasetGenerator.generate(conf.datasetSize, datasetModel).shuffle(seedPos)
     context.log.info(s"Root: Generated Global Dataset with ${data.size} samples.")
     data
 
