@@ -70,12 +70,15 @@ object RootProtocol:
     case object SeedStartSimulation extends RootCommand
 
     final case class DistributedDataset(
-                                         trainShard: List[LabeledPoint2D],
-                                         testSet: List[LabeledPoint2D]) extends RootCommand
+      trainShard: List[LabeledPoint2D],
+      testSet: List[LabeledPoint2D]
+    ) extends RootCommand
 
-    final case class ConfirmInitialConfiguration(seedID: String,
-                                                 model: Model,
-                                                 trainConfig: TrainingConfig) extends RootCommand
+    final case class ConfirmInitialConfiguration(
+      seedID: String,
+      model: Model,
+      trainConfig: TrainingConfig
+    ) extends RootCommand
 
     /**
      * Triggered in case the cluster connection has been confirmed
@@ -92,3 +95,5 @@ object RootProtocol:
     case object InvalidCommandInJoining extends  RootCommand
 
     case object SeedLost extends RootCommand
+    
+    case object StopSimulation extends RootCommand
