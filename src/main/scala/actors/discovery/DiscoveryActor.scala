@@ -60,4 +60,7 @@ object DiscoveryActor:
 
         case NotifyRemoveNode(node) =>
           running(state.removeNode(node), gossip, registerGossipPermit)
+
+        case Stop =>
+          Behaviors.stopped
     }
