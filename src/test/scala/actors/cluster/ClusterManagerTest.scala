@@ -128,7 +128,7 @@ class ClusterManagerTest extends AnyFunSuite with Matchers:
         root = testKit.createTestProbe[RootCommand]().ref
       )
 
-    manager ! StopSimulation
+    manager ! ClusterProtocol.StopSimulation
 
     testKit.stop(manager)
 

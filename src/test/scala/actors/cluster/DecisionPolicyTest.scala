@@ -142,7 +142,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
   test("RunningPolicy: StopSimulation -> leave cluster"):
     val state = baseState(Running)
 
-    RunningPolicy.decide(state, StopSimulation) should contain (
+    RunningPolicy.decide(state, ClusterProtocol.StopSimulation) should contain (
       LeaveCluster
     )
 
