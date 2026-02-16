@@ -59,3 +59,8 @@ object DiscoveryProtocol :
    * Signals that the gossip can be finally registered to te receptionist.
    */
   case object RegisterGossipPermit extends DiscoveryCommand
+
+  /**
+   * Signals the actor to stop.
+   */
+  case object Stop extends DiscoveryCommand
