@@ -4,16 +4,13 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
-import actors.cluster.ClusterProtocol.{ClusterMemberCommand, StartSimulation, StopSimulation}
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
-import actors.monitor.MonitorActor.MonitorCommand
 import actors.root.RootActor.RootCommand
 import akka.actor.typed.scaladsl.TimerScheduler
 import config.AppConfig
 import domain.network.Model
-import domain.training.Strategies.{Optimizers, Regularizers}
 
 import scala.util.Random
 
@@ -22,18 +19,16 @@ import scala.util.Random
  *
  * @param modelActor     Reference to the local ModelActor.
  * @param trainerActor   Reference to the local TrainerActor.
- * @param clusterManager Reference to the Cluster Manager.
  * @param timers         The scheduler for managing periodic gossip ticks.
  * @param config         Global application configuration.
  */
 private[gossip] class GossipBehavior(
-                                      rootActor: ActorRef[RootCommand],
-                                      modelActor: ActorRef[ModelCommand],
-                                      trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterMemberCommand],
-                                      discoveryActor: ActorRef[DiscoveryCommand],
-                                      timers: TimerScheduler[GossipCommand],
-                                      config: AppConfig
+  rootActor: ActorRef[RootCommand],
+  modelActor: ActorRef[ModelCommand],
+  trainerActor: ActorRef[TrainerCommand],
+  discoveryActor: ActorRef[DiscoveryCommand],
+  timers: TimerScheduler[GossipCommand],
+  config: AppConfig
 ):
 
   /**
@@ -152,8 +147,7 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.WrappedSpreadCommand(peers, cmd) =>
-          val otherPeers = peers.filter(_ != context.self)
-          otherPeers.foreach ( peer =>
+          peers.foreach ( peer =>
             peer ! GossipCommand.HandleControlCommand(cmd)
           )
           Behaviors.same
@@ -173,9 +167,8 @@ private[gossip] class GossipBehavior(
               trainerActor ! TrainerCommand.Resume
               Behaviors.same
             case ControlCommand.GlobalStop =>
-              clusterManager ! StopSimulation
-              trainerActor ! TrainerCommand.Stop
-              Behaviors.same
+              rootActor ! RootCommand.StopSimulation
+              Behaviors.stopped
             case _ =>
               context.log.info(s"Gossip: Not found remote control command: $cmd")
               Behaviors.same

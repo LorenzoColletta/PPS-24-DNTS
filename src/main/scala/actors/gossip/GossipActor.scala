@@ -22,7 +22,6 @@ object GossipActor:
    *
    * @param modelActor     Reference to the local ModelActor.
    * @param trainerActor   Reference to the local TrainerActor.
-   * @param clusterManager Reference to the local ClusterManager.
    * @param discoveryActor Reference to the DiscoveryActor for peer discovery.
    * @param config         Application global configuration.
    * @return A Behavior handling GossipCommand messages.
@@ -31,7 +30,6 @@ object GossipActor:
     rootActor: ActorRef[RootCommand],
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
-    clusterManager: ActorRef[ClusterMemberCommand],
     discoveryActor: ActorRef[DiscoveryCommand]
   )(using config: AppConfig): Behavior[GossipCommand] =
     Behaviors.setup: context =>
@@ -41,7 +39,6 @@ object GossipActor:
           rootActor,
           modelActor,
           trainerActor,
-          clusterManager,
           discoveryActor,
           timers,
           config

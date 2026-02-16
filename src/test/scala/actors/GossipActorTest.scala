@@ -10,7 +10,6 @@ import actors.gossip.GossipProtocol.*
 import actors.gossip.GossipActor.GossipCommand
 import actors.model.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
-import actors.cluster.ClusterProtocol.{ClusterMemberCommand, StopSimulation}
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip, NodesRefRequest}
 import actors.root.RootActor.RootCommand
 
@@ -51,7 +50,6 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
                          rootProbe: TestProbe[RootCommand],
                          modelProbe: TestProbe[ModelCommand],
                          trainerProbe: TestProbe[TrainerCommand],
-                         clusterProbe: TestProbe[ClusterMemberCommand],
                          discoveryProbe: TestProbe[DiscoveryCommand]
                        )
 
@@ -59,18 +57,16 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
     val rootProbe = createTestProbe[RootCommand]()
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
-    val clusterProbe = createTestProbe[ClusterMemberCommand]()
     val discoveryProbe = createTestProbe[DiscoveryCommand]()
 
     val gossipActor = spawn(GossipActor(
       rootProbe.ref,
       modelProbe.ref,
       trainerProbe.ref,
-      clusterProbe.ref,
       discoveryProbe.ref
     ))
 
-    TestActors(gossipActor, rootProbe, modelProbe, trainerProbe, clusterProbe, discoveryProbe)
+    TestActors(gossipActor, rootProbe, modelProbe, trainerProbe, discoveryProbe)
   }
 
   test("GossipActor should register itself with DiscoveryActor upon startup") {
@@ -161,7 +157,7 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
     askMsg.replyTo shouldBe actors.gossipActor
   }
 
-  test("GossipActor should propagate ControlCommand (Pause/Resume/Stop) to local actors") {
+  test("GossipActor should propagate ControlCommand (Pause/Resume) to local actors") {
     val actors = setup()
     actors.discoveryProbe.expectMessageType[RegisterGossip]
 
@@ -170,10 +166,6 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
 
     actors.gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalResume)
     actors.trainerProbe.expectMessage(TrainerCommand.Resume)
-
-    actors.gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStop)
-    actors.clusterProbe.expectMessage(StopSimulation)
-    actors.trainerProbe.expectMessage(TrainerCommand.Stop)
   }
 
   test("GossipActor should handle HandleRemoteModel by syncing with local ModelActor") {
