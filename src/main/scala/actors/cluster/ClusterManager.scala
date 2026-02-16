@@ -108,7 +108,10 @@ object ClusterManager:
           .foreach(effect => ClusterEffects(newState, context, timers, effect, timersDuration, monitorActor,
             receptionistManager, rootActor))
 
-        runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
+        if effects.contains(StopBehavior) then
+          Behaviors.stopped
+        else
+          runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
     }
 
   private def handle(
