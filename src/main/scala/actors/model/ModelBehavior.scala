@@ -79,10 +79,11 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
         case ModelCommand.SyncModel(remoteModel) =>
           val (newModel, _) = ModelTasks.mergeWith(remoteModel).run(currentModel)
           val divergence = currentModel.network divergenceFrom remoteModel.network
+          val boostedConsensus = divergence * 10.0
           active(
             currentModel = newModel,
             currentEpoch = currentEpoch,
-            currentConsensus = divergence,
+            currentConsensus = boostedConsensus,
             trainerActor = trainerActor
           )
 
