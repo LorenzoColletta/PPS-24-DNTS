@@ -1,6 +1,7 @@
 package actors.cluster.membership
 
 import actors.cluster.ClusterProtocol.*
+import actors.root.RootProtocol.NodeRole
 
 /**
  * Defines the policy for reacting to cluster membership and reachability events.
@@ -20,7 +21,7 @@ object MembershipPolicy:
   def update(membership: ClusterMembership, event: NodeEvent): ClusterMembership = event match
     case NodeUp(node) =>
       val updated = membership.addNode(node.address)
-      if (node.roles.contains("seed")) then
+      if (node.roles.contains(NodeRole.Seed.id)) then
         updated.setMaster(node.address)
       else
         updated

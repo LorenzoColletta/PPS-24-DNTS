@@ -16,6 +16,7 @@ import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 import akka.cluster.ClusterEvent
 import akka.cluster.typed.{Cluster, Down, Leave, Subscribe}
 import actors.cluster.adapter.given
+import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 
 /**
  * Actor responsible to the management of the cluster.
@@ -78,6 +79,7 @@ object ClusterManager:
   ): Behavior[ClusterMemberCommand] =
     Behaviors.receiveMessage {
       case RegisterMonitor(ref) =>
+        ref ! PeerCountChanged(state.view.available, state.view.total)
         runningBehavior(
           context,
           timers,
@@ -103,7 +105,7 @@ object ClusterManager:
         }
 
         effects.collect { case e: Action => e }
-          .foreach(effect => ClusterEffects(state, context, timers, effect, timersDuration, monitorActor,
+          .foreach(effect => ClusterEffects(newState, context, timers, effect, timersDuration, monitorActor,
             receptionistManager, rootActor))
 
         runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
