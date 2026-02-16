@@ -42,7 +42,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
 
     BootstrapPolicy.decide(state, JoinTimeout) should contain allOf (
       CancelTimer(BootstrapTimerId),
-      NotifyRoot(NotifyClusterReady),
+      NotifyRoot(ClusterReady),
       ChangePhase(Joining)
     )
 
@@ -50,7 +50,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
     val state = baseState(Bootstrap, hasMaster = false)
 
     BootstrapPolicy.decide(state, JoinTimeout) should contain allOf (
-      NotifyRoot(NotifyClusterFailed),
+      NotifyRoot(ClusterFailed),
       StopBehavior
     )
 
@@ -66,7 +66,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
     val state = baseState(Bootstrap, hasMaster = true)
 
     BootstrapPolicy.decide(state, NodeUp(workerNode)) should contain allOf (
-      NotifyRoot(NotifyClusterReady),
+      NotifyRoot(ClusterReady),
       ChangePhase(Joining)
     )
 
@@ -82,7 +82,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
     val state = baseState(Joining)
 
     JoiningPolicy.decide(state, NodeUnreachable(seedNode)) should contain allOf (
-      NotifyRoot(NotifyClusterFailed),
+      NotifyRoot(ClusterFailed),
       StopBehavior
     )
 
@@ -150,7 +150,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
     val state = baseState(Running)
 
     RunningPolicy.decide(state, SeedUnreachableTimeout) should contain allOf (
-      NotifyRoot(NotifyClusterFailed),
+      NotifyRoot(ClusterFailed),
       StopBehavior
     )
 

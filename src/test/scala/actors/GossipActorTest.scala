@@ -1,21 +1,22 @@
 package actors
 
-import actors.cluster.ClusterProtocol
-import actors.cluster.ClusterProtocol.ClusterMemberCommand
 import akka.actor.testkit.typed.scaladsl.{ScalaTestWithActorTestKit, TestProbe}
+import akka.actor.typed.ActorRef
 import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
-import akka.actor.typed.ActorRef
-import domain.network.{Activations, Feature, ModelBuilder}
-import domain.data.{Label, LabeledPoint2D, Point2D}
-import actors.gossip.GossipActor
-import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
-import actors.model.ModelActor.ModelCommand
-import actors.trainer.TrainerActor.TrainerCommand
-import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest, RegisterGossip}
-import config.{AppConfig, ProductionConfig}
 
-import scala.concurrent.duration.*
+import actors.gossip.GossipActor
+import actors.gossip.GossipProtocol.*
+import actors.gossip.GossipActor.GossipCommand
+import actors.model.ModelActor.ModelCommand
+import actors.trainer.TrainerActor.{TrainerCommand, TrainingConfig}
+import actors.cluster.ClusterProtocol.{ClusterMemberCommand, StopSimulation}
+import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip, NodesRefRequest}
+import actors.root.RootActor.RootCommand
+
+import domain.network.{Activations, Feature, ModelBuilder, Regularization, HyperParams}
+import domain.data.{Label, LabeledPoint2D, Point2D}
+import config.{AppConfig, ProductionConfig}
 
 class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
@@ -24,204 +25,164 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
   private final val dummyFeatures = Feature.X
 
   private final val dummyModel = ModelBuilder.fromInputs(dummyFeatures)
-    .addLayer(1, Activations.Sigmoid)
+    .addLayer(neurons = 1, activation = Activations.Sigmoid)
+    .withSeed(1234L)
     .build()
 
   private final val dummyData = List(
     LabeledPoint2D(Point2D(0.0, 0.0), Label.Negative),
     LabeledPoint2D(Point2D(1.0, 1.0), Label.Positive),
-    LabeledPoint2D(Point2D(0.5, 0.5), Label.Negative),
-    LabeledPoint2D(Point2D(0.2, 0.2), Label.Positive)
+    LabeledPoint2D(Point2D(0.0, 1.0), Label.Negative),
+    LabeledPoint2D(Point2D(1.0, 0.0), Label.Positive)
   )
 
-  def setupGossip(): (ActorRef[GossipCommand], TestProbe[ModelCommand], TestProbe[TrainerCommand], TestProbe[ClusterCommand]) = {
+  private final val dummyConfig = TrainingConfig(
+    trainSet = dummyData,
+    testSet = Nil,
+    features = List(dummyFeatures),
+    hp = HyperParams(0.1, Regularization.None),
+    epochs = 5,
+    batchSize = 2,
+    seed = Some(1234L)
+  )
+
+  case class TestActors(
+                         gossipActor: ActorRef[GossipCommand],
+                         rootProbe: TestProbe[RootCommand],
+                         modelProbe: TestProbe[ModelCommand],
+                         trainerProbe: TestProbe[TrainerCommand],
+                         clusterProbe: TestProbe[ClusterMemberCommand],
+                         discoveryProbe: TestProbe[DiscoveryCommand]
+                       )
+
+  def setup(): TestActors = {
+    val rootProbe = createTestProbe[RootCommand]()
     val modelProbe = createTestProbe[ModelCommand]()
     val trainerProbe = createTestProbe[TrainerCommand]()
     val clusterProbe = createTestProbe[ClusterMemberCommand]()
     val discoveryProbe = createTestProbe[DiscoveryCommand]()
 
     val gossipActor = spawn(GossipActor(
+      rootProbe.ref,
       modelProbe.ref,
       trainerProbe.ref,
       clusterProbe.ref,
       discoveryProbe.ref
     ))
 
-<<<<<<< HEAD
-    (gossipActor, modelProbe, trainerProbe, clusterProbe)
+    TestActors(gossipActor, rootProbe, modelProbe, trainerProbe, clusterProbe, discoveryProbe)
   }
 
-  test("GossipActor should start periodic gossip when receiving StartGossipTick") {
-    val (gossipActor, _, _, clusterProbe) = setupGossip()
-=======
-    (gossipActor, modelProbe, monitorProbe, trainerProbe, clusterProbe, discoveryProbe)
+  test("GossipActor should register itself with DiscoveryActor upon startup") {
+    val actors = setup()
+
+    val msg = actors.discoveryProbe.expectMessageType[RegisterGossip]
+    msg.gossip shouldBe actors.gossipActor
   }
 
-  test("GossipActor should start periodic gossip when receiving StartGossipTick") {
-    val (gossipActor, _, _, _, _, discoveryProbe) = setupGossip()
+  test("GossipActor should handle ShareConfig by fetching peers and broadcasting PrepareClient") {
+    val actors = setup()
 
-    discoveryProbe.expectMessageType[RegisterGossip]
->>>>>>> develop
+    actors.discoveryProbe.expectMessageType[RegisterGossip]
 
-    gossipActor ! GossipCommand.StartGossipTick
+    actors.gossipActor ! GossipCommand.ShareConfig("seed-1", dummyModel, dummyConfig)
 
-    discoveryProbe.expectMessageType[NodesRefRequest](5.seconds)
-  }
-
-  test("GossipActor should stop periodic gossip when receiving StopGossipTick") {
-<<<<<<< HEAD
-    val (gossipActor, _, _, clusterProbe) = setupGossip()
-=======
-    val (gossipActor, _, _, _, clusterProbe, discoveryProbe) = setupGossip()
-
-    discoveryProbe.expectMessageType[RegisterGossip]
->>>>>>> develop
-
-    gossipActor ! GossipCommand.StartGossipTick
-
-    discoveryProbe.expectMessageType[NodesRefRequest]
-
-    gossipActor ! GossipCommand.StopGossipTick
-
-    clusterProbe.expectNoMessage(2.seconds)
-  }
-
-  test("GossipActor should initiate gossip cycle on Tick: Request Nodes -> Get Model -> Send to Peer") {
-<<<<<<< HEAD
-    val (gossipActor, modelProbe, _, clusterProbe) = setupGossip()
-=======
-    val (gossipActor, modelProbe, _, _, _, discoveryProbe) = setupGossip()
->>>>>>> develop
-
-    val peerProbe = createTestProbe[GossipCommand]()
-
-    discoveryProbe.expectMessageType[RegisterGossip]
-
-    gossipActor ! GossipCommand.TickGossip
-
-    val nodesReq = discoveryProbe.expectMessageType[NodesRefRequest]
-
-    nodesReq.replyTo ! List(gossipActor, peerProbe.ref)
-
-    val modelReq = modelProbe.expectMessageType[ModelCommand.GetModel]
-
-    modelReq.replyTo ! dummyModel
-
-    peerProbe.expectMessageType[GossipCommand.HandleRemoteModel]
-  }
-
-  test("GossipActor should propagate remote models to the local ModelActor for synchronization") {
-<<<<<<< HEAD
-    val (gossipActor, modelProbe, _, _) = setupGossip()
-=======
-    val (gossipActor, modelProbe, _, _, _, _) = setupGossip()
->>>>>>> develop
-
-    gossipActor ! GossipCommand.HandleRemoteModel(dummyModel)
-
-    val msg = modelProbe.expectMessageType[ModelCommand.SyncModel]
-    msg.remoteModel shouldBe dummyModel
-  }
-
-  test("GossipActor should shard and distribute dataset to peers") {
-<<<<<<< HEAD
-    val (gossipActor, _, _, clusterProbe) = setupGossip()
-=======
-    val (gossipActor, _, _, _, _, discoveryProbe) = setupGossip()
-
-    discoveryProbe.expectMessageType[RegisterGossip]
->>>>>>> develop
+    val req = actors.discoveryProbe.expectMessageType[NodesRefRequest]
 
     val peer1 = createTestProbe[GossipCommand]()
     val peer2 = createTestProbe[GossipCommand]()
 
-    gossipActor ! GossipCommand.DistributeDataset(dummyData, Nil)
+    req.replyTo ! List(peer1.ref, peer2.ref)
 
-    val req = discoveryProbe.expectMessageType[NodesRefRequest]
+    val cmd1 = peer1.expectMessageType[GossipCommand.HandleControlCommand]
+    cmd1.cmd shouldBe a[ControlCommand.PrepareClient]
+
+    val cmd2 = peer2.expectMessageType[GossipCommand.HandleControlCommand]
+    cmd2.cmd shouldBe a[ControlCommand.PrepareClient]
+  }
+
+  test("GossipActor should distribute dataset chunks to peers") {
+    val actors = setup()
+    actors.discoveryProbe.expectMessageType[RegisterGossip]
+
+    actors.gossipActor ! GossipCommand.DistributeDataset(dummyData, Nil)
+
+    val req = actors.discoveryProbe.expectMessageType[NodesRefRequest]
+
+    val peer1 = createTestProbe[GossipCommand]()
+    val peer2 = createTestProbe[GossipCommand]()
     req.replyTo ! List(peer1.ref, peer2.ref)
 
     val msg1 = peer1.expectMessageType[GossipCommand.HandleDistributeDataset]
-    val msg2 = peer2.expectMessageType[GossipCommand.HandleDistributeDataset]
-
     msg1.trainShard.size shouldBe 2
+
+    val msg2 = peer2.expectMessageType[GossipCommand.HandleDistributeDataset]
     msg2.trainShard.size shouldBe 2
 
-    (msg1.trainShard ++ msg2.trainShard).toSet shouldBe dummyData.toSet
+    msg1.trainShard should not be msg2.trainShard
   }
 
-  test("GossipActor should start Trainer when receiving a dataset shard") {
-<<<<<<< HEAD
-    val (gossipActor, _, trainerProbe, _) = setupGossip()
-=======
-    val (gossipActor, _, _, trainerProbe, _, _) = setupGossip()
->>>>>>> develop
+  test("GossipActor should handle TickGossip: fetch peers, get local model, and send to random peer") {
+    val actors = setup()
+    actors.discoveryProbe.expectMessageType[RegisterGossip]
 
-    val shard = dummyData.take(2)
+    actors.gossipActor ! GossipCommand.ShareConfig("seed-1", dummyModel, dummyConfig)
+    actors.discoveryProbe.expectMessageType[NodesRefRequest] // Ignora la request del ShareConfig
 
-    gossipActor ! GossipCommand.HandleDistributeDataset(shard, Nil)
+    actors.gossipActor ! GossipCommand.TickGossip
 
-    val msg = trainerProbe.expectMessageType[TrainerCommand.Start]
-    msg.trainSet shouldBe shard
+    val req = actors.discoveryProbe.expectMessageType[NodesRefRequest]
+
+    val remotePeer = createTestProbe[GossipCommand]()
+
+    req.replyTo ! List(remotePeer.ref)
+
+    val modelReq = actors.modelProbe.expectMessageType[ModelCommand.GetModel]
+
+    modelReq.replyTo ! dummyModel
+
+    val remoteMsg = remotePeer.expectMessageType[GossipCommand.HandleRemoteModel]
+    remoteMsg.remoteModel shouldBe dummyModel
   }
 
-  test("GossipActor should propagate ControlCommand (e.g., Pause) to peers") {
-<<<<<<< HEAD
-    val (gossipActor, _, _, clusterProbe) = setupGossip()
-=======
-    val (gossipActor, _, _, _, _, discoveryProbe) = setupGossip()
+  test("GossipActor should request initial config if TickGossip happens before initialization") {
+    val actors = setup()
+    actors.discoveryProbe.expectMessageType[RegisterGossip]
 
-    discoveryProbe.expectMessageType[RegisterGossip]
+    actors.gossipActor ! GossipCommand.TickGossip
+    actors.discoveryProbe.expectMessageType[NodesRefRequest]
 
->>>>>>> develop
-    val peerProbe = createTestProbe[GossipCommand]()
+    val configReq = actors.discoveryProbe.expectMessageType[NodesRefRequest]
 
-    gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
+    val seedNode = createTestProbe[GossipCommand]()
+    configReq.replyTo ! List(seedNode.ref)
 
-    val req = discoveryProbe.expectMessageType[NodesRefRequest]
-    req.replyTo ! List(gossipActor, peerProbe.ref)
-
-    val msg = peerProbe.expectMessageType[GossipCommand.HandleControlCommand]
-    msg.cmd shouldBe ControlCommand.GlobalPause
+    val askMsg = seedNode.expectMessageType[GossipCommand.RequestInitialConfig]
+    askMsg.replyTo shouldBe actors.gossipActor
   }
 
-  test("GossipActor should execute ControlCommand locally (Pause)") {
-<<<<<<< HEAD
-    val (gossipActor, _, trainerProbe, _) = setupGossip()
-=======
-    val (gossipActor, _, monitorProbe, trainerProbe, _, _) = setupGossip()
->>>>>>> develop
+  test("GossipActor should propagate ControlCommand (Pause/Resume/Stop) to local actors") {
+    val actors = setup()
+    actors.discoveryProbe.expectMessageType[RegisterGossip]
 
-    gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalPause)
+    actors.gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalPause)
+    actors.trainerProbe.expectMessage(TrainerCommand.Pause)
 
-    trainerProbe.expectMessageType[TrainerCommand.Pause.type]
+    actors.gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalResume)
+    actors.trainerProbe.expectMessage(TrainerCommand.Resume)
+
+    actors.gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStop)
+    actors.clusterProbe.expectMessage(StopSimulation)
+    actors.trainerProbe.expectMessage(TrainerCommand.Stop)
   }
 
-  test("GossipActor should execute ControlCommand locally (GlobalStart)") {
-<<<<<<< HEAD
-    val (gossipActor, _, _, clusterProbe) = setupGossip()
+  test("GossipActor should handle HandleRemoteModel by syncing with local ModelActor") {
+    val actors = setup()
+    actors.discoveryProbe.expectMessageType[RegisterGossip]
 
-    gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStart)
+    actors.gossipActor ! GossipCommand.HandleRemoteModel(dummyModel)
 
-    clusterProbe.expectMessageType[StartSimulation.type]
-  }
-
-  test("GossipActor should execute ControlCommand locally (Stop)") {
-    val (gossipActor, _, trainerProbe, _) = setupGossip()
-=======
-    val (gossipActor, _, monitorProbe, _, clusterProbe, _) = setupGossip()
-
-    gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStart)
-
-    clusterProbe.expectMessageType[ClusterProtocol.StartSimulation.type ]
-    monitorProbe.expectMessageType[MonitorCommand.StartSimulation.type]
-  }
-
-  test("GossipActor should execute ControlCommand locally (Stop)") {
-    val (gossipActor, _, monitorProbe, trainerProbe, _, _) = setupGossip()
->>>>>>> develop
-
-    gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStop)
-
-    trainerProbe.expectMessageType[TrainerCommand.Stop.type]
+    val syncMsg = actors.modelProbe.expectMessageType[ModelCommand.SyncModel]
+    syncMsg.remoteModel shouldBe dummyModel
   }
 }

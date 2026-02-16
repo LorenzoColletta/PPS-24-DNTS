@@ -1,12 +1,8 @@
 package actors.discovery
 
 import actors.gossip.GossipActor.GossipCommand
-<<<<<<< HEAD
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip, RegisterGossipPermit}
 import actors.gossip.GossipProtocol.GossipCommand.WrappedPeers
-=======
-import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip}
->>>>>>> develop
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
