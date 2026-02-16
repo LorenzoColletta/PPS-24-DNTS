@@ -76,7 +76,7 @@ object ModelProtocol:
     /**
      * Request to write the current model to the file
      */
-    final case class  ExportToFile() extends ModelCommand
+    case object ExportToFile extends ModelCommand
 
     /**
      * Performs a forward pass on the current network to predict the output for a given point.
@@ -89,4 +89,4 @@ object ModelProtocol:
                                      replyTo: ActorRef[Double]
                                    ) extends ModelCommand
 
-    final case class StopSimulation() extends ModelCommand
+    case object StopSimulation extends ModelCommand

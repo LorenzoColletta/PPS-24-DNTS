@@ -113,7 +113,7 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
           )
           Behaviors.same
 
-        case ModelCommand.ExportToFile() =>
+        case ModelCommand.ExportToFile =>
           val jsonModel = summon[Exporter[Model]].jsonExport(currentModel)
           val fileName = config.netLogFileName
           val path = Paths.get(fileName)
@@ -125,6 +125,6 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
               context.log.error(s"Error in exportation of $fileName: ${e.getMessage}")
           }
           Behaviors.same
-        case ModelCommand.StopSimulation() =>
+        case ModelCommand.StopSimulation =>
           Behaviors.stopped
         case _ => Behaviors.unhandled
