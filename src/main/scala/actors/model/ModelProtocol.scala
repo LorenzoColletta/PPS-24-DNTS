@@ -88,3 +88,5 @@ object ModelProtocol:
                                      point: Point2D,
                                      replyTo: ActorRef[Double]
                                    ) extends ModelCommand
+
+    final case class StopSimulation() extends ModelCommand
