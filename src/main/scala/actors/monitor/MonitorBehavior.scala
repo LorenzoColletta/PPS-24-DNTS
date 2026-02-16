@@ -176,7 +176,7 @@ private[monitor] class MonitorBehavior(
       message match
         case MonitorCommand.ResumeSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalResume)
           Behaviors.same
 
         case MonitorCommand.InternalResume =>
