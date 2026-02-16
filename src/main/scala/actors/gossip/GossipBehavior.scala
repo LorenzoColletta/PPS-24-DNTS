@@ -35,8 +35,9 @@ private[gossip] class GossipBehavior(
    * Main operational state of the GossipActor.
    */
   def active(
-              cachedConfig: Option[(String, Model, TrainingConfig)] = None
-            ): Behavior[GossipCommand] =
+    cachedConfig: Option[(String, Model, TrainingConfig)] = None
+  ): Behavior[GossipCommand] =
+
     Behaviors.receive: (context, message) =>
       message match
 
@@ -168,6 +169,8 @@ private[gossip] class GossipBehavior(
               Behaviors.same
             case ControlCommand.GlobalStop =>
               rootActor ! RootCommand.StopSimulation
+
+              timers.cancelAll()
               Behaviors.stopped
             case _ =>
               context.log.info(s"Gossip: Not found remote control command: $cmd")
