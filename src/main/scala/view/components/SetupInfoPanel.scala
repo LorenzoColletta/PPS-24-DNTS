@@ -181,7 +181,5 @@ class SetupInfoPanel extends JPanel:
     addRow("Batch Size", conf.batchSize.toString, 1)
     addRow("Learning Rate", conf.hp.learningRate.toString, 2)
     addRow("Regularization", conf.hp.regularization.toString, 3)
-    addRow("Train Set", s"${conf.trainSet.size} examples", 4)
-    addRow("Test Set", s"${conf.testSet.size} examples", 5)
     p
     
