@@ -10,7 +10,7 @@ import domain.data.util.Space
 
 class BackpropagationTest extends AnyFunSuite with Matchers {
 
-  given Space = Space(50.0, 50.0)
+  given Space = Space(2.0, 2.0)
 
   private final val identity = new Activation {
     def name = "Id"

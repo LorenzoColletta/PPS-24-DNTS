@@ -8,7 +8,7 @@ import domain.data.util.Space
 
 class NetworkTest extends AnyFunSuite with Matchers {
 
-  given Space = Space(50.0, 50.0)
+  given Space = Space(2.0, 2.0)
 
   val identityActivation: Activation = new Activation {
     def name = "Identity"
