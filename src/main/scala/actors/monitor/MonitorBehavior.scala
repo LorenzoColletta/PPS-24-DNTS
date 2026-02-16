@@ -144,14 +144,14 @@ private[monitor] class MonitorBehavior(
           context.log.info("Monitor: Remote STOP command.")
           boundary.stopSimulation()
           timers.cancelAll()
-          idle(snapshot)
+          Behaviors.stopped
 
         case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
           boundary.updatePeerDisplay(activePeers, totalPeers)
           active(snapshot.copy(activePeers = activePeers, totalPeers = totalPeers))
 
         case MonitorCommand.RequestWeightsLog =>
-          modelActor ! ModelCommand.ExportToFile()
+          modelActor ! ModelCommand.ExportToFile
           Behaviors.same
 
         case MonitorCommand.SimulateCrash =>
