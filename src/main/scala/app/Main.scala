@@ -4,7 +4,6 @@ import akka.actor.typed.ActorSystem
 import config.{AkkaConfig, AppConfig, ProductionConfig}
 import actors.root.RootActor
 import cli.{CliParser, ParseResult}
-import com.typesafe.config.ConfigFactory
 
 /**
  * Application Entry Point.
