@@ -24,8 +24,8 @@ case class ViewStateSnapshot(
   trainLoss: Option[Double] = None,
   testLoss: Option[Double] = None,
   consensus: Option[Double] = None,
-  activePeers: Int = 1,
-  totalPeers: Int = 1,
+  activePeers: Int = 0,
+  totalPeers: Int = 0,
   clusterSeed: Option[String] = None,
 )
 
