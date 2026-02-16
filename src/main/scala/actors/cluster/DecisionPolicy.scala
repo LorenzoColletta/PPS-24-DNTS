@@ -79,6 +79,7 @@ object JoiningPolicy extends DecisionPolicy :
       case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
         List(
           NotifyRoot(ClusterFailed),
+          LeaveCluster,
           StopBehavior
         )
 
@@ -135,10 +136,10 @@ object RunningPolicy extends DecisionPolicy :
         )
 
       case StopSimulation =>
-        List(LeaveCluster)
+        List(LeaveCluster, StopBehavior)
 
       case SeedUnreachableTimeout =>
-        List(NotifyRoot(SeedLost), StopBehavior)
+        List(NotifyRoot(SeedLost), LeaveCluster, StopBehavior)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))

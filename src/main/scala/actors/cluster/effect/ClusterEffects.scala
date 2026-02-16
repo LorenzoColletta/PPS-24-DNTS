@@ -68,6 +68,7 @@ object ClusterEffects:
 
       case LeaveCluster =>
         val cluster = Cluster(context.system)
+        timers.cancelAll()
         if cluster.state.leader.contains(cluster.selfMember.address) then
           cluster.manager ! Leave(cluster.selfMember.address)
 
