@@ -19,9 +19,9 @@ final case class ClusterState(
   phase: Phase,
   role: NodeRole,
   view: ClusterMembership,
-  selfAddress: Address
+  selfAddress: Option[Address]
 )
 
 object ClusterState:
-  def initialState(role: NodeRole, selfAddress: Address): ClusterState =
-    ClusterState(Bootstrap, role, ClusterMembership.empty, selfAddress)
+  def initialState(role: NodeRole): ClusterState =
+    ClusterState(Bootstrap, role, ClusterMembership.empty, None)

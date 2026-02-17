@@ -61,7 +61,10 @@ object ClusterManager:
 
       Behaviors.withTimers { timers =>
         timers.startSingleTimer(BootstrapTimerId, JoinTimeout, timersDuration.bootstrapCheck)
-        runningBehavior(context, timers, initialState, timersDuration, monitorActor, receptionistManager, rootActor)
+        runningBehavior(context, timers, initialState.copy(selfAddress = Some(cluster.selfMember.address)), timersDuration,
+          monitorActor,
+          receptionistManager,
+        rootActor)
       }
     }
 
@@ -88,7 +91,6 @@ object ClusterManager:
         )
 
       case message =>
-        println(s"""Message received: $message""")
         val (stateAfterHandle, effects) = handle(state, message)
 
         val newState = effects.foldLeft(stateAfterHandle) {
