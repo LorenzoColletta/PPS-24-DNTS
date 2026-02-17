@@ -22,7 +22,6 @@ import actors.trainer.TrainerActor
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
-import actors.gossip.GossipActor.ControlCommand.GlobalStop
 import domain.data.LabeledPoint2D
 import com.typesafe.config.Config
 import domain.data.dataset.{DataModelFactory, DatasetGenerator, shuffle}
@@ -55,11 +54,11 @@ class RootBehavior(
         val path = configPath.getOrElse("simulation.conf")
         val fileConf = ConfigLoader.load(path)
         context.log.info(s"Root: Configuration loaded from $path")
-    
+
         val model = createModel(fileConf)
         val data = generateDataset(fileConf)
         val tConfig = createTrainConfig(fileConf)
-    
+
         val optimizer = new Optimizers.SGD(
           fileConf.hyperParams.learningRate,
           Regularizers.fromConfig(fileConf.hyperParams.regularization)
@@ -113,7 +112,7 @@ class RootBehavior(
     trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
-    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor, guiView)
+    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
 
   /**
    * State: Waiting for the Seed Start Simulation command.
@@ -126,7 +125,6 @@ class RootBehavior(
     monitorActor: ActorRef[MonitorCommand],
     clusterManager: ActorRef[ClusterMemberCommand],
     discoveryActor: ActorRef[DiscoveryCommand],
-    guiView: GuiView
   ): Behavior[RootCommand] =
 
     Behaviors.receive: (ctx, msg) =>
@@ -176,7 +174,8 @@ class RootBehavior(
               trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
             case None =>
               context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
-          
+
+          gossipActor ! GossipCommand.StartGossipTick
           Behaviors.same
 
         case RootCommand.ClusterFailed |
