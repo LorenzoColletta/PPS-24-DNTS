@@ -50,11 +50,16 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.ConnectionFailed(reason) =>
           context.log.info(s"Monitor: Critical connection failure: $reason")
           boundary.showInitialError(reason)
-          Behaviors.stopped
+          connecting(snapshot)
 
         case MonitorCommand.PeerCountChanged(active, total) =>
           boundary.updatePeerDisplay(active, total)
           connecting(snapshot.copy(activePeers = active, totalPeers = total))
+
+        case MonitorCommand.StopSimulation =>
+          context.log.info("Monitor: User requested STOP. Propagating...")
+          gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStop)
+          Behaviors.same
 
         case MonitorCommand.InternalStop =>
           context.log.info("Monitor: Remote STOP command.")
@@ -73,7 +78,7 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.StartSimulation if isMaster =>
           context.log.info("Monitor: Master requested Simulation Start...")
           rootActor ! RootCommand.SeedStartSimulation
-          active(snapshot)
+          idle(snapshot)  
 
         case MonitorCommand.StartWithData(trainSet, testSet) =>
           context.log.info(s"Monitor: Received subsection of ${trainSet.size + testSet.size} points. Start training...")
@@ -92,6 +97,11 @@ private[monitor] class MonitorBehavior(
           context.log.info(s"Monitor: Cluster Status changed, $active/$total connected peer.")
           boundary.updatePeerDisplay(active, total)
           idle(snapshot.copy(activePeers = active, totalPeers = total))
+
+        case MonitorCommand.StopSimulation =>
+          context.log.info("Monitor: User requested STOP. Propagating...")
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
+          Behaviors.same
 
         case MonitorCommand.InternalStop =>
           context.log.info("Monitor: Remote STOP command.")
@@ -136,7 +146,7 @@ private[monitor] class MonitorBehavior(
           paused(snapshot)
 
         case MonitorCommand.StopSimulation =>
-          context.log.info("Monitor: User requested RESUME. Propagating...")
+          context.log.info("Monitor: User requested STOP. Propagating...")
           gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 
@@ -144,14 +154,14 @@ private[monitor] class MonitorBehavior(
           context.log.info("Monitor: Remote STOP command.")
           boundary.stopSimulation()
           timers.cancelAll()
-          idle(snapshot)
+          Behaviors.stopped
 
         case MonitorCommand.PeerCountChanged(activePeers, totalPeers) =>
           boundary.updatePeerDisplay(activePeers, totalPeers)
           active(snapshot.copy(activePeers = activePeers, totalPeers = totalPeers))
 
         case MonitorCommand.RequestWeightsLog =>
-          modelActor ! ModelCommand.ExportToFile()
+          modelActor ! ModelCommand.ExportToFile
           Behaviors.same
 
         case MonitorCommand.SimulateCrash =>
@@ -176,7 +186,7 @@ private[monitor] class MonitorBehavior(
       message match
         case MonitorCommand.ResumeSimulation =>
           context.log.info("Monitor: User requested RESUME. Propagating...")
-          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalPause)
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalResume)
           Behaviors.same
 
         case MonitorCommand.InternalResume =>

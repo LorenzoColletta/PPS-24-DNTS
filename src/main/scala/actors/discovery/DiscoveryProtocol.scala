@@ -48,10 +48,19 @@ object DiscoveryProtocol :
    */
   final case class NotifyRemoveNode(node: Address) extends DiscoveryCommand
 
-
   /**
    * Signals the gossip reference.
    * 
    * @param gossip the gossip reference
    */
   final case class RegisterGossip(gossip: ActorRef[GossipCommand]) extends DiscoveryCommand
+
+  /**
+   * Signals that the gossip can be finally registered to te receptionist.
+   */
+  case object RegisterGossipPermit extends DiscoveryCommand
+
+  /**
+   * Signals the actor to stop.
+   */
+  case object Stop extends DiscoveryCommand

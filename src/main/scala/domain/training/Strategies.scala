@@ -69,13 +69,12 @@ object Strategies:
         require(net.layers.length == grads.layers.length, "Gradient mismatch")
 
         val newLayers = net.layers.zip(grads.layers).map {
-          case (layer, grad) => {
+          case (layer, grad) => 
             val regWeights = reg(layer.weights, learningRate)
 
             val wNew = regWeights + (grad.wGrad * -learningRate)
             val bNew = layer.biases - (grad.bGrad * learningRate)
 
             layer.copy(weights = wNew, biases = bNew)
-          }
         }
         net.copy(layers = newLayers)

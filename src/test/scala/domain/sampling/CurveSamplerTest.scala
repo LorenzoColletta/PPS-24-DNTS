@@ -1,8 +1,9 @@
 package domain.sampling
 
 import domain.data.Point2D
-import domain.pattern.SpiralCurve
-import domain.util.{Distribution, Space, UniformDistribution}
+import domain.data.pattern.SpiralCurve
+import domain.data.sampling.{CurveSampler, Domain, SpiralDomain}
+import domain.data.util.{Distribution, Space, UniformDistribution}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 

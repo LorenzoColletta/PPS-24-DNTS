@@ -2,6 +2,7 @@ package domain.network
 
 import domain.data.Point2D
 import domain.data.LinearAlgebra.Vector
+import domain.data.util.Space
 
 /**
  * Enumerates the available feature engineering transformations.
@@ -26,17 +27,21 @@ object FeatureTransformer:
    *
    * @param point    The raw input 2D point (x, y).
    * @param features The list of active feature transformations to apply.
+   * @param space    The implicit definition of the boundaries of the 2D plane used.
    * @return A [[Vector]] containing the transformed values in the order of the feature list.
    */
-  def transform(point: Point2D, features: List[Feature]): Vector = {
+  def transform(point: Point2D, features: List[Feature])(using space: Space): Vector = {
+    val nx = point.x / (space.width / 2.0)
+    val ny = point.y / (space.height / 2.0)
+
     val values = features.map {
-      case Feature.X         => point.x
-      case Feature.Y         => point.y
-      case Feature.SquareX   => math.pow(point.x, 2)
-      case Feature.SquareY   => math.pow(point.y, 2)
-      case Feature.ProductXY => point.x * point.y
-      case Feature.SinX      => math.sin(point.x)
-      case Feature.SinY      => math.sin(point.y)
+      case Feature.X         => nx
+      case Feature.Y         => ny
+      case Feature.SquareX   => math.pow(nx, 2)
+      case Feature.SquareY   => math.pow(ny, 2)
+      case Feature.ProductXY => nx * ny
+      case Feature.SinX      => math.sin(nx)
+      case Feature.SinY      => math.sin(ny)
     }
     Vector.fromList(values)
   }

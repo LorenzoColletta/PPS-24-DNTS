@@ -2,9 +2,9 @@ package domain.sampling
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
 import domain.data.Point2D
-import domain.pattern.PointDistribution
+import domain.data.pattern.PointDistribution
+import domain.data.sampling.DistributionSampler
 
 class DistributionSamplerTest extends AnyFunSuite with Matchers {
 

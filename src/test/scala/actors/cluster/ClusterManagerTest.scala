@@ -100,7 +100,7 @@ class ClusterManagerTest extends AnyFunSuite with Matchers:
 
     manager ! NodeUnreachable(seedNode)
 
-    rootProbe.expectMessage(NotifyClusterFailed)
+    rootProbe.expectMessage(ClusterFailed)
 
   test("ClusterManager downs node and notifies receptionist when non-seed becomes unreachable during Joining"):
     val receptionistProbe = testKit.createTestProbe[DiscoveryCommand]()
@@ -128,7 +128,7 @@ class ClusterManagerTest extends AnyFunSuite with Matchers:
         root = testKit.createTestProbe[RootCommand]().ref
       )
 
-    manager ! StopSimulation
+    manager ! ClusterProtocol.StopSimulation
 
     testKit.stop(manager)
 

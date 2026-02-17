@@ -3,9 +3,9 @@ package actors.trainer
 import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.util.Timeout
+
 import scala.concurrent.duration.*
 import scala.util.{Failure, Random, Success}
-
 import config.AppConfig
 import domain.data.LabeledPoint2D
 import domain.network.Model
@@ -14,6 +14,7 @@ import actors.trainer.TrainerActor.*
 import actors.model.ModelActor.ModelCommand
 import actors.gossip.GossipActor.GossipCommand
 import actors.monitor.MonitorActor.MonitorCommand
+import domain.data.util.Space
 
 /**
  * Encapsulates the behavior logic for the TrainerActor.
@@ -28,6 +29,7 @@ private[trainer] class TrainerBehavior(
   modelActor: ActorRef[ModelCommand]
 )(using lossFunction: LossFunction, config: AppConfig):
 
+  given Space = config.space
   implicit val timeout: Timeout = 3.seconds
 
   /**
@@ -53,6 +55,8 @@ private[trainer] class TrainerBehavior(
           Behaviors.same
 
         case TrainerCommand.Stop =>
+          monitor.foreach(_ ! MonitorCommand.InternalStop)
+          
           timers.cancelAll()
           Behaviors.stopped
 
@@ -157,6 +161,9 @@ private[trainer] class TrainerBehavior(
 
         case TrainerCommand.Pause =>
           ctx.log.info(s"Trainer: Paused at Epoch $currentEpoch, Index $currentIdx")
+
+          monitor.foreach(_ ! MonitorCommand.InternalPause)
+          
           timers.cancelAll()
           paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
 
@@ -182,6 +189,9 @@ private[trainer] class TrainerBehavior(
       msg match
         case TrainerCommand.Resume =>
           ctx.log.info(s"Trainer: Resuming from Epoch ${resumePos._1}, Index ${resumePos._2}")
+
+          monitor.foreach(_ ! MonitorCommand.InternalResume)
+          
           ctx.self ! PrivateTrainerCommand.NextBatch(resumePos._1, resumePos._2)
           training(trainConfig, currentDataset, rand, resumePos._1, resumePos._2, monitor, gossip)
 

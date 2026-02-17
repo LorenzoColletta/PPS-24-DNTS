@@ -2,6 +2,7 @@ package actors.cluster
 
 import actors.cluster.membership.ClusterMembership
 import actors.root.RootProtocol.NodeRole
+import akka.actor.Address
 
 sealed trait Phase
 case object Bootstrap extends Phase
@@ -17,9 +18,10 @@ case object Running extends Phase
 final case class ClusterState(
   phase: Phase,
   role: NodeRole,
-  view: ClusterMembership
+  view: ClusterMembership,
+  selfAddress: Option[Address]
 )
 
 object ClusterState:
   def initialState(role: NodeRole): ClusterState =
-    ClusterState(Bootstrap, role, ClusterMembership.empty)
+    ClusterState(Bootstrap, role, ClusterMembership.empty, None)

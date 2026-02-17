@@ -20,8 +20,7 @@ import java.nio.file.{Files, Paths}
 
 private object ModelConstants:
   val InitialEpoch: Int = 0
-  val MaxConsensus: Double = 1.0
-  val ConsensusSmoothing: Double = 1.0
+  val MaxConsensus: Double = 0.0
 
 /**
  * Encapsulates the behavior logic for the ModelActor.
@@ -30,7 +29,7 @@ private object ModelConstants:
  * @param config  Global application configuration.
  *
  */
-private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: AppConfig):
+private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: AppConfig):
 
   /**
    * Initial state: Waiting for the model and optimizer initialization.
@@ -49,6 +48,9 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: A
             currentConsensus = MaxConsensus,
             trainerActor
           )
+
+        case ModelCommand.StopSimulation =>
+          Behaviors.stopped
 
         case _ => Behaviors.unhandled
 
@@ -79,17 +81,17 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: A
 
         case ModelCommand.SyncModel(remoteModel) =>
           val (newModel, _) = ModelTasks.mergeWith(remoteModel).run(currentModel)
-          val divergence = currentModel.network.divergenceFrom(remoteModel.network)
-          val newConsensus = ConsensusSmoothing / (ConsensusSmoothing + divergence)
+          val divergence = currentModel.network divergenceFrom remoteModel.network
+          val boostedConsensus = divergence * 10.0
           active(
             currentModel = newModel,
             currentEpoch = currentEpoch,
-            currentConsensus = newConsensus,
+            currentConsensus = boostedConsensus,
             trainerActor = trainerActor
           )
 
         case ModelCommand.GetPrediction(point, replyTo) =>
-          val prediction = currentModel.predict(point)
+          val prediction = currentModel.predict(point)(using config.space)
           replyTo ! prediction
           Behaviors.same
 
@@ -114,7 +116,7 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: A
           )
           Behaviors.same
 
-        case ModelCommand.ExportToFile() =>
+        case ModelCommand.ExportToFile =>
           val jsonModel = summon[Exporter[Model]].jsonExport(currentModel)
           val fileName = config.netLogFileName
           val path = Paths.get(fileName)
@@ -126,4 +128,6 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand],config: A
               context.log.error(s"Error in exportation of $fileName: ${e.getMessage}")
           }
           Behaviors.same
+        case ModelCommand.StopSimulation =>
+          Behaviors.stopped
         case _ => Behaviors.unhandled

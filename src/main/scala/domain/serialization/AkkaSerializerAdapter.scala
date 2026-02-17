@@ -2,16 +2,19 @@ package domain.serialization
 
 import scala.util.{Failure, Success}
 import akka.serialization.SerializerWithStringManifest
-
 import domain.network.Model
 import domain.network.Activations.given
 import domain.serialization.NetworkSerializers.given
 import domain.serialization.LinearAlgebraSerializers.given
 import domain.serialization.Serializer as DomainSerializer
-
+import domain.serialization.GossipSerializers.given
 import domain.serialization.ModelSerializers.given
 import domain.serialization.ControlCommandSerializers.given
+import domain.serialization.TrainingSerializers.given
+import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor.ControlCommand
+import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, ShareConfig, HandleRemoteModel}
+import actors.gossip.GossipActor.GossipCommand.HandleControlCommand.given
 
 /**
  * Registry and configuration container for the [[AkkaSerializationAdapter]].
@@ -19,10 +22,12 @@ import actors.gossip.GossipActor.ControlCommand
  */
 object AkkaSerializerAdapter:
 
-  /** Manifest code for [[Model]]. */
   final val ManifestModel = "M"
-  /** Manifest code for [[ControlCommand]]. */
   final val ManifestControl = "C"
+  final val ManifestDistributeDataset = "D"
+  final val ManifestRemoteModel = "R"
+  final val ManifestShareConfig = "S"
+  final val ManifestHandleControl = "HC"
 
   /**
    * Internal mapping connecting a specific Class type to its Manifest string
@@ -39,7 +44,15 @@ object AkkaSerializerAdapter:
    */
   private val registry: List[TypeBinding[?]] = List(
     TypeBinding(ManifestModel, classOf[Model], summon[DomainSerializer[Model]]),
-    TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]])
+    TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]]),
+    TypeBinding(ManifestDistributeDataset, classOf[HandleDistributeDataset], GossipSerializers.distributeDatasetSerializer),
+    TypeBinding(ManifestRemoteModel, classOf[GossipCommand.HandleRemoteModel], GossipSerializers.handleRemoteModelSerializer),
+    TypeBinding(ManifestShareConfig, classOf[ShareConfig], GossipSerializers.shareConfigSerializer),
+    TypeBinding(
+      ManifestHandleControl,
+      classOf[GossipCommand.HandleControlCommand],
+      GossipSerializers.handleControlCommandSerializer
+    )
   )
 
 

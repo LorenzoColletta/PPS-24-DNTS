@@ -6,16 +6,14 @@ import actors.cluster.timer.*
 import actors.cluster.*
 import actors.cluster.adapter.ClusterEventAdapter
 import actors.monitor.MonitorActor.MonitorCommand
-import actors.monitor.MonitorActor.MonitorCommand.PeerCountChanged
-import actors.gossip.GossipActor.GossipCommand
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*
-import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 import akka.cluster.ClusterEvent
-import akka.cluster.typed.{Cluster, Down, Leave, Subscribe}
+import akka.cluster.typed.{Cluster, Subscribe}
 import actors.cluster.adapter.given
+import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 
 /**
  * Actor responsible to the management of the cluster.
@@ -63,7 +61,10 @@ object ClusterManager:
 
       Behaviors.withTimers { timers =>
         timers.startSingleTimer(BootstrapTimerId, JoinTimeout, timersDuration.bootstrapCheck)
-        runningBehavior(context, timers, initialState, timersDuration, monitorActor, receptionistManager, rootActor)
+        runningBehavior(context, timers, initialState.copy(selfAddress = Some(cluster.selfMember.address)), timersDuration,
+          monitorActor,
+          receptionistManager,
+        rootActor)
       }
     }
 
@@ -78,6 +79,7 @@ object ClusterManager:
   ): Behavior[ClusterMemberCommand] =
     Behaviors.receiveMessage {
       case RegisterMonitor(ref) =>
+        ref ! PeerCountChanged(state.view.available, state.view.total)
         runningBehavior(
           context,
           timers,
@@ -89,7 +91,6 @@ object ClusterManager:
         )
 
       case message =>
-
         val (stateAfterHandle, effects) = handle(state, message)
 
         val newState = effects.foldLeft(stateAfterHandle) {
@@ -103,10 +104,13 @@ object ClusterManager:
         }
 
         effects.collect { case e: Action => e }
-          .foreach(effect => ClusterEffects(state, context, timers, effect, timersDuration, monitorActor,
+          .foreach(effect => ClusterEffects(newState, context, timers, effect, timersDuration, monitorActor,
             receptionistManager, rootActor))
 
-        runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
+        if effects.contains(StopBehavior) then
+          Behaviors.stopped
+        else
+          runningBehavior(context, timers, newState, timersDuration, monitorActor, receptionistManager, rootActor)
     }
 
   private def handle(

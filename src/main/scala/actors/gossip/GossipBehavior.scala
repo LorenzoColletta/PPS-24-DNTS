@@ -4,10 +4,10 @@ import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
-import actors.cluster.ClusterProtocol.{ClusterMemberCommand, StartSimulation, StopSimulation}
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.monitor.MonitorActor.MonitorCommand
+import actors.trainer.TrainerActor.TrainingConfig
+import actors.root.RootActor.RootCommand
 import akka.actor.typed.scaladsl.TimerScheduler
 import config.AppConfig
 import domain.network.Model
@@ -18,28 +18,39 @@ import scala.util.Random
  * Encapsulates the behavior logic for the GossipActor.
  *
  * @param modelActor     Reference to the local ModelActor.
- * @param monitorActor   Reference to the local MonitorActor.
  * @param trainerActor   Reference to the local TrainerActor.
- * @param clusterManager Reference to the Cluster Manager.
  * @param timers         The scheduler for managing periodic gossip ticks.
  * @param config         Global application configuration.
  */
 private[gossip] class GossipBehavior(
-                                      modelActor: ActorRef[ModelCommand],
-                                      monitorActor: ActorRef[MonitorCommand],
-                                      trainerActor: ActorRef[TrainerCommand],
-                                      clusterManager: ActorRef[ClusterMemberCommand],
-                                      discoveryActor: ActorRef[DiscoveryCommand],
-                                      timers: TimerScheduler[GossipCommand],
-                                      config: AppConfig
-                                    ):
+  rootActor: ActorRef[RootCommand],
+  modelActor: ActorRef[ModelCommand],
+  trainerActor: ActorRef[TrainerCommand],
+  discoveryActor: ActorRef[DiscoveryCommand],
+  timers: TimerScheduler[GossipCommand],
+  config: AppConfig
+):
 
   /**
    * Main operational state of the GossipActor.
    */
-  def active(): Behavior[GossipCommand] =
+  def active(
+    cachedConfig: Option[(String, Model, TrainingConfig)] = None
+  ): Behavior[GossipCommand] =
+
     Behaviors.receive: (context, message) =>
       message match
+
+        case GossipCommand.ShareConfig(seedID, model, trainConfig) =>
+          context.log.info("Gossip: Received Config from Root. Broadcasting to Cluster...")
+
+          val cmd = ControlCommand.PrepareClient(seedID, model, trainConfig)
+
+          discoveryActor ! NodesRefRequest(replyTo =
+            context.messageAdapter(peers => GossipCommand.WrappedSpreadCommand(peers, cmd))
+          )
+
+          active(Some((seedID, model, trainConfig)))
 
         case GossipCommand.StartGossipTick =>
           context.log.info("Gossip: Received Start signal. Starting gossip polling.")
@@ -59,6 +70,29 @@ private[gossip] class GossipBehavior(
           discoveryActor ! NodesRefRequest(
             replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
           )
+
+          if cachedConfig.isEmpty then
+            context.log.debug("Gossip: Not initialized yet. Asking peers for Config...")
+            discoveryActor ! NodesRefRequest(
+              context.messageAdapter(peers => GossipCommand.WrappedRequestConfig(peers.toSet))
+            )
+          Behaviors.same
+
+        case GossipCommand.WrappedRequestConfig(peers) =>
+          peers.filter(_ != context.self).foreach { peer =>
+            peer ! GossipCommand.RequestInitialConfig(context.self)
+          }
+          Behaviors.same
+
+        case GossipCommand.RequestInitialConfig(replyTo) =>
+          cachedConfig match
+            case Some((seedID, model, trainConfig)) =>
+              context.log.info(s"Gossip: Peer $replyTo asked for config. Sending it.")
+              replyTo ! GossipCommand.HandleControlCommand(
+                ControlCommand.PrepareClient(seedID, model, trainConfig)
+              )
+            case None =>
+              context.log.info(s"Config not found.")
           Behaviors.same
 
         case GossipCommand.DistributeDataset(trainSet , testSet) =>
@@ -84,7 +118,7 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
-          trainerActor ! TrainerCommand.Start(trainShard, testSet)
+          rootActor ! RootCommand.DistributedDataset(trainShard, testSet)
           Behaviors.same
 
         case GossipCommand.WrappedPeers(peers) =>
@@ -114,35 +148,35 @@ private[gossip] class GossipBehavior(
           Behaviors.same
 
         case GossipCommand.WrappedSpreadCommand(peers, cmd) =>
-          val otherPeers = peers.filter(_ != context.self)
-          otherPeers.foreach ( peer =>
+          peers.foreach ( peer =>
             peer ! GossipCommand.HandleControlCommand(cmd)
           )
           Behaviors.same
 
         case GossipCommand.HandleControlCommand(cmd) =>
-
-          context.log.info(s"Executing remote control command: $cmd")
+          context.log.info(s"Gossip: Executing remote control command: $cmd")
 
           cmd match
-            case ControlCommand.GlobalStart =>
-              clusterManager ! StartSimulation
-              monitorActor ! MonitorCommand.StartSimulation
+            case ControlCommand.PrepareClient(seedID, model, trainConfig) =>
+              context.log.info(s"Gossip (CLIENT): Received Init Config from $seedID")
+              rootActor ! RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig)
+              active(Some((seedID, model, trainConfig)))
             case ControlCommand.GlobalPause =>
-              monitorActor ! MonitorCommand.InternalPause
               trainerActor ! TrainerCommand.Pause
+              Behaviors.same
             case ControlCommand.GlobalResume =>
-              monitorActor ! MonitorCommand.InternalResume
               trainerActor ! TrainerCommand.Resume
+              Behaviors.same
             case ControlCommand.GlobalStop =>
-              clusterManager ! StopSimulation
-              monitorActor ! MonitorCommand.InternalStop
-              trainerActor ! TrainerCommand.Stop
-            case _ =>
-              context.log.info(s"Not found remote control command: $cmd")
+              rootActor ! RootCommand.StopSimulation
 
-          Behaviors.same
+              timers.cancelAll()
+              Behaviors.stopped
+            case _ =>
+              context.log.info(s"Gossip: Not found remote control command: $cmd")
+              Behaviors.same
 
         case _ =>
-          context.log.warn("Received unhandled gossip message.")
+          context.log.warn("Gossip: Received unhandled gossip message.")
           Behaviors.unhandled
+          

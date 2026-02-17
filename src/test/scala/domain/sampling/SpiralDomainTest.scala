@@ -1,9 +1,10 @@
 package domain.sampling
 
+import domain.data.pattern.SpiralCurve
+import domain.data.sampling.SpiralDomain
+import domain.data.util.Space
 import org.scalatest.funsuite.AnyFunSuite
 import domain.sampling.*
-import domain.pattern.SpiralCurve
-import domain.util.Space
 
 class SpiralDomainTest extends AnyFunSuite:
 

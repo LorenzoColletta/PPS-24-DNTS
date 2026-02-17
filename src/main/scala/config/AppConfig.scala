@@ -1,10 +1,9 @@
 package config
 
+import domain.data.util.Space
 import scala.concurrent.duration.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
-import domain.util.Space
 import domain.training.LossFunction
 import domain.training.Strategies.Losses
 
@@ -29,10 +28,6 @@ trait AppConfig:
 
   /** The loss function used to measure the network performance. */
   def lossFunction: LossFunction
-  
-  def datasetSize: Int
-  
-  def datasetStrategy: DatasetStrategyConfig
 
 
 /**
@@ -46,7 +41,7 @@ object ProductionConfig extends AppConfig:
   override final val batchInterval: FiniteDuration = 10.millis
 
   /** P2P synchronization frequency. */
-  override final val gossipInterval: FiniteDuration = 2.seconds
+  override final val gossipInterval: FiniteDuration = 750.millis
 
   /** Dynamic log filename generation with timestamp. */
   override final val netLogFileName: String =
@@ -60,11 +55,3 @@ object ProductionConfig extends AppConfig:
 
   /** Define Mean Squared Error (MSE) as the standard loss metric. */
   override final val lossFunction: LossFunction = Losses.mse
-
-  override final val datasetSize: Int = 200
-  override final val datasetStrategy: DatasetStrategyConfig =
-    DatasetStrategyConfig.Spiral(
-      startDistance = 10.0,
-      branchDistance = 5.0,
-      rotation = 0.0
-    )

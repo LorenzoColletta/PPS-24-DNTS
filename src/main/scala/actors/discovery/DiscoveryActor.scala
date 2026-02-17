@@ -1,7 +1,8 @@
 package actors.discovery
 
 import actors.gossip.GossipActor.GossipCommand
-import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip}
+import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, ListingUpdated, NodesRefRequest, NodesRefResponse, NotifyAddNode, NotifyRemoveNode, RegisterGossip, RegisterGossipPermit, Stop}
+import actors.gossip.GossipProtocol.GossipCommand.WrappedPeers
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
 import akka.actor.typed.scaladsl.Behaviors
@@ -25,36 +26,41 @@ object DiscoveryActor:
       val adapter = context.messageAdapter[Receptionist.Listing](ListingUpdated.apply)
       context.system.receptionist ! Receptionist.Subscribe(GossipServiceKey, adapter)
 
-      running(state, None)
+      running(state, None, false)
     }
 
   private def running(
     state: GossipPeerState,
-    gossip: Option[ActorRef[GossipCommand]]
+    gossip: Option[ActorRef[GossipCommand]],
+    registerGossipPermit: Boolean
   ): Behavior[DiscoveryCommand] =
     Behaviors.receive { (context, message) =>
       message match
 
         case RegisterGossip(gossipRef) if gossip.isEmpty =>
-          context.system.receptionist ! Receptionist.Register(GossipServiceKey, gossipRef)
-          running(state, Some(gossipRef))
+          if registerGossipPermit then
+            context.system.receptionist ! Receptionist.Register(GossipServiceKey, gossipRef)
+          running(state, Some(gossipRef), registerGossipPermit)
+
+        case RegisterGossipPermit  =>
+          if gossip.isDefined then
+            context.system.receptionist ! Receptionist.Register(GossipServiceKey, gossip.get)
+          running(state, gossip, true)
 
         case NodesRefRequest(replyTo) =>
           replyTo ! state.acceptedReferences.toList
           Behaviors.same
 
         case ListingUpdated(GossipServiceKey.Listing(all)) =>
-          running(state.updateKnownReferences(all), gossip)
+          running(state.updateKnownReferences(all), gossip, registerGossipPermit)
 
         case NotifyAddNode(node) =>
-          running(state.acceptNode(node), gossip)
-          
+          running(state.acceptNode(node), gossip, registerGossipPermit)
+
 
         case NotifyRemoveNode(node) =>
-          running(state.removeNode(node), gossip)
+          running(state.removeNode(node), gossip, registerGossipPermit)
 
-        case ListingUpdated(_) => Behaviors.same
-
-        case RegisterGossip(_) => Behaviors.same
-
+        case Stop =>
+          Behaviors.stopped
     }

@@ -3,7 +3,6 @@ package actors.cluster
 import actors.monitor.MonitorProtocol.MonitorCommand
 import akka.actor.Address
 import akka.actor.typed.ActorRef
-import akka.cluster.ClusterEvent.{MemberRemoved, MemberUp, ReachableMember, UnreachableMember}
 
 /**
  * Defines the internal protocol of messages handled by cluster behavior.

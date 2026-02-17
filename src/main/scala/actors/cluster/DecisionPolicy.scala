@@ -3,10 +3,9 @@ package actors.cluster
 import actors.cluster.ClusterProtocol.*
 import actors.cluster.effect.*
 import actors.cluster.timer.{BootstrapTimerId, UnreachableTimerId}
-import actors.cluster.{ClusterState, Joining, Running}
-import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode}
+import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode, RegisterGossipPermit}
 import actors.root.RootProtocol.NodeRole
-import actors.root.RootProtocol.RootCommand.{NotifyClusterFailed, NotifyClusterReady}
+import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady, SeedLost}
 
 
 /**
@@ -40,14 +39,16 @@ object BootstrapPolicy extends DecisionPolicy :
 
     message match
       case JoinTimeout if checkClusterConnection(state) =>
-        List(CancelTimer(BootstrapTimerId), NotifyRoot(NotifyClusterReady), ChangePhase(Joining))
+          List(CancelTimer(BootstrapTimerId), NotifyRoot(ClusterReady), NotifyReceptionist(RegisterGossipPermit), ChangePhase
+            (Joining))
 
       case JoinTimeout =>
-        List(NotifyRoot(NotifyClusterFailed), StopBehavior)
+        List(NotifyRoot(ClusterFailed), StopBehavior)
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
-          joiningEffects ++ List(NotifyRoot(NotifyClusterReady), ChangePhase(Joining))
+          joiningEffects ++ List(CancelTimer(BootstrapTimerId), NotifyRoot(ClusterReady), NotifyReceptionist
+            (RegisterGossipPermit), ChangePhase(Joining))
         else
           joiningEffects
 
@@ -75,7 +76,8 @@ object JoiningPolicy extends DecisionPolicy :
 
       case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
         List(
-          NotifyRoot(NotifyClusterFailed),
+          NotifyRoot(ClusterFailed),
+          LeaveCluster,
           StopBehavior
         )
 
@@ -90,6 +92,12 @@ object JoiningPolicy extends DecisionPolicy :
 
       case StartSimulation =>
         List(ChangePhase(Running))
+
+      case NodeRemoved(node) if node.address == state.selfAddress.get =>
+        List(LeaveCluster, NotifyRoot(ClusterFailed))
+
+      case StopSimulation =>
+        List(LeaveCluster, StopBehavior)
 
       case _ => Nil
 
@@ -132,11 +140,10 @@ object RunningPolicy extends DecisionPolicy :
         )
 
       case StopSimulation =>
-        List(LeaveCluster)
+        List(LeaveCluster, StopBehavior)
 
       case SeedUnreachableTimeout =>
-        //TODO change rootActor message
-        List(NotifyRoot(NotifyClusterFailed), StopBehavior)
+        List(NotifyRoot(SeedLost), LeaveCluster, StopBehavior)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))

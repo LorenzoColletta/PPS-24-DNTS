@@ -3,6 +3,7 @@ package domain.training
 import domain.data.LinearAlgebra.*
 import domain.data.LabeledPoint2D
 import domain.data.toVector
+import domain.data.util.Space
 import domain.network.*
 
 /**
@@ -22,14 +23,15 @@ object Backpropagation:
    * @param network  The current state of the neural network.
    * @param example  The labeled training sample.
    * @param features The feature extraction pipeline configuration.
-   * @param loss     The loss function used to calculate the error signal.
+   * @param loss     The implicit loss function used to calculate the error signal.
+   * @param space    The implicit definition of the boundaries of the 2D plane used.
    * @return A list of [[LayerGradient]]s, one for each layer in the network.
    */
   def computeGradients(
     network: Network,
     example: LabeledPoint2D,
     features: List[Feature]
-  )(using loss: LossFunction): List[LayerGradient] =
+  )(using loss: LossFunction, space: Space): List[LayerGradient] =
 
     val targetVector = example.label.toVector
     val inputVector = FeatureTransformer.transform(example.point, features)

@@ -2,11 +2,13 @@ package domain.network
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
 import domain.data.LinearAlgebra.*
 import domain.data.Point2D
+import domain.data.util.Space
 
 class NetworkTest extends AnyFunSuite with Matchers {
+
+  given Space = Space(2.0, 2.0)
 
   val identityActivation: Activation = new Activation {
     def name = "Identity"

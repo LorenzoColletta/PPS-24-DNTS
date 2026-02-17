@@ -2,17 +2,19 @@ package domain.training
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
 import domain.data.*
 import domain.network.*
 import domain.data.LinearAlgebra.*
 import Strategies.Losses.given
+import domain.data.util.Space
 
 class BackpropagationTest extends AnyFunSuite with Matchers {
 
+  given Space = Space(2.0, 2.0)
+
   private final val identity = new Activation {
-    def name = "Id";
-    def apply(x: Double): Double = x;
+    def name = "Id"
+    def apply(x: Double): Double = x
     def derivative(x: Double) = 1.0
     def standardDeviation(in: Int, out: Int) = 1.0
   }

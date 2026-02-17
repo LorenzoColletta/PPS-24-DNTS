@@ -78,6 +78,7 @@ class DiscoveryActorTest extends AnyFunSuite with Matchers:
   //    val replyProbe = testKit.createTestProbe[List[ActorRef[GossipCommand]]]()
 
       discovery ! RegisterGossip(ref)
+      discovery ! RegisterGossipPermit
       discovery ! NotifyAddNode(ref.path.address)
   //    discovery ! NodesRefRequest(replyProbe.ref)
 

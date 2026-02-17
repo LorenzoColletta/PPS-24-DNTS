@@ -1,9 +1,9 @@
 package domain.training
 
 import domain.data.LinearAlgebra.Vector
+import domain.data.util.Space
 import domain.network.Model
 import domain.data.{LabeledPoint2D, toVector}
-import domain.training.{LossFunction, NetworkGradient}
 import domain.training.Consensus.averageGradients
 
 /**
@@ -26,7 +26,7 @@ object TrainingCore:
   def computeBatchGradients(
     model: Model,
     batch: List[LabeledPoint2D],
-  )(using lossFn: LossFunction): (NetworkGradient, Double) =
+  )(using lossFn: LossFunction, space: Space): (NetworkGradient, Double) =
 
     val results = batch.map { ex =>
       val grads = Backpropagation.computeGradients(model.network, ex, model.features)
@@ -50,12 +50,13 @@ object TrainingCore:
    * @param model  The current [[Model]] containing the network and feature configuration.
    * @param data   The list of data points.
    * @param lossFn The implicit [[LossFunction]] to evaluate the prediction error.
+   * @param space  The implicit definition of the boundaries of the 2D plane used.
    * @return The average loss value over the provided dataset.
    */
   def computeDatasetLoss(
     model: Model,
     data: List[LabeledPoint2D]
-  )(using lossFn: LossFunction): Double =
+  )(using lossFn: LossFunction, space: Space): Double =
 
     if data.isEmpty then 0.0
     else
