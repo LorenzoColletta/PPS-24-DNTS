@@ -94,7 +94,7 @@ object JoiningPolicy extends DecisionPolicy :
         List(ChangePhase(Running))
 
       case NodeRemoved(node) if node.address == state.selfAddress =>
-        List(LeaveCluster, StopBehavior)
+        List(LeaveCluster, NotifyRoot(ClusterFailed))
 
       case StopSimulation =>
         List(LeaveCluster, StopBehavior)
