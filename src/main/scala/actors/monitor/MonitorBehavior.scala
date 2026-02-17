@@ -93,6 +93,11 @@ private[monitor] class MonitorBehavior(
           boundary.updatePeerDisplay(active, total)
           idle(snapshot.copy(activePeers = active, totalPeers = total))
 
+        case MonitorCommand.StopSimulation =>
+          context.log.info("Monitor: User requested RESUME. Propagating...")
+          gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
+          Behaviors.same
+
         case MonitorCommand.InternalStop =>
           context.log.info("Monitor: Remote STOP command.")
           boundary.stopSimulation()
