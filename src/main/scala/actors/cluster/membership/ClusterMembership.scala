@@ -62,7 +62,10 @@ final case class ClusterMembership(
    * A new [[ClusterMembership]] with the node marked as unreachable.
    */
   def markUnreachable(address: Address): ClusterMembership =
-    copy(nodesUnreachable = nodesUnreachable + address)
+    if nodesUp.contains(address) then
+      copy(nodesUnreachable = nodesUnreachable + address)
+    else
+      this
 
   /**
    * Marks a previously unreachable node as reachable again.

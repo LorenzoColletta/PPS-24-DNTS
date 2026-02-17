@@ -6,15 +6,12 @@ import actors.cluster.timer.*
 import actors.cluster.*
 import actors.cluster.adapter.ClusterEventAdapter
 import actors.monitor.MonitorActor.MonitorCommand
-import actors.monitor.MonitorActor.MonitorCommand.PeerCountChanged
-import actors.gossip.GossipActor.GossipCommand
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*
-import akka.cluster.ClusterEvent.{MemberEvent, ReachabilityEvent}
 import akka.cluster.ClusterEvent
-import akka.cluster.typed.{Cluster, Down, Leave, Subscribe}
+import akka.cluster.typed.{Cluster, Subscribe}
 import actors.cluster.adapter.given
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 
@@ -91,7 +88,7 @@ object ClusterManager:
         )
 
       case message =>
-
+        println(s"""Message received: $message""")
         val (stateAfterHandle, effects) = handle(state, message)
 
         val newState = effects.foldLeft(stateAfterHandle) {

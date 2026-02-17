@@ -3,12 +3,9 @@ package actors.cluster
 import actors.cluster.ClusterProtocol.*
 import actors.cluster.effect.*
 import actors.cluster.timer.{BootstrapTimerId, UnreachableTimerId}
-import actors.cluster.{ClusterState, Joining, Running}
 import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode, RegisterGossipPermit}
-import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
 import actors.root.RootProtocol.NodeRole
-import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady, InvalidCommandInBootstrap, InvalidCommandInJoining, SeedLost}
-import actors.root.RootProtocol.RootCommand.SeedLost
+import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady, SeedLost}
 
 
 /**
@@ -50,7 +47,8 @@ object BootstrapPolicy extends DecisionPolicy :
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
-          joiningEffects ++ List(NotifyRoot(ClusterReady), NotifyReceptionist(RegisterGossipPermit), ChangePhase(Joining))
+          joiningEffects ++ List(CancelTimer(BootstrapTimerId), NotifyRoot(ClusterReady), NotifyReceptionist
+            (RegisterGossipPermit), ChangePhase(Joining))
         else
           joiningEffects
 
@@ -94,6 +92,12 @@ object JoiningPolicy extends DecisionPolicy :
 
       case StartSimulation =>
         List(ChangePhase(Running))
+
+      case NodeRemoved(node) if node.address == state.selfAddress =>
+        List(LeaveCluster, StopBehavior)
+
+      case StopSimulation =>
+        List(LeaveCluster, StopBehavior)
 
       case _ => Nil
 

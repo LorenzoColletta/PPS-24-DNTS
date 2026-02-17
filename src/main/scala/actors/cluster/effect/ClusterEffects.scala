@@ -7,7 +7,7 @@ import actors.cluster.timer.ClusterTimers
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
-import actors.root.RootProtocol.RootCommand
+import actors.root.RootProtocol.{NodeRole, RootCommand}
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*
 import akka.cluster.typed.{Cluster, Down, Leave}
@@ -63,14 +63,13 @@ object ClusterEffects:
 
       case RemoveNodeFromCluster(nodeAddress) =>
         val cluster = Cluster(context.system)
-        if cluster.state.leader.contains(cluster.selfMember.address) then
-          cluster.manager ! Leave(nodeAddress)
+        if cluster.selfMember.roles.contains(NodeRole.Seed.id) then
+          cluster.manager ! Down(nodeAddress)
 
       case LeaveCluster =>
         val cluster = Cluster(context.system)
         timers.cancelAll()
-        if cluster.state.leader.contains(cluster.selfMember.address) then
-          cluster.manager ! Leave(cluster.selfMember.address)
+        cluster.manager ! Leave(cluster.selfMember.address)
 
       case StopBehavior =>
         Behaviors.stopped

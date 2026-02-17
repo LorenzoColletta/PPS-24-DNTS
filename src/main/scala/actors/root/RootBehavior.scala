@@ -76,7 +76,7 @@ class RootBehavior(
     
     val clusterManager = context.spawn(
       ClusterManager(
-        ClusterState.initialState(role),
+        ClusterState.initialState(role, context.self.path.address),
         ClusterTimers.fromConfig(akkaConfig.getConfig("akka")),
         None,
         discoveryActor,
