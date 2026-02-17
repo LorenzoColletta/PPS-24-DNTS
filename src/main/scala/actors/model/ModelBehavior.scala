@@ -49,6 +49,9 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
             trainerActor
           )
 
+        case ModelCommand.StopSimulation =>
+          Behaviors.stopped
+
         case _ => Behaviors.unhandled
 
   /**

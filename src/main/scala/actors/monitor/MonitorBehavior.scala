@@ -50,11 +50,16 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.ConnectionFailed(reason) =>
           context.log.info(s"Monitor: Critical connection failure: $reason")
           boundary.showInitialError(reason)
-          Behaviors.stopped
+          connecting(snapshot)
 
         case MonitorCommand.PeerCountChanged(active, total) =>
           boundary.updatePeerDisplay(active, total)
           connecting(snapshot.copy(activePeers = active, totalPeers = total))
+
+        case MonitorCommand.StopSimulation =>
+          context.log.info("Monitor: User requested STOP. Propagating...")
+          gossipActor ! GossipCommand.HandleControlCommand(ControlCommand.GlobalStop)
+          Behaviors.same
 
         case MonitorCommand.InternalStop =>
           context.log.info("Monitor: Remote STOP command.")
@@ -94,7 +99,7 @@ private[monitor] class MonitorBehavior(
           idle(snapshot.copy(activePeers = active, totalPeers = total))
 
         case MonitorCommand.StopSimulation =>
-          context.log.info("Monitor: User requested RESUME. Propagating...")
+          context.log.info("Monitor: User requested STOP. Propagating...")
           gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 
@@ -141,7 +146,7 @@ private[monitor] class MonitorBehavior(
           paused(snapshot)
 
         case MonitorCommand.StopSimulation =>
-          context.log.info("Monitor: User requested RESUME. Propagating...")
+          context.log.info("Monitor: User requested STOP. Propagating...")
           gossipActor ! GossipCommand.SpreadCommand(ControlCommand.GlobalStop)
           Behaviors.same
 

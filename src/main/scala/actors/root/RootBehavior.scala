@@ -50,21 +50,21 @@ class RootBehavior(
   def start(): Behavior[RootCommand] =
     context.log.info(s"Root: Bootstrapping system with role $role...")
 
-    val path = configPath.getOrElse("simulation.conf")
-    val fileConf = ConfigLoader.load(path)
-    context.log.info(s"Root: Configuration loaded from $path")
-
-    val model = createModel(fileConf)
-    val data = generateDataset(fileConf)
-    val tConfig = createTrainConfig(fileConf)
-
-    val optimizer = new Optimizers.SGD(
-      fileConf.hyperParams.learningRate,
-      Regularizers.fromConfig(fileConf.hyperParams.regularization)
-    )
-
     val seedDataPayload = role match
       case NodeRole.Seed =>
+        val path = configPath.getOrElse("simulation.conf")
+        val fileConf = ConfigLoader.load(path)
+        context.log.info(s"Root: Configuration loaded from $path")
+    
+        val model = createModel(fileConf)
+        val data = generateDataset(fileConf)
+        val tConfig = createTrainConfig(fileConf)
+    
+        val optimizer = new Optimizers.SGD(
+          fileConf.hyperParams.learningRate,
+          Regularizers.fromConfig(fileConf.hyperParams.regularization)
+        )
+    
         Some((model, data, tConfig, optimizer, fileConf))
 
       case NodeRole.Client =>
@@ -177,7 +177,6 @@ class RootBehavior(
             case None =>
               context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
           
-          gossipActor ! GossipCommand.StartGossipTick
           Behaviors.same
 
         case RootCommand.ClusterFailed |
@@ -185,18 +184,10 @@ class RootBehavior(
              RootCommand.InvalidCommandInBootstrap |
              RootCommand.InvalidCommandInJoining =>
 
-          gossipActor ! GossipCommand.SpreadCommand(GlobalStop)
-          guiView.stopSimulation()
+          monitorActor ! MonitorCommand.ConnectionFailed(msg.toString)
 
-          context.stop(gossipActor)
-          context.stop(modelActor)
-          context.stop(trainerActor)
-          context.stop(monitorActor)
-          context.stop(clusterManager)
-          context.stop(discoveryActor)
-          
           context.log.error("Root: Critical failure. Stopping actor.")
-          Behaviors.stopped
+          Behaviors.same
 
         case RootCommand.StopSimulation =>
           clusterManager ! ClusterProtocol.StopSimulation
