@@ -6,6 +6,16 @@ import domain.data.util.NormalDistribution
 
 import scala.annotation.tailrec
 
+/**
+ * Implements a 2d point generation in a normal distribution.
+ *
+ * @param meanX the mean parameter along the x coordinate
+ * @param meanY the mean parameter along the y coordinate
+ * @param sigma the variance
+ * @param domain the domain of valid values
+ * @param radius the maximum radius of accepted values
+ * @param seed the seed for random generation
+ */
 case class GaussianCluster(
   meanX: Double,
   meanY: Double,
@@ -35,6 +45,11 @@ case class GaussianCluster(
     val dy = p.y - meanY
     dx * dx + dy * dy <= radius * radius
 
+  /**
+   * Generates a 2d point using a normal distribution.
+   *
+   *  @return the generated point
+   */
   @tailrec
   final override def sample(): Point2D =
     val p = Point2D(

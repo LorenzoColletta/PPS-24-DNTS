@@ -54,7 +54,7 @@ class RootBehavior(
         val path = configPath.getOrElse("simulation.conf")
         val fileConf = ConfigLoader.load(path)
         context.log.info(s"Root: Configuration loaded from $path")
-
+    
         val model = createModel(fileConf)
         val data = generateDataset(fileConf)
         val tConfig = createTrainConfig(fileConf)
@@ -111,6 +111,8 @@ class RootBehavior(
 
     trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
+
+    gossipActor ! GossipCommand.StartTickRequest
 
     waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
 
@@ -172,10 +174,10 @@ class RootBehavior(
 
               gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
               trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
+
             case None =>
               context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
-
-          gossipActor ! GossipCommand.StartGossipTick
+          
           Behaviors.same
 
         case RootCommand.ClusterFailed |

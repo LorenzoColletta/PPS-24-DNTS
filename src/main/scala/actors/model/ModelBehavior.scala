@@ -20,7 +20,7 @@ import java.nio.file.{Files, Paths}
 
 private object ModelConstants:
   val InitialEpoch: Int = 0
-  val MaxConsensus: Double = 0.0
+  val InitialConsensus: Double = 0.0
 
 /**
  * Encapsulates the behavior logic for the ModelActor.
@@ -45,7 +45,7 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
           active(
             currentModel = model,
             currentEpoch = InitialEpoch,
-            currentConsensus = MaxConsensus,
+            currentConsensus = InitialConsensus,
             trainerActor
           )
 
@@ -81,14 +81,14 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
 
         case ModelCommand.SyncModel(remoteModel) =>
           val (newModel, _) = ModelTasks.mergeWith(remoteModel).run(currentModel)
-          val divergence = currentModel.network divergenceFrom remoteModel.network
-          val boostedConsensus = divergence * 10.0
-          active(
-            currentModel = newModel,
-            currentEpoch = currentEpoch,
-            currentConsensus = boostedConsensus,
-            trainerActor = trainerActor
-          )
+          val pairwiseDivergence = currentModel.network divergenceFrom remoteModel.network
+
+          val updatedConsensus = math.max(currentConsensus, pairwiseDivergence * 10.0)
+          active(newModel, currentEpoch, updatedConsensus, trainerActor)
+
+        case ModelCommand.UpdateConsensus(consensusValue) =>
+          context.log.debug(f"Model: Global consensus updated → $consensusValue%.6f")
+          active(currentModel, currentEpoch, consensusValue, trainerActor)
 
         case ModelCommand.GetPrediction(point, replyTo) =>
           val prediction = currentModel.predict(point)(using config.space)

@@ -7,6 +7,13 @@ import domain.data.util.UniformDistribution
 enum Quadrant:
   case I, II, III, IV
 
+/**
+ * Generates 2d points uniformly in a selected quadrant of the cartesian plane.
+ *
+ * @param domain   domain of valid values
+ * @param quadrant quadrante cartesiano in cui generare i punti
+ * @param seed     seed opzionale per rendere la distribuzione deterministica
+ */
 final case class UniformSquare(
   domain: Domain,
   quadrant: Quadrant,

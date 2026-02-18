@@ -29,6 +29,12 @@ trait AppConfig:
   /** The loss function used to measure the network performance. */
   def lossFunction: LossFunction
 
+  /**
+   * The time interval at which the GossipActor triggers a global consensus round.
+   */
+  def consensusInterval: FiniteDuration
+  
+  def gossipRequestConfig: FiniteDuration
 
 /**
  * Default Production Configuration.
@@ -55,3 +61,11 @@ object ProductionConfig extends AppConfig:
 
   /** Define Mean Squared Error (MSE) as the standard loss metric. */
   override final val lossFunction: LossFunction = Losses.mse
+
+
+  /**
+   * Global consensus round frequency.
+   */
+  override final val consensusInterval: FiniteDuration = 750.millis
+
+  override final val gossipRequestConfig: FiniteDuration = 500.millis

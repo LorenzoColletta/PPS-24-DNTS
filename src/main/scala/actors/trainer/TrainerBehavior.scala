@@ -85,7 +85,9 @@ private[trainer] class TrainerBehavior(
 
           monitor.foreach(_ ! MonitorCommand.StartWithData(trainSet, testSet))
           gossip.foreach(_ ! GossipCommand.StartGossipTick)
-          
+          gossip.foreach(_ ! GossipCommand.StartTickConsensus)
+          gossip.foreach(_ ! GossipCommand.StopTickRequest)
+
           ctx.self ! PrivateTrainerCommand.NextBatch(1, 0)
           training(newTrainConfig, shuffledDataset, rand, 1, 0, monitor, gossip)
 
@@ -126,6 +128,7 @@ private[trainer] class TrainerBehavior(
 
             monitor.foreach(_ ! MonitorCommand.SimulationFinished)
             gossip.foreach(_ ! GossipCommand.StopGossipTick)
+            gossip.foreach(_ ! GossipCommand.StopTickConsensus)
 
             paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
           else
