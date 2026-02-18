@@ -56,7 +56,8 @@ class ClusterManagerTest extends AnyFunSuite with Matchers:
         initialState = ClusterState(
           phase = phase,
           NodeRole.Seed,
-          view  = ClusterMembership.empty
+          view  = ClusterMembership.empty,
+          None
         ),
         timersDuration = timers,
         monitorActor = monitor,

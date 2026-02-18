@@ -33,7 +33,8 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
         if hasMaster then
           ClusterMembership.empty.addNode(address).setMaster(address)
         else
-          ClusterMembership.empty
+          ClusterMembership.empty,
+      None
     )
 
 
