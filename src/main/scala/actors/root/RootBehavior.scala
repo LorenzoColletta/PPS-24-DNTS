@@ -22,7 +22,6 @@ import actors.trainer.TrainerActor
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
-import actors.gossip.GossipActor.ControlCommand.GlobalStop
 import domain.data.LabeledPoint2D
 import com.typesafe.config.Config
 import domain.data.dataset.{DataModelFactory, DatasetGenerator, shuffle}
@@ -59,7 +58,7 @@ class RootBehavior(
         val model = createModel(fileConf)
         val data = generateDataset(fileConf)
         val tConfig = createTrainConfig(fileConf)
-    
+
         val optimizer = new Optimizers.SGD(
           fileConf.hyperParams.learningRate,
           Regularizers.fromConfig(fileConf.hyperParams.regularization)
@@ -128,7 +127,6 @@ class RootBehavior(
     monitorActor: ActorRef[MonitorCommand],
     clusterManager: ActorRef[ClusterMemberCommand],
     discoveryActor: ActorRef[DiscoveryCommand],
-    guiView: GuiView
   ): Behavior[RootCommand] =
 
     Behaviors.receive: (ctx, msg) =>

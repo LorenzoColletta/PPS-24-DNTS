@@ -2,6 +2,10 @@ package domain.serialization
 
 import scala.util.{Failure, Success}
 import akka.serialization.SerializerWithStringManifest
+import akka.actor.ExtendedActorSystem
+import akka.actor.typed.ActorRefResolver
+import akka.actor.typed.scaladsl.adapter.*
+
 import domain.network.Model
 import domain.network.Activations.given
 import domain.serialization.NetworkSerializers.given
@@ -39,6 +43,19 @@ object AkkaSerializerAdapter:
     serializer: DomainSerializer[T]
   )
 
+
+/**
+ * Adapter class that integrates the custom [[domain.serialization.Serializer]] type classes
+ * into the Akka Actor serialization infrastructure. .
+ */
+class AkkaSerializerAdapter(system: ExtendedActorSystem) extends SerializerWithStringManifest:
+  import AkkaSerializerAdapter.*
+
+  override def identifier: Int = 99999
+
+
+  private given resolver: ActorRefResolver = ActorRefResolver(system.toTyped)
+
   /**
    * The static registry of supported types.
    */
@@ -54,17 +71,6 @@ object AkkaSerializerAdapter:
       GossipSerializers.handleControlCommandSerializer
     )
   )
-
-
-/**
- * Adapter class that integrates the custom [[domain.serialization.Serializer]] type classes
- * into the Akka Actor serialization infrastructure. .
- */
-class AkkaSerializerAdapter extends SerializerWithStringManifest:
-  import AkkaSerializerAdapter.registry
-  import AkkaSerializerAdapter.TypeBinding
-
-  override def identifier: Int = 99999
 
   private val manifestToBinding: Map[String, TypeBinding[?]] =
     registry.map(b => b.manifest -> b).toMap
