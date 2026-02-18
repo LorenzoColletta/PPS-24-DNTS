@@ -113,6 +113,8 @@ class RootBehavior(
     trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
+    gossipActor ! GossipCommand.StartTickRequest
+
     waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor, guiView)
 
   /**
@@ -174,6 +176,7 @@ class RootBehavior(
 
               gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
               trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
+
             case None =>
               context.log.info(s"Root (CLIENT): Cluster Ready via $myAddress. Waiting for Seed Config...")
           
