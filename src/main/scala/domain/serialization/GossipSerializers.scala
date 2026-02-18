@@ -2,8 +2,9 @@ package domain.serialization
 
 import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, HandleRemoteModel, ShareConfig}
 import actors.gossip.GossipActor.ControlCommand
-import actors.gossip.GossipProtocol.GossipCommand.HandleControlCommand
+import actors.gossip.GossipProtocol.GossipCommand.{HandleControlCommand, RequestModelForConsensus}
 import actors.trainer.TrainerActor.TrainingConfig
+import akka.actor.typed.ActorRefResolver
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.network.Model
 
@@ -17,6 +18,27 @@ import domain.network.Activations.given
 import java.nio.charset.StandardCharsets
 
 object GossipSerializers:
+  given requestModelForConsensusSerializer(using resolver: ActorRefResolver): Serializer[RequestModelForConsensus] with
+    def serialize(cmd: RequestModelForConsensus): Array[Byte] =
+      val refString = resolver.toSerializationFormat(cmd.replyTo)
+      val refBytes = refString.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+
+      val buffer = java.nio.ByteBuffer.allocate(4 + refBytes.length + 8)
+      buffer.putInt(refBytes.length)
+      buffer.put(refBytes)
+      buffer.putLong(cmd.roundId)
+      buffer.array()
+
+    def deserialize(bytes: Array[Byte]): scala.util.Try[RequestModelForConsensus] = scala.util.Try {
+      val buffer = java.nio.ByteBuffer.wrap(bytes)
+      val refLen = buffer.getInt
+      val refBytes = new Array[Byte](refLen)
+      buffer.get(refBytes)
+      val refString = new String(refBytes, java.nio.charset.StandardCharsets.UTF_8)
+      val roundId = buffer.getLong
+
+      RequestModelForConsensus(resolver.resolveActorRef(refString), roundId)
+    }
 
   given shareConfigSerializer(using
                               modelSer: Serializer[Model],

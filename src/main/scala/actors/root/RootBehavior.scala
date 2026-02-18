@@ -114,7 +114,7 @@ class RootBehavior(
 
     gossipActor ! GossipCommand.StartTickRequest
 
-    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor, guiView)
+    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
 
   /**
    * State: Waiting for the Seed Start Simulation command.

@@ -32,6 +32,7 @@ object AkkaSerializerAdapter:
   final val ManifestRemoteModel = "R"
   final val ManifestShareConfig = "S"
   final val ManifestHandleControl = "HC"
+  final val ManifestRequestModelForConsensus = "RMC"
 
   /**
    * Internal mapping connecting a specific Class type to its Manifest string
@@ -69,6 +70,11 @@ class AkkaSerializerAdapter(system: ExtendedActorSystem) extends SerializerWithS
       ManifestHandleControl,
       classOf[GossipCommand.HandleControlCommand],
       GossipSerializers.handleControlCommandSerializer
+    ),
+    TypeBinding(
+      ManifestRequestModelForConsensus,
+      classOf[GossipCommand.RequestModelForConsensus],
+      GossipSerializers.requestModelForConsensusSerializer(using resolver)
     )
   )
 
