@@ -211,4 +211,3 @@ private[monitor] class MonitorBehavior(
           paused(snapshot.copy(activePeers = active, totalPeers = total))
 
         case _ => Behaviors.unhandled
-        

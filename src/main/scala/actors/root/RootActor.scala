@@ -1,7 +1,7 @@
 package actors.root
 
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.Behavior
 import com.typesafe.config.Config
 import config.AppConfig
 
