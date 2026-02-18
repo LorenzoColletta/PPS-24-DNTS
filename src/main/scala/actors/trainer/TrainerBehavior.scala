@@ -127,7 +127,7 @@ private[trainer] class TrainerBehavior(
             monitor.foreach(_ ! MonitorCommand.SimulationFinished)
             gossip.foreach(_ ! GossipCommand.StopGossipTick)
 
-            ready(trainConfig, monitor, gossip)
+            paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
           else
             val batch = currentDataset.slice(idx, idx + trainConfig.batchSize)
 
