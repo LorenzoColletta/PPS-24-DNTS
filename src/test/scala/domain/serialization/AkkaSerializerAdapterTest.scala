@@ -1,13 +1,17 @@
 package domain.serialization
 
-import org.scalatest.funsuite.AnyFunSuite
+import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
+import org.scalatest.funsuite.AnyFunSuiteLike
 import org.scalatest.matchers.should.Matchers
+import akka.actor.ExtendedActorSystem
 
 import domain.network.{Activations, ModelBuilder, Feature}
 
-class AkkaSerializerAdapterTest extends AnyFunSuite with Matchers {
+class AkkaSerializerAdapterTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
 
-  private final val adapter = new AkkaSerializerAdapter()
+  private val extendedSystem = system.classicSystem.asInstanceOf[ExtendedActorSystem]
+  
+  private final val adapter = new AkkaSerializerAdapter(extendedSystem)
 
   private final val dummyModel = ModelBuilder.fromInputs(Feature.X)
     .addLayer(neurons = 1, activation = Activations.Sigmoid)
