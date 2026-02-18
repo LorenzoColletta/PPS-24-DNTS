@@ -122,7 +122,7 @@ private[monitor] class MonitorBehavior(
           Behaviors.same
 
         case MonitorCommand.ViewUpdateResponse(epoch, model, trainLoss, testLoss, consensus) =>
-          context.log.info(s"Monitor Update - Train Loss: $trainLoss, Test Loss: $testLoss, Consensus Metric: $consensus")
+          context.log.info(s"Monitor Update - Train Loss: $trainLoss, Test Loss: $testLoss, Consensus Loss: $consensus")
 
           boundary.plotMetrics(epoch, trainLoss, testLoss, consensus)
           boundary.plotDecisionBoundary(model)
@@ -173,6 +173,9 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.SimulationFinished =>
           context.log.info("Monitor: Simulation Finished naturally.")
           timers.cancelAll()
+
+          modelActor ! ModelCommand.GetMetrics(replyTo = context.self)
+
           boundary.simulationFinished()
           paused(snapshot)
 
@@ -209,5 +212,19 @@ private[monitor] class MonitorBehavior(
         case MonitorCommand.PeerCountChanged(active, total) =>
           boundary.updatePeerDisplay(active, total)
           paused(snapshot.copy(activePeers = active, totalPeers = total))
+
+        case MonitorCommand.ViewUpdateResponse(epoch, model, trainLoss, testLoss, consensus) =>
+          context.log.info(s"Monitor Update - Train Loss: $trainLoss, Test Loss: $testLoss, Consensus Loss: $consensus")
+
+          boundary.plotMetrics(epoch, trainLoss, testLoss, consensus)
+          boundary.plotDecisionBoundary(model)
+
+          paused(snapshot.copy(
+            epoch = epoch,
+            model = Some(model),
+            trainLoss = Some(trainLoss),
+            testLoss = Some(testLoss),
+            consensus = Some(consensus),
+          ))
 
         case _ => Behaviors.unhandled

@@ -202,7 +202,11 @@ private[trainer] class TrainerBehavior(
           val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)
           val testLoss = TrainingCore.computeDatasetLoss(model, trainConfig.testSet)
 
-          replyTo ! MetricsCalculated(trainLoss, testLoss, resumePos._1)
+          replyTo ! MetricsCalculated(trainLoss, testLoss, 
+            if resumePos._1 > trainConfig.epochs 
+            then trainConfig.epochs
+            else resumePos._1
+          )
           Behaviors.same
 
         case TrainerCommand.Stop =>
