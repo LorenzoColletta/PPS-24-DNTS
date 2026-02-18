@@ -141,19 +141,19 @@ class GossipActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike wit
     remoteMsg.remoteModel shouldBe dummyModel
   }
 
-  test("GossipActor should request initial config if TickGossip happens before initialization") {
+  test("GossipActor should request initial config when StartTickRequest happens before initialization") {
     val actors = setup()
     actors.discoveryProbe.expectMessageType[RegisterGossip]
 
-    actors.gossipActor ! GossipCommand.TickGossip
-    actors.discoveryProbe.expectMessageType[NodesRefRequest]
+    actors.gossipActor ! GossipCommand.StartTickRequest
 
-    val configReq = actors.discoveryProbe.expectMessageType[NodesRefRequest]
+    val nodesRequest = actors.discoveryProbe.expectMessageType[NodesRefRequest]
 
     val seedNode = createTestProbe[GossipCommand]()
-    configReq.replyTo ! List(seedNode.ref)
+    nodesRequest.replyTo ! List(seedNode.ref)
 
     val askMsg = seedNode.expectMessageType[GossipCommand.RequestInitialConfig]
+
     askMsg.replyTo shouldBe actors.gossipActor
   }
 
