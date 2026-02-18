@@ -67,7 +67,7 @@ private[monitor] class MonitorBehavior(
           timers.cancelAll()
           Behaviors.stopped
 
-        case _ => Behaviors.same
+        case _ => Behaviors.unhandled
 
   /**
    * Idle state: Configured but simulation not started.
@@ -210,4 +210,5 @@ private[monitor] class MonitorBehavior(
           boundary.updatePeerDisplay(active, total)
           paused(snapshot.copy(activePeers = active, totalPeers = total))
 
-        case _ => Behaviors.same
+        case _ => Behaviors.unhandled
+        

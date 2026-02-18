@@ -128,6 +128,9 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
               context.log.error(s"Error in exportation of $fileName: ${e.getMessage}")
           }
           Behaviors.same
+          
         case ModelCommand.StopSimulation =>
           Behaviors.stopped
+          
         case _ => Behaviors.unhandled
+        
