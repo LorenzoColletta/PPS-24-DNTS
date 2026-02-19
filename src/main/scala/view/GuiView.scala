@@ -84,6 +84,7 @@ class GuiView(using config: AppConfig) extends ViewBoundary:
 
   override def showCrashMessage(): Unit =
     simulationPanel.showCrashState()
+    this.globalHandler = null
 
   override def simulationFinished(): Unit =
     simulationPanel.simulationFinished()
