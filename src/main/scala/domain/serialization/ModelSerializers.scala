@@ -35,7 +35,7 @@ object ModelSerializers:
           case "ProductXY" => Feature.ProductXY
           case "SinX" => Feature.SinX
           case "SinY" => Feature.SinY
-          case name => throw new IllegalArgumentException(s"Feature sconosciuta: $name")
+          case name => throw new IllegalArgumentException(s"Feature unknown: $name")
         }.toList
     }
 

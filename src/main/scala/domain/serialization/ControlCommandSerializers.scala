@@ -7,8 +7,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import scala.util.Try
 
-import domain.serialization.ModelSerializers.given
-import domain.serialization.TrainingSerializers.given
 
 object ControlCommandSerializers:
 
