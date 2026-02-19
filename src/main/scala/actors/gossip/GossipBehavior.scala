@@ -16,23 +16,6 @@ import domain.training.Consensus.divergenceFrom
 
 import scala.util.Random
 
-/**
- * Accumulates peer model replies for a single consensus round.
- *
- * @param roundId       Unique identifier so stale replies from a previous
- *                      round are safely discarded.
- * @param expectedCount How many peers were contacted (= peers we are
- *                      waiting a reply from).
- * @param collected     Models received so far (from peers that replied in time).
- * @param localModel    Snapshot of the local model at round-start (always
- *                      included in the consensus computation).
- */
-private[gossip] case class ConsensusRoundState(
-                                        roundId: Long,
-                                        expectedCount: Int,
-                                        collected: List[Model],
-                                        localModel: Model
-                                      )
 
 /**
  * Encapsulates the behavior logic for the GossipActor.
@@ -52,9 +35,7 @@ private[gossip] class GossipBehavior(
 ):
 
   private[gossip] def active(
-                              cachedConfig: Option[(String, Model, TrainingConfig)] = None,
-                              consensusRound: Option[ConsensusRoundState] = None,
-                              roundCounter: Long = 0L
+                              cachedConfig: Option[(String, Model, TrainingConfig)] = None
                             ): Behavior[GossipCommand] =
 
       Behaviors.receive: (context, message) =>
@@ -69,7 +50,7 @@ private[gossip] class GossipBehavior(
               context.messageAdapter(peers => GossipCommand.WrappedSpreadCommand(peers, cmd))
             )
 
-            active(Some((seedID, model, trainConfig)), consensusRound, roundCounter)
+            active(Some((seedID, model, trainConfig)))
 
           case GossipCommand.StartGossipTick =>
             context.log.info("Gossip: Received Start signal. Starting gossip polling.")
@@ -79,14 +60,7 @@ private[gossip] class GossipBehavior(
               config.gossipInterval
             )
             Behaviors.same
-          case GossipCommand.StartTickConsensus =>
-            timers.startTimerWithFixedDelay(
-              GossipCommand.TickConsensus,
-              GossipCommand.TickConsensus,
-              config.consensusInterval
-            )
 
-            Behaviors.same
           case GossipCommand.StartTickRequest =>
             timers.startTimerWithFixedDelay(
               GossipCommand.TickRequest,
@@ -98,10 +72,6 @@ private[gossip] class GossipBehavior(
           case GossipCommand.StopGossipTick =>
             context.log.info("Gossip: Stopping gossip polling.")
             timers.cancel(GossipCommand.TickGossip)
-            Behaviors.same
-
-          case GossipCommand.StopTickConsensus =>
-            timers.cancel(GossipCommand.TickConsensus)
             Behaviors.same
 
           case GossipCommand.StopTickRequest =>
@@ -184,85 +154,6 @@ private[gossip] class GossipBehavior(
             modelActor ! ModelCommand.SyncModel(remoteModel)
             Behaviors.same
 
-          case GossipCommand.TickConsensus =>
-            context.log.debug("Gossip: Consensus tick")
-            discoveryActor ! NodesRefRequest(
-              replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeersForConsensus(peers))
-            )
-            Behaviors.same
-
-          case GossipCommand.WrappedPeersForConsensus(peers) =>
-
-            if peers.isEmpty then
-              context.log.debug("Gossip: Consensus – no remote peers, skipping round.")
-              Behaviors.same
-            else
-              val newRoundId = roundCounter + 1
-              context.log.info(s"Gossip: Starting consensus round #$newRoundId with ${peers.size} peers.")
-
-              modelActor ! ModelCommand.GetModel(
-                replyTo = context.messageAdapter(localModel =>
-                  GossipCommand.WrappedLocalModelForConsensus(localModel, peers, newRoundId)
-                )
-              )
-
-              active(cachedConfig, consensusRound, newRoundId)
-
-          case GossipCommand.WrappedLocalModelForConsensus(localModel, peers, roundId) =>
-            val newRound = ConsensusRoundState(
-              roundId       = roundId,
-              expectedCount = peers.size,
-              collected     = List(localModel),
-              localModel    = localModel
-            )
-
-            peers.foreach { peer =>
-              peer ! GossipCommand.RequestModelForConsensus(context.self, roundId)
-            }
-
-            context.log.debug(s"Gossip: Round #$roundId – contacted ${peers.size} peers.")
-            active(cachedConfig, Some(newRound), roundCounter)
-
-          case GossipCommand.RequestModelForConsensus(replyTo, roundId) =>
-            modelActor ! ModelCommand.GetModel(
-              replyTo = context.messageAdapter(model =>
-                GossipCommand.ConsensusModelReply(model, roundId)
-              )
-            )
-            Behaviors.same
-
-          case GossipCommand.ConsensusModelReply(model, roundId) =>
-            consensusRound match
-              case Some(round) if round.roundId == roundId =>
-                val updated = round.copy(collected = model :: round.collected)
-
-                if updated.collected.size >= updated.expectedCount + 1 then
-                  val consensusValue = computeNetworkConsensus(updated.localModel, updated.collected)
-                  context.log.info(
-                    f"Gossip: Round #$roundId complete. " +
-                      f"Network consensus (mean divergence from centroid): $consensusValue%.6f"
-                  )
-                  modelActor ! ModelCommand.UpdateConsensus(consensusValue)
-                  active(cachedConfig, None, roundCounter)
-                else
-                  context.log.debug(
-                    s"Gossip: Round #$roundId – " +
-                      s"${updated.collected.size}/${updated.expectedCount + 1} models collected."
-                  )
-                  active(cachedConfig, Some(updated), roundCounter)
-
-              case Some(round) =>
-                context.log.debug(
-                  s"Gossip: Discarding stale ConsensusModelReply for round #$roundId " +
-                    s"(current round is #${round.roundId})."
-                )
-                Behaviors.same
-
-              case None =>
-                context.log.debug(
-                  s"Gossip: No active consensus round. Discarding reply for round #$roundId."
-                )
-                Behaviors.same
           case GossipCommand.SpreadCommand(cmd) =>
             discoveryActor ! NodesRefRequest(
               replyTo = context.messageAdapter(peers =>
@@ -293,7 +184,6 @@ private[gossip] class GossipBehavior(
                 Behaviors.same
               case ControlCommand.GlobalStop =>
                 rootActor ! RootCommand.StopSimulation
-
                 timers.cancelAll()
                 Behaviors.stopped
               case _ =>
@@ -303,12 +193,6 @@ private[gossip] class GossipBehavior(
           case _ =>
             context.log.warn("Gossip: Received unhandled gossip message.")
             Behaviors.unhandled
-
-  private def computeNetworkConsensus(localModel: Model, allModels: List[Model]): Double =
-    if allModels.isEmpty then 0.0
-    else
-      val divergences = allModels.map(m => localModel.network divergenceFrom m.network)
-      divergences.sum / divergences.size
 
   private def buildCentroid(models: List[Model]): Model =
     models.tail.foldLeft(models.head): (runningMean, nextModel) =>

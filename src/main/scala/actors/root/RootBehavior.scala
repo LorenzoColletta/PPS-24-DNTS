@@ -22,6 +22,7 @@ import actors.trainer.TrainerActor
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
+import actors.gossip.consensus.ConsensusActor
 import domain.data.LabeledPoint2D
 import com.typesafe.config.Config
 import domain.data.dataset.{DataModelFactory, DatasetGenerator, shuffle}
@@ -96,6 +97,8 @@ class RootBehavior(
 
     val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor), "gossipActor")
     context.watch(gossipActor)
+
+    val consensusActor = context.spawn(ConsensusActor(context.self, modelActor, trainerActor, discoveryActor), "consensusActor")
     
     val monitorActor = context.spawn(
       MonitorActor(
@@ -109,7 +112,7 @@ class RootBehavior(
     )
     context.watch(monitorActor)
 
-    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor)
+    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor, consensusActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
     gossipActor ! GossipCommand.StartTickRequest
