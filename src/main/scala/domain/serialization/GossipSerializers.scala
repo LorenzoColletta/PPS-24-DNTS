@@ -2,7 +2,9 @@ package domain.serialization
 
 import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, HandleRemoteModel, ShareConfig}
 import actors.gossip.GossipActor.ControlCommand
-import actors.gossip.GossipProtocol.GossipCommand.{HandleControlCommand, RequestModelForConsensus}
+import actors.gossip.GossipProtocol.GossipCommand
+import actors.gossip.GossipProtocol.GossipCommand.HandleControlCommand
+import actors.gossip.consensus.ConsensusProtocol.{ConsensusModelReply, RequestModelForConsensus}
 import actors.trainer.TrainerActor.TrainingConfig
 import akka.actor.typed.ActorRefResolver
 import domain.data.{Label, LabeledPoint2D, Point2D}
@@ -18,26 +20,54 @@ import domain.network.Activations.given
 import java.nio.charset.StandardCharsets
 
 object GossipSerializers:
+
   given requestModelForConsensusSerializer(using resolver: ActorRefResolver): Serializer[RequestModelForConsensus] with
     def serialize(cmd: RequestModelForConsensus): Array[Byte] =
       val refString = resolver.toSerializationFormat(cmd.replyTo)
-      val refBytes = refString.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+      val refBytes = refString.getBytes(StandardCharsets.UTF_8)
 
-      val buffer = java.nio.ByteBuffer.allocate(4 + refBytes.length + 8)
+      val buffer = ByteBuffer.allocate(4 + refBytes.length + 8)
       buffer.putInt(refBytes.length)
       buffer.put(refBytes)
       buffer.putLong(cmd.roundId)
       buffer.array()
 
-    def deserialize(bytes: Array[Byte]): scala.util.Try[RequestModelForConsensus] = scala.util.Try {
-      val buffer = java.nio.ByteBuffer.wrap(bytes)
+    def deserialize(bytes: Array[Byte]): Try[RequestModelForConsensus] = Try {
+      val buffer = ByteBuffer.wrap(bytes)
       val refLen = buffer.getInt
       val refBytes = new Array[Byte](refLen)
       buffer.get(refBytes)
-      val refString = new String(refBytes, java.nio.charset.StandardCharsets.UTF_8)
+      val refString = new String(refBytes, StandardCharsets.UTF_8)
       val roundId = buffer.getLong
 
       RequestModelForConsensus(resolver.resolveActorRef(refString), roundId)
+    }
+
+  given consensusModelReplySerializer(using modelSer: Serializer[Model]): Serializer[ConsensusModelReply] with
+    def serialize(cmd: ConsensusModelReply): Array[Byte] =
+      val mBytes = modelSer.serialize(cmd.model)
+      val buffer = java.nio.ByteBuffer.allocate(8 + mBytes.length)
+      buffer.putLong(cmd.roundId)
+      buffer.put(mBytes)
+      buffer.array()
+
+    def deserialize(bytes: Array[Byte]): scala.util.Try[ConsensusModelReply] = scala.util.Try {
+      val buffer = java.nio.ByteBuffer.wrap(bytes)
+      val roundId = buffer.getLong
+      val mBytes = new Array[Byte](buffer.remaining())
+      buffer.get(mBytes)
+      val model = modelSer.deserialize(mBytes).get
+      ConsensusModelReply(model, roundId)
+    }
+
+  given requestInitialConfigSerializer(using resolver: ActorRefResolver): Serializer[GossipCommand.RequestInitialConfig] with
+    def serialize(cmd: GossipCommand.RequestInitialConfig): Array[Byte] =
+      val refString = resolver.toSerializationFormat(cmd.replyTo)
+      refString.getBytes(StandardCharsets.UTF_8)
+
+    def deserialize(bytes: Array[Byte]): scala.util.Try[GossipCommand.RequestInitialConfig] = scala.util.Try {
+      val refString = new String(bytes, StandardCharsets.UTF_8)
+      GossipCommand.RequestInitialConfig(resolver.resolveActorRef(refString))
     }
 
   given shareConfigSerializer(using

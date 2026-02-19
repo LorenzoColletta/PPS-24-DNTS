@@ -19,7 +19,7 @@ import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor.ControlCommand
 import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, ShareConfig, HandleRemoteModel}
 import actors.gossip.GossipActor.GossipCommand.HandleControlCommand.given
-
+import actors.gossip.consensus.ConsensusProtocol.*
 /**
  * Registry and configuration container for the [[AkkaSerializationAdapter]].
  * Defines the unique Manifest codes used to identify types.
@@ -32,7 +32,9 @@ object AkkaSerializerAdapter:
   final val ManifestRemoteModel = "R"
   final val ManifestShareConfig = "S"
   final val ManifestHandleControl = "HC"
-  final val ManifestRequestModelForConsensus = "RMC"
+  final val ManifestRequestInitialConfig = "RIC"
+  final val ManifestRequestModelForConsensus = "RMF"
+  final val ManifestReplyModelForConsensus = "RPLY"
 
   /**
    * Internal mapping connecting a specific Class type to its Manifest string
@@ -67,14 +69,24 @@ class AkkaSerializerAdapter(system: ExtendedActorSystem) extends SerializerWithS
     TypeBinding(ManifestRemoteModel, classOf[GossipCommand.HandleRemoteModel], GossipSerializers.handleRemoteModelSerializer),
     TypeBinding(ManifestShareConfig, classOf[ShareConfig], GossipSerializers.shareConfigSerializer),
     TypeBinding(
+      ManifestRequestInitialConfig,
+      classOf[GossipCommand.RequestInitialConfig],
+      GossipSerializers.requestInitialConfigSerializer(using resolver)
+    ),
+    TypeBinding(
       ManifestHandleControl,
       classOf[GossipCommand.HandleControlCommand],
       GossipSerializers.handleControlCommandSerializer
     ),
     TypeBinding(
       ManifestRequestModelForConsensus,
-      classOf[GossipCommand.RequestModelForConsensus],
+      classOf[RequestModelForConsensus],
       GossipSerializers.requestModelForConsensusSerializer(using resolver)
+    ),
+    TypeBinding(
+      ManifestReplyModelForConsensus,
+      classOf[ConsensusModelReply],
+      GossipSerializers.consensusModelReplySerializer(using summon[DomainSerializer[Model]])
     )
   )
 
