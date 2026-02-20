@@ -71,3 +71,8 @@ private[configuration] class ConfigurationBehavior(
             case None =>
               context.log.info(s"Config not found yet, cannot share.")
           Behaviors.same
+
+        case ConfigurationProtocol.Stop =>
+          context.log.info("Configuration: Stopping actor.")
+          timers.cancelAll()
+          Behaviors.stopped

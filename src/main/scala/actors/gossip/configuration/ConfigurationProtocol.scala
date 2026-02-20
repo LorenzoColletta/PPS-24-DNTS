@@ -28,3 +28,8 @@ object ConfigurationProtocol:
 
   case object TickRequest extends ConfigurationCommand
 
+  /**
+   * Stop the actor.
+   */
+  case object Stop extends ConfigurationCommand
+
