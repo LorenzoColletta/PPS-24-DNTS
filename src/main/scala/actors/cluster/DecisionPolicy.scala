@@ -43,7 +43,7 @@ object BootstrapPolicy extends DecisionPolicy :
             (Joining))
 
       case JoinTimeout =>
-        List(NotifyRoot(ClusterFailed), StopBehavior)
+        List(NotifyRoot(ClusterFailed))
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
@@ -51,6 +51,9 @@ object BootstrapPolicy extends DecisionPolicy :
             (RegisterGossipPermit), ChangePhase(Joining))
         else
           joiningEffects
+
+      case StopSimulation =>
+        List(LeaveCluster, StopBehavior)
 
       case _ => Nil
 
@@ -77,8 +80,7 @@ object JoiningPolicy extends DecisionPolicy :
       case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
         List(
           NotifyRoot(ClusterFailed),
-          LeaveCluster,
-          StopBehavior
+          LeaveCluster
         )
 
       case NodeUnreachable(node) =>
@@ -143,7 +145,7 @@ object RunningPolicy extends DecisionPolicy :
         List(LeaveCluster, StopBehavior)
 
       case SeedUnreachableTimeout =>
-        List(NotifyRoot(SeedLost), LeaveCluster, StopBehavior)
+        List(NotifyRoot(SeedLost), LeaveCluster)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))
