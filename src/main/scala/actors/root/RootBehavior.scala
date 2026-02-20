@@ -12,7 +12,6 @@ import actors.monitor.MonitorActor
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.cluster.{ClusterManager, ClusterProtocol, ClusterState}
 import actors.discovery.{DiscoveryActor, DiscoveryProtocol, GossipPeerState}
-import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor
 import actors.gossip.GossipProtocol.GossipCommand
 import actors.gossip.configuration.{ConfigurationActor, ConfigurationProtocol}
@@ -24,7 +23,7 @@ import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
-import actors.gossip.consensus.ConsensusActor
+import actors.gossip.consensus.{ConsensusActor, ConsensusProtocol}
 import actors.gossip.dataset_distribution.DatasetDistributionActor
 import actors.gossip.dataset_distribution.DatasetDistributionProtocol
 import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
@@ -110,7 +109,11 @@ class RootBehavior(
     val distributeDatasetActor = context.spawn(DatasetDistributionActor(context.self, discoveryActor), "distributeDatasetActor")
     context.watch(distributeDatasetActor)
 
-    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor, configurationActor, distributeDatasetActor), "gossipActor")
+    val gossipActor = context.spawn(
+      GossipActor(
+        context.self, modelActor, trainerActor, discoveryActor,
+        configurationActor, distributeDatasetActor, consensusActor
+      ), "gossipActor")
     context.watch(gossipActor)
 
     configurationActor ! ConfigurationProtocol.RegisterGossip(gossipActor)
@@ -133,21 +136,25 @@ class RootBehavior(
 
     configurationActor ! ConfigurationProtocol.StartTickRequest
 
-    waitingForStart(seedDataPayload, gossipActor, configurationActor, distributeDatasetActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
+    waitingForStart(
+      seedDataPayload, gossipActor, configurationActor, distributeDatasetActor, consensusActor,
+      modelActor, trainerActor, monitorActor, clusterManager, discoveryActor
+    )
 
   /**
    * State: Waiting for the Seed Start Simulation command.
    */
   private def waitingForStart(
-                               seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
-                               gossipActor: ActorRef[GossipCommand],
-                               configurationActor: ActorRef[ConfigurationCommand],
-                               distributeDatasetActor: ActorRef[DatasetDistributionCommand],
-                               modelActor: ActorRef[ModelCommand],
-                               trainerActor: ActorRef[TrainerCommand],
-                               monitorActor: ActorRef[MonitorCommand],
-                               clusterManager: ActorRef[ClusterMemberCommand],
-                               discoveryActor: ActorRef[DiscoveryCommand],
+    seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
+    gossipActor: ActorRef[GossipCommand],
+    configurationActor: ActorRef[ConfigurationCommand],
+    distributeDatasetActor: ActorRef[DatasetDistributionCommand],
+    consensusActor: ActorRef[ConsensusProtocol.ConsensusCommand],
+    modelActor: ActorRef[ModelCommand],
+    trainerActor: ActorRef[TrainerCommand],
+    monitorActor: ActorRef[MonitorCommand],
+    clusterManager: ActorRef[ClusterMemberCommand],
+    discoveryActor: ActorRef[DiscoveryCommand],
   ): Behavior[RootCommand] =
 
     Behaviors.receive: (ctx, msg) =>
@@ -218,6 +225,9 @@ class RootBehavior(
           monitorActor ! MonitorCommand.InternalStop
           modelActor ! ModelCommand.StopSimulation
           discoveryActor ! DiscoveryProtocol.Stop
+          configurationActor ! ConfigurationProtocol.Stop
+          consensusActor ! ConsensusProtocol.Stop
+          distributeDatasetActor ! DatasetDistributionProtocol.Stop
 
           val children: Set[ActorRef[Nothing]] = Set(
             discoveryActor.unsafeUpcast,
@@ -225,7 +235,10 @@ class RootBehavior(
             modelActor.unsafeUpcast,
             trainerActor.unsafeUpcast,
             gossipActor.unsafeUpcast,
-            monitorActor.unsafeUpcast
+            monitorActor.unsafeUpcast,
+            configurationActor.unsafeUpcast,
+            consensusActor.unsafeUpcast,
+            distributeDatasetActor.unsafeUpcast
           )
           gracefullyStopping(children)
 
