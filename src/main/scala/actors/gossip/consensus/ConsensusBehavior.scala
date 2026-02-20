@@ -12,17 +12,18 @@ import domain.network.Model
 import domain.training.Consensus.divergenceFrom
 
 private[consensus] class ConsensusBehavior(
-                                      rootActor: ActorRef[RootCommand],
-                                      modelActor: ActorRef[ModelCommand],
-                                      trainerActor: ActorRef[TrainerCommand],
-                                      discoveryActor: ActorRef[DiscoveryCommand],
-                                      timers: TimerScheduler[ConsensusCommand],
-                                      config: AppConfig
-                                    ):
+  rootActor: ActorRef[RootCommand],
+  modelActor: ActorRef[ModelCommand],
+  trainerActor: ActorRef[TrainerCommand],
+  discoveryActor: ActorRef[DiscoveryCommand],
+  timers: TimerScheduler[ConsensusCommand],
+  config: AppConfig
+):
+
   private[consensus] def active(
-                              consensusRound: Option[ConsensusRoundState] = None,
-                              roundCounter: Long = 0L
-                            ): Behavior[ConsensusCommand] =
+    consensusRound: Option[ConsensusRoundState] = None,
+    roundCounter: Long = 0L
+  ): Behavior[ConsensusCommand] =
 
     Behaviors.receive: (context, message) =>
       message match
@@ -45,7 +46,9 @@ private[consensus] class ConsensusBehavior(
           Behaviors.same
 
         case WrappedPeersForConsensus(peers) =>
-          if peers.isEmpty then
+          val otherPeers = peers.filterNot(_.path.address.hasLocalScope)
+
+          if otherPeers.isEmpty then
             context.log.debug("Gossip: Consensus – no remote peers, skipping round.")
             Behaviors.same
           else
@@ -54,7 +57,7 @@ private[consensus] class ConsensusBehavior(
 
             modelActor ! ModelCommand.GetModel(
               replyTo = context.messageAdapter(localModel =>
-                WrappedLocalModelForConsensus(localModel, peers, newRoundId)
+                WrappedLocalModelForConsensus(localModel, otherPeers, newRoundId)
               )
             )
 
@@ -72,16 +75,46 @@ private[consensus] class ConsensusBehavior(
             peer ! RequestModelForConsensus(context.self, roundId)
           }
 
+          timers.startSingleTimer(
+            s"ConsensusTimeout-$roundId",
+            ConsensusRoundTimeout(roundId),
+            config.consensusInterval
+          )
+
           context.log.debug(s"Gossip: Round #$roundId – contacted ${peers.size} peers.")
           active(Some(newRound), roundCounter)
 
         case RequestModelForConsensus(replyTo, roundId) =>
           modelActor ! ModelCommand.GetModel(
             replyTo = context.messageAdapter(model =>
-              ConsensusModelReply(model, roundId)
+              ForwardModelReply(replyTo, model, roundId)
             )
           )
           Behaviors.same
+
+        case ForwardModelReply(replyTo, model, roundId) =>
+          replyTo ! ConsensusModelReply(model, roundId)
+          Behaviors.same
+
+        case ConsensusProtocol.Stop =>
+          context.log.info("Consensus: Stopping actor.")
+          timers.cancelAll()
+          Behaviors.stopped
+
+        case ConsensusRoundTimeout(roundId) =>
+          consensusRound match
+            case Some(round) if round.roundId == roundId =>
+              context.log.warn(
+                s"Gossip: Round #$roundId TIMED OUT. " +
+                  s"Computing consensus with partial data (${round.collected.size}/${round.expectedCount + 1} models)."
+              )
+              val consensusValue = computeNetworkConsensus(round.localModel, round.collected)
+              modelActor ! ModelCommand.UpdateConsensus(consensusValue)
+
+              active(None, roundCounter)
+
+            case _ =>
+              Behaviors.same
 
         case ConsensusModelReply(model, roundId) =>
           consensusRound match
@@ -89,10 +122,12 @@ private[consensus] class ConsensusBehavior(
               val updated = round.copy(collected = model :: round.collected)
 
               if updated.collected.size >= updated.expectedCount + 1 then
+                timers.cancel(s"ConsensusTimeout-$roundId")
+
                 val consensusValue = computeNetworkConsensus(updated.localModel, updated.collected)
                 context.log.info(
                   f"Gossip: Round #$roundId complete. " +
-                    f"Network consensus (mean divergence from centroid): $consensusValue%.6f"
+                    f"Network consensus: $consensusValue%.6f"
                 )
                 
                 modelActor ! ModelCommand.UpdateConsensus(consensusValue)

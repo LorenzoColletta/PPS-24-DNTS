@@ -73,3 +73,28 @@ object ConsensusProtocol:
                                         collected: List[Model],
                                         localModel: Model
                                       )
+
+  /**
+   * Internal command used to forward the local model to a remote peer during a consensus round.
+   *
+   * @param replyTo The actor reference of the remote peer that initiated the consensus request.
+   * @param model   The snapshot of the local neural network model to be shared.
+   * @param roundId The unique identifier of the consensus round.
+   */
+  final case class ForwardModelReply(
+                                      replyTo: ActorRef[ConsensusCommand],
+                                      model: Model,
+                                      roundId: Long
+                                    ) extends ConsensusCommand
+
+  /**
+   * Segnale interno che indica la scadenza del tempo massimo di attesa per un round di consenso.
+   *
+   * @param roundId L'identificativo del round che è andato in timeout.
+   */
+  final case class ConsensusRoundTimeout(roundId: Long) extends ConsensusCommand
+
+  /**
+   * Stop the actor.
+   */
+  case object Stop extends ConsensusCommand
