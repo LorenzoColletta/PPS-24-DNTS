@@ -8,6 +8,8 @@ object DatasetDistributionProtocol:
 
   sealed trait DatasetDistributionCommand extends GossipCommand
 
+  final case class RegisterSeed(seed: Long) extends DatasetDistributionCommand
+
   /**
    *
    * Command for the Master node to distribute the dataset to the cluster peers.

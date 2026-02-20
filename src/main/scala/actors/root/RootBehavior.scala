@@ -176,6 +176,7 @@ class RootBehavior(
               val (globalTrain, globalTest) = d.splitAt(trainSize)
 
               context.log.info(s"Root: Data Split - Train: ${globalTrain.size}, Test: ${globalTest.size}")
+              distributeDatasetActor ! DatasetDistributionProtocol.RegisterSeed(conf.seed.getOrElse(0))
               distributeDatasetActor ! DatasetDistributionProtocol.DistributeDataset(globalTrain, globalTest)
               Behaviors.same
 
