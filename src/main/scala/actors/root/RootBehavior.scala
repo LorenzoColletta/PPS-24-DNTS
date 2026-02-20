@@ -100,7 +100,7 @@ class RootBehavior(
     val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
     context.watch(trainerActor)
 
-    val consensusActor = context.spawn(ConsensusActor(context.self, modelActor, trainerActor, discoveryActor), "consensusActor")
+    val consensusActor = context.spawn(ConsensusActor(modelActor, discoveryActor), "consensusActor")
     context.watch(consensusActor)
 
     val configurationActor = context.spawn(ConfigurationActor(discoveryActor), "configurationActor")
