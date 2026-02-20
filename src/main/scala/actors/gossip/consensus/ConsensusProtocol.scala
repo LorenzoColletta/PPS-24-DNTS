@@ -88,9 +88,9 @@ object ConsensusProtocol:
                                     ) extends ConsensusCommand
 
   /**
-   * Segnale interno che indica la scadenza del tempo massimo di attesa per un round di consenso.
+   * Internal signal indicating a timeout for a consensus round.
    *
-   * @param roundId L'identificativo del round che è andato in timeout.
+   * @param roundId The ID of the timed-out round.
    */
   final case class ConsensusRoundTimeout(roundId: Long) extends ConsensusCommand
 

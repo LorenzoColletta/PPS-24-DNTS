@@ -9,15 +9,16 @@ import config.AppConfig
 import domain.network.Model
 
 private[configuration] class ConfigurationBehavior(
-                                                    discoveryActor: ActorRef[DiscoveryCommand],
-                                                    timers: TimerScheduler[ConfigurationProtocol.ConfigurationCommand],
-                                                    config: AppConfig
-                                                  ):
+  discoveryActor: ActorRef[DiscoveryCommand],
+  timers: TimerScheduler[ConfigurationProtocol.ConfigurationCommand],
+  config: AppConfig
+):
 
   def active(
-              cachedConfig: Option[(String, Model, TrainingConfig)] = None,
-              gossip: Option[ActorRef[GossipCommand]] = None,
-            ): Behavior[ConfigurationProtocol.ConfigurationCommand] =
+    cachedConfig: Option[(String, Model, TrainingConfig)] = None,
+    gossip: Option[ActorRef[GossipCommand]] = None,
+  ): Behavior[ConfigurationProtocol.ConfigurationCommand] =
+    
     Behaviors.receive: (context, message) =>
       message match
         case ConfigurationProtocol.RegisterGossip(gossipActor) =>
