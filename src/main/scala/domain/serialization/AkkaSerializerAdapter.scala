@@ -17,9 +17,11 @@ import domain.serialization.ControlCommandSerializers.given
 import domain.serialization.TrainingSerializers.given
 import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor.ControlCommand
-import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, ShareConfig, HandleRemoteModel}
+import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, HandleRemoteModel}
 import actors.gossip.GossipActor.GossipCommand.HandleControlCommand.given
 import actors.gossip.consensus.ConsensusProtocol.*
+import actors.gossip.configuration.ConfigurationProtocol
+
 /**
  * Registry and configuration container for the [[AkkaSerializationAdapter]].
  * Defines the unique Manifest codes used to identify types.
@@ -67,10 +69,10 @@ class AkkaSerializerAdapter(system: ExtendedActorSystem) extends SerializerWithS
     TypeBinding(ManifestControl, classOf[ControlCommand], summon[DomainSerializer[ControlCommand]]),
     TypeBinding(ManifestDistributeDataset, classOf[HandleDistributeDataset], GossipSerializers.distributeDatasetSerializer),
     TypeBinding(ManifestRemoteModel, classOf[GossipCommand.HandleRemoteModel], GossipSerializers.handleRemoteModelSerializer),
-    TypeBinding(ManifestShareConfig, classOf[ShareConfig], GossipSerializers.shareConfigSerializer),
+    TypeBinding(ManifestShareConfig, classOf[ConfigurationProtocol.ShareConfig], GossipSerializers.shareConfigSerializer),
     TypeBinding(
       ManifestRequestInitialConfig,
-      classOf[GossipCommand.RequestInitialConfig],
+      classOf[ConfigurationProtocol.RequestInitialConfig],
       GossipSerializers.requestInitialConfigSerializer(using resolver)
     ),
     TypeBinding(

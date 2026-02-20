@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef
 import domain.data.LabeledPoint2D
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
+import akka.actor.typed.ActorRef
 
 /**
  * Defines the public API and data structures for the Gossip component.
@@ -43,22 +44,8 @@ object GossipProtocol:
     /** Starts the periodic gossip timer. */
     case object StartGossipTick extends GossipCommand
 
-    case object StartTickRequest extends GossipCommand
-
     /** Starts the periodic gossip timer. */
     case object StopGossipTick extends GossipCommand
-
-    case object StopTickRequest extends GossipCommand
-
-    final case class ShareConfig(
-                                  seedID: String,
-                                  model: Model,
-                                  config: TrainingConfig
-                                ) extends GossipCommand
-
-    final case class RequestInitialConfig(replyTo: ActorRef[GossipCommand]) extends GossipCommand
-
-    final case class WrappedRequestConfig(peers: Set[ActorRef[GossipCommand]]) extends GossipCommand
 
     /**
      * Triggered periodically to request the list of active peers from the ClusterManager
@@ -66,9 +53,6 @@ object GossipProtocol:
      *
      */
     case object TickGossip extends GossipCommand
-
-
-    case object TickRequest extends GossipCommand
 
     /**
      *
@@ -126,6 +110,8 @@ object GossipProtocol:
      * @param cmd The control command to spread.
      */
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
+
+    final case class SpreadCommandOther(cmd: ControlCommand) extends ControlCommand
 
     /**
      * Internal wrapper to handle peer list for SpreadCommand

@@ -13,6 +13,8 @@ import domain.training.{LossFunction, TrainingCore}
 import actors.trainer.TrainerActor.*
 import actors.model.ModelActor.ModelCommand
 import actors.gossip.GossipActor.GossipCommand
+import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
 import actors.gossip.consensus.ConsensusProtocol.{ConsensusCommand, StartTickConsensus, StopTickConsensus}
 import actors.monitor.MonitorActor.MonitorCommand
 import domain.data.util.Space
@@ -39,18 +41,19 @@ private[trainer] class TrainerBehavior(
   def idle(
     monitor: Option[ActorRef[MonitorCommand]] = None,
     gossip: Option[ActorRef[GossipCommand]] = None,
+    configuration: Option[ActorRef[ConfigurationCommand]] = None,
     consensus: Option[ActorRef[ConsensusCommand]] = None
   ): Behavior[TrainerMessage] =
 
     Behaviors.receive: (ctx, msg) =>
       msg match
-        case TrainerCommand.RegisterServices(monRef, gosRef, consRef) =>
+        case TrainerCommand.RegisterServices(monRef, gosRef, confRef, consRef) =>
           ctx.log.info("Trainer: Services registered (Monitor & Gossip & consRef).")
-          idle(Some(monRef), Some(gosRef), Some(consRef))
+          idle(Some(monRef), Some(gosRef), Some(confRef), Some(consRef))
 
         case TrainerCommand.SetTrainConfig(trainConfig) =>
           ctx.log.info(s"Trainer: Setting Training Configuration")
-          ready(trainConfig, monitor, gossip, consensus)
+          ready(trainConfig, monitor, gossip, configuration, consensus)
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
           replyTo ! MetricsCalculated(0.0, 0.0, 0)
@@ -71,6 +74,7 @@ private[trainer] class TrainerBehavior(
     trainConfig: TrainingConfig,
     monitor: Option[ActorRef[MonitorCommand]],
     gossip: Option[ActorRef[GossipCommand]],
+    configuration: Option[ActorRef[ConfigurationCommand]],
     consensus: Option[ActorRef[ConsensusCommand]]
   ): Behavior[TrainerMessage] =
 
@@ -89,14 +93,14 @@ private[trainer] class TrainerBehavior(
           monitor.foreach(_ ! MonitorCommand.StartWithData(trainSet, testSet))
           gossip.foreach(_ ! GossipCommand.StartGossipTick)
           consensus.foreach(_ ! StartTickConsensus)
-          gossip.foreach(_ ! GossipCommand.StopTickRequest)
+          configuration.foreach(_ ! ConfigurationProtocol.StopTickRequest)
 
           ctx.self ! PrivateTrainerCommand.NextBatch(1, 0)
           training(newTrainConfig, shuffledDataset, rand, 1, 0, monitor, gossip, consensus)
 
-        case TrainerCommand.RegisterServices(monRef, gosRef, consRef) =>
+        case TrainerCommand.RegisterServices(monRef, gosRef, confRef, consRef) =>
           ctx.log.info("Trainer: Services registered (Monitor & Gossip).")
-          ready(trainConfig, Some(monRef), Some(gosRef), Some(consRef))
+          ready(trainConfig, Some(monRef), Some(gosRef), Some(confRef), Some(consRef))
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
           replyTo ! MetricsCalculated(0.0, 0.0, 0)

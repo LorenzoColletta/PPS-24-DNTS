@@ -1,18 +1,15 @@
 package actors.gossip
 
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors, TimerScheduler}
 import actors.gossip.GossipActor.{ControlCommand, GossipCommand}
 import actors.model.ModelActor.ModelCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
+import actors.root.RootProtocol.RootCommand
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.trainer.TrainerActor.TrainingConfig
-import actors.root.RootActor.RootCommand
-import akka.actor.typed.scaladsl.TimerScheduler
+import actors.gossip.configuration.ConfigurationProtocol
 import config.AppConfig
-import domain.model.ModelTasks
 import domain.network.Model
-import domain.training.Consensus.divergenceFrom
 
 import scala.util.Random
 
@@ -30,171 +27,136 @@ private[gossip] class GossipBehavior(
   modelActor: ActorRef[ModelCommand],
   trainerActor: ActorRef[TrainerCommand],
   discoveryActor: ActorRef[DiscoveryCommand],
+  configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand],
   timers: TimerScheduler[GossipCommand],
   config: AppConfig
 ):
 
-  private[gossip] def active(
-                              cachedConfig: Option[(String, Model, TrainingConfig)] = None
-                            ): Behavior[GossipCommand] =
+  private[gossip] def active(): Behavior[GossipCommand] =
+    Behaviors.receive: (context, message) =>
+      message match
+        case cmd: GossipCommand.HandleControlCommand =>
+          processGossipMessage(context, cmd)
 
-      Behaviors.receive: (context, message) =>
-        message match
+        case configCmd: ConfigurationProtocol.ConfigurationCommand =>
+          context.log.debug(s"Gossip: Routing configuration command to ConfigurationActor")
+          configurationActor ! configCmd
+          Behaviors.same
 
-          case GossipCommand.ShareConfig(seedID, model, trainConfig) =>
-            context.log.info("Gossip: Received Config from Root. Broadcasting to Cluster...")
+        case other =>
+          processGossipMessage(context, other)
 
-            val cmd = ControlCommand.PrepareClient(seedID, model, trainConfig)
+  private def processGossipMessage(context: ActorContext[GossipCommand], message: GossipCommand): Behavior[GossipCommand] =
+    message match
+      case GossipCommand.StartGossipTick =>
+        context.log.info("Gossip: Received Start signal. Starting gossip polling.")
+        timers.startTimerWithFixedDelay(
+          GossipCommand.TickGossip,
+          GossipCommand.TickGossip,
+          config.gossipInterval
+        )
+        Behaviors.same
+      case GossipCommand.StopGossipTick =>
+        context.log.info("Gossip: Stopping gossip polling.")
+        timers.cancel(GossipCommand.TickGossip)
+        Behaviors.same
 
-            discoveryActor ! NodesRefRequest(replyTo =
-              context.messageAdapter(peers => GossipCommand.WrappedSpreadCommand(peers, cmd))
-            )
+      case GossipCommand.TickGossip =>
+        discoveryActor ! NodesRefRequest(
+          replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
+        )
 
-            active(Some((seedID, model, trainConfig)))
+        Behaviors.same
 
-          case GossipCommand.StartGossipTick =>
-            context.log.info("Gossip: Received Start signal. Starting gossip polling.")
-            timers.startTimerWithFixedDelay(
-              GossipCommand.TickGossip,
-              GossipCommand.TickGossip,
-              config.gossipInterval
-            )
+      case GossipCommand.DistributeDataset(trainSet , testSet) =>
+        discoveryActor ! NodesRefRequest(
+          replyTo = context.messageAdapter(peers =>
+            GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)
+          )
+        )
+        Behaviors.same
+
+      case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
+        val totalNodes = peers.size
+        if totalNodes > 0 then
+          val chunkSize = trainSet.size / totalNodes
+
+          peers.zipWithIndex.foreach: (peer, index) =>
+            val from = index * chunkSize
+            val until = if (index == totalNodes - 1) trainSet.size else (index + 1) * chunkSize
+
+            val trainShard = trainSet.slice(from, until)
+
+            peer ! GossipCommand.HandleDistributeDataset(trainShard, testSet)
+        Behaviors.same
+
+      case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
+        rootActor ! RootCommand.DistributedDataset(trainShard, testSet)
+        Behaviors.same
+
+      case GossipCommand.WrappedPeers(peers) =>
+        val potentialPeers = peers.filter(_ != context.self)
+        if potentialPeers.nonEmpty then
+          val target = potentialPeers(Random.nextInt(potentialPeers.size))
+          modelActor ! ModelCommand.GetModel(
+            replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
+          )
+        Behaviors.same
+
+      case GossipCommand.SendModelToPeer(model, target) =>
+        context.log.info(s"Gossip: Sending Model  to peer $target")
+        target ! GossipCommand.HandleRemoteModel(model)
+        Behaviors.same
+
+      case GossipCommand.HandleRemoteModel(remoteModel) =>
+        modelActor ! ModelCommand.SyncModel(remoteModel)
+        Behaviors.same
+
+      case GossipCommand.SpreadCommand(cmd) =>
+        discoveryActor ! NodesRefRequest(
+          replyTo = context.messageAdapter(peers =>
+            GossipCommand.WrappedSpreadCommand(peers, cmd)
+          )
+        )
+        Behaviors.same
+
+      case GossipCommand.SpreadCommandOther(cmd) =>
+        discoveryActor ! NodesRefRequest(
+          replyTo = context.messageAdapter(peers =>
+            val otherPeers = peers.filter(_ != context.self)
+            GossipCommand.WrappedSpreadCommand(otherPeers, cmd)
+          )
+        )
+        Behaviors.same
+
+      case GossipCommand.WrappedSpreadCommand(peers, cmd) =>
+        peers.foreach ( peer =>
+          peer ! GossipCommand.HandleControlCommand(cmd)
+        )
+        Behaviors.same
+
+      case GossipCommand.HandleControlCommand(cmd) =>
+        context.log.info(s"Gossip: Executing remote control command: $cmd")
+
+        cmd match
+          case ControlCommand.PrepareClient(seedID, model, trainConfig) =>
+            context.log.info(s"Gossip (CLIENT): Received Init Config from $seedID")
+            rootActor ! RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig)
             Behaviors.same
-
-          case GossipCommand.StartTickRequest =>
-            timers.startTimerWithFixedDelay(
-              GossipCommand.TickRequest,
-              GossipCommand.TickRequest,
-              config.gossipRequestConfig
-            )
+          case ControlCommand.GlobalPause =>
+            trainerActor ! TrainerCommand.Pause
             Behaviors.same
-
-          case GossipCommand.StopGossipTick =>
-            context.log.info("Gossip: Stopping gossip polling.")
-            timers.cancel(GossipCommand.TickGossip)
+          case ControlCommand.GlobalResume =>
+            trainerActor ! TrainerCommand.Resume
             Behaviors.same
-
-          case GossipCommand.StopTickRequest =>
-            timers.cancel(GossipCommand.TickRequest)
-            Behaviors.same
-
-          case GossipCommand.TickGossip =>
-            discoveryActor ! NodesRefRequest(
-              replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
-            )
-
-            Behaviors.same
-
-          case GossipCommand.TickRequest =>
-            if cachedConfig.isEmpty then
-              context.log.debug("Gossip: Not initialized yet. Asking peers for Config...")
-              discoveryActor ! NodesRefRequest(
-                replyTo = context.messageAdapter(peers => GossipCommand.WrappedRequestConfig(peers.toSet))
-              )
-            Behaviors.same
-
-          case GossipCommand.WrappedRequestConfig(peers) =>
-            peers.filter(_ != context.self).foreach { peer =>
-              peer ! GossipCommand.RequestInitialConfig(context.self)
-            }
-            Behaviors.same
-
-          case GossipCommand.RequestInitialConfig(replyTo) =>
-            cachedConfig match
-              case Some((seedID, model, trainConfig)) =>
-                context.log.info(s"Gossip: Peer $replyTo asked for config. Sending it.")
-                replyTo ! GossipCommand.HandleControlCommand(
-                  ControlCommand.PrepareClient(seedID, model, trainConfig)
-                )
-              case None =>
-                context.log.info(s"Config not found.")
-            Behaviors.same
-
-          case GossipCommand.DistributeDataset(trainSet , testSet) =>
-            discoveryActor ! NodesRefRequest(
-              replyTo = context.messageAdapter(peers =>
-                GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)
-              )
-            )
-            Behaviors.same
-
-          case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
-            val totalNodes = peers.size
-            if totalNodes > 0 then
-              val chunkSize = trainSet.size / totalNodes
-
-              peers.zipWithIndex.foreach: (peer, index) =>
-                val from = index * chunkSize
-                val until = if (index == totalNodes - 1) trainSet.size else (index + 1) * chunkSize
-
-                val trainShard = trainSet.slice(from, until)
-
-                peer ! GossipCommand.HandleDistributeDataset(trainShard, testSet)
-            Behaviors.same
-
-          case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
-            rootActor ! RootCommand.DistributedDataset(trainShard, testSet)
-            Behaviors.same
-
-          case GossipCommand.WrappedPeers(peers) =>
-            val potentialPeers = peers.filter(_ != context.self)
-            if potentialPeers.nonEmpty then
-              val target = potentialPeers(Random.nextInt(potentialPeers.size))
-              modelActor ! ModelCommand.GetModel(
-                replyTo = context.messageAdapter(model => GossipCommand.SendModelToPeer(model, target))
-              )
-            Behaviors.same
-
-          case GossipCommand.SendModelToPeer(model, target) =>
-            context.log.info(s"Gossip: Sending Model  to peer $target")
-            target ! GossipCommand.HandleRemoteModel(model)
-            Behaviors.same
-
-          case GossipCommand.HandleRemoteModel(remoteModel) =>
-            modelActor ! ModelCommand.SyncModel(remoteModel)
-            Behaviors.same
-
-          case GossipCommand.SpreadCommand(cmd) =>
-            discoveryActor ! NodesRefRequest(
-              replyTo = context.messageAdapter(peers =>
-                GossipCommand.WrappedSpreadCommand(peers, cmd)
-              )
-            )
-            Behaviors.same
-
-          case GossipCommand.WrappedSpreadCommand(peers, cmd) =>
-            peers.foreach ( peer =>
-              peer ! GossipCommand.HandleControlCommand(cmd)
-            )
-            Behaviors.same
-
-          case GossipCommand.HandleControlCommand(cmd) =>
-            context.log.info(s"Gossip: Executing remote control command: $cmd")
-
-            cmd match
-              case ControlCommand.PrepareClient(seedID, model, trainConfig) =>
-                context.log.info(s"Gossip (CLIENT): Received Init Config from $seedID")
-                rootActor ! RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig)
-                active(Some((seedID, model, trainConfig)))
-              case ControlCommand.GlobalPause =>
-                trainerActor ! TrainerCommand.Pause
-                Behaviors.same
-              case ControlCommand.GlobalResume =>
-                trainerActor ! TrainerCommand.Resume
-                Behaviors.same
-              case ControlCommand.GlobalStop =>
-                rootActor ! RootCommand.StopSimulation
-                timers.cancelAll()
-                Behaviors.stopped
-              case _ =>
-                context.log.info(s"Gossip: Not found remote control command: $cmd")
-                Behaviors.same
-
+          case ControlCommand.GlobalStop =>
+            rootActor ! RootCommand.StopSimulation
+            timers.cancelAll()
+            Behaviors.stopped
           case _ =>
-            context.log.warn("Gossip: Received unhandled gossip message.")
-            Behaviors.unhandled
+            context.log.info(s"Gossip: Not found remote control command: $cmd")
+            Behaviors.same
 
-  private def buildCentroid(models: List[Model]): Model =
-    models.tail.foldLeft(models.head): (runningMean, nextModel) =>
-      val (centroid, _) = ModelTasks.mergeWith(nextModel).run(runningMean)
-      centroid
+      case _ =>
+        context.log.warn("Gossip: Received unhandled gossip message.")
+        Behaviors.unhandled

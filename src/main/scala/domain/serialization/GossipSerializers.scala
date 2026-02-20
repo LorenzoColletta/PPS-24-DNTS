@@ -1,10 +1,12 @@
 package domain.serialization
 
-import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, HandleRemoteModel, ShareConfig}
+import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, HandleRemoteModel}
+import actors.gossip.configuration.ConfigurationProtocol.ShareConfig
 import actors.gossip.GossipActor.ControlCommand
 import actors.gossip.GossipProtocol.GossipCommand
 import actors.gossip.GossipProtocol.GossipCommand.HandleControlCommand
 import actors.gossip.consensus.ConsensusProtocol.{ConsensusModelReply, RequestModelForConsensus}
+import actors.gossip.configuration.ConfigurationProtocol
 import actors.trainer.TrainerActor.TrainingConfig
 import akka.actor.typed.ActorRefResolver
 import domain.data.{Label, LabeledPoint2D, Point2D}
@@ -60,54 +62,54 @@ object GossipSerializers:
       ConsensusModelReply(model, roundId)
     }
 
-  given requestInitialConfigSerializer(using resolver: ActorRefResolver): Serializer[GossipCommand.RequestInitialConfig] with
-    def serialize(cmd: GossipCommand.RequestInitialConfig): Array[Byte] =
+  given requestInitialConfigSerializer(using resolver: ActorRefResolver): Serializer[ConfigurationProtocol.RequestInitialConfig] with
+    def serialize(cmd: ConfigurationProtocol.RequestInitialConfig): Array[Byte] =
       val refString = resolver.toSerializationFormat(cmd.replyTo)
       refString.getBytes(StandardCharsets.UTF_8)
 
-    def deserialize(bytes: Array[Byte]): scala.util.Try[GossipCommand.RequestInitialConfig] = scala.util.Try {
+    def deserialize(bytes: Array[Byte]): scala.util.Try[ConfigurationProtocol.RequestInitialConfig] = scala.util.Try {
       val refString = new String(bytes, StandardCharsets.UTF_8)
-      GossipCommand.RequestInitialConfig(resolver.resolveActorRef(refString))
+      ConfigurationProtocol.RequestInitialConfig(resolver.resolveActorRef(refString))
     }
 
   given shareConfigSerializer(using
                               modelSer: Serializer[Model],
                               confSer: Serializer[TrainingConfig]
-                             ): Serializer[ShareConfig] with
+                             ): Serializer[ConfigurationProtocol.ShareConfig] with // Usa il percorso completo per sicurezza
 
-    def serialize(cmd: ShareConfig): Array[Byte] =
+    def serialize(cmd: ConfigurationProtocol.ShareConfig): Array[Byte] =
       val idBytes = cmd.seedID.getBytes(StandardCharsets.UTF_8)
       val mBytes = modelSer.serialize(cmd.model)
       val cBytes = confSer.serialize(cmd.config)
 
       val buffer = ByteBuffer.allocate(4 + idBytes.length + 4 + mBytes.length + 4 + cBytes.length)
-      buffer.putInt(idBytes.length);
+      buffer.putInt(idBytes.length)
       buffer.put(idBytes)
-      buffer.putInt(mBytes.length);
+      buffer.putInt(mBytes.length)
       buffer.put(mBytes)
-      buffer.putInt(cBytes.length);
+      buffer.putInt(cBytes.length)
       buffer.put(cBytes)
       buffer.array()
 
-    def deserialize(bytes: Array[Byte]): Try[ShareConfig] = Try {
+    def deserialize(bytes: Array[Byte]): Try[ConfigurationProtocol.ShareConfig] = Try {
       val buffer = ByteBuffer.wrap(bytes)
 
-      val idLen = buffer.getInt;
-      val idBytes = new Array[Byte](idLen);
+      val idLen = buffer.getInt
+      val idBytes = new Array[Byte](idLen)
       buffer.get(idBytes)
       val seedID = new String(idBytes, StandardCharsets.UTF_8)
 
-      val mLen = buffer.getInt;
-      val mBytes = new Array[Byte](mLen);
+      val mLen = buffer.getInt
+      val mBytes = new Array[Byte](mLen)
       buffer.get(mBytes)
       val model = modelSer.deserialize(mBytes).get
 
-      val cLen = buffer.getInt;
-      val cBytes = new Array[Byte](cLen);
+      val cLen = buffer.getInt
+      val cBytes = new Array[Byte](cLen)
       buffer.get(cBytes)
       val config = confSer.deserialize(cBytes).get
 
-      ShareConfig(seedID, model, config)
+      ConfigurationProtocol.ShareConfig(seedID, model, config)
     }
 
   given handleRemoteModelSerializer: Serializer[HandleRemoteModel] with

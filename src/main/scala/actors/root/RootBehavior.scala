@@ -15,6 +15,7 @@ import actors.discovery.{DiscoveryActor, DiscoveryProtocol, GossipPeerState}
 import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor
 import actors.gossip.GossipProtocol.GossipCommand
+import actors.gossip.configuration.{ConfigurationActor, ConfigurationProtocol}
 import actors.model.ModelActor
 import actors.model.ModelActor.ModelCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
@@ -22,6 +23,7 @@ import actors.trainer.TrainerActor
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
+import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
 import actors.gossip.consensus.ConsensusActor
 import domain.data.LabeledPoint2D
 import com.typesafe.config.Config
@@ -72,6 +74,7 @@ class RootBehavior(
         None
 
     val discoveryActor = context.spawn(DiscoveryActor(GossipPeerState.empty), "discoveryActor")
+
     context.watch(discoveryActor)
     
     val clusterManager = context.spawn(
@@ -95,11 +98,18 @@ class RootBehavior(
     val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
     context.watch(trainerActor)
 
-    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor), "gossipActor")
+    val consensusActor = context.spawn(ConsensusActor(context.self, modelActor, trainerActor, discoveryActor), "consensusActor")
+    context.watch(consensusActor)
+
+    val configurationActor = context.spawn(ConfigurationActor(discoveryActor), "configurationActor")
+    context.watch(configurationActor)
+
+    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor, configurationActor), "gossipActor")
     context.watch(gossipActor)
 
-    val consensusActor = context.spawn(ConsensusActor(context.self, modelActor, trainerActor, discoveryActor), "consensusActor")
-    
+    configurationActor ! ConfigurationProtocol.RegisterGossip(gossipActor)
+
+
     val monitorActor = context.spawn(
       MonitorActor(
         modelActor,
@@ -112,12 +122,12 @@ class RootBehavior(
     )
     context.watch(monitorActor)
 
-    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor, consensusActor)
+    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor, configurationActor, consensusActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
-    gossipActor ! GossipCommand.StartTickRequest
+    configurationActor ! ConfigurationProtocol.StartTickRequest
 
-    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
+    waitingForStart(seedDataPayload, gossipActor, configurationActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
 
   /**
    * State: Waiting for the Seed Start Simulation command.
@@ -125,6 +135,7 @@ class RootBehavior(
   private def waitingForStart(
     seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
     gossipActor: ActorRef[GossipCommand],
+    configurationActor: ActorRef[ConfigurationCommand],
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
     monitorActor: ActorRef[MonitorCommand],
@@ -135,6 +146,7 @@ class RootBehavior(
     Behaviors.receive: (ctx, msg) =>
       msg match
         case RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig) =>
+          val myAddress = ctx.system.address.toString
           val regularizationStrategy = Regularizers.fromConfig(trainConfig.hp.regularization)
           val optimizer = Optimizers.SGD(trainConfig.hp.learningRate, regularizationStrategy)
           modelActor ! ModelCommand.Initialize(model, optimizer, trainerActor)
@@ -175,7 +187,7 @@ class RootBehavior(
               monitorActor ! MonitorCommand.Initialize("LocalMaster", model, trainConfig)
               context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
 
-              gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
+              configurationActor ! ConfigurationProtocol.ShareConfig(myAddress, model, trainConfig)
               trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
 
             case None =>

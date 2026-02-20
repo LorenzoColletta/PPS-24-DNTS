@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef
 import domain.data.LabeledPoint2D
 import domain.network.{Feature, HyperParams, Model}
 import actors.gossip.GossipActor.GossipCommand
+import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
 import actors.gossip.consensus.ConsensusProtocol.ConsensusCommand
 import actors.monitor.MonitorActor.MonitorCommand
 
@@ -68,9 +69,10 @@ object TrainerProtocol:
      * @param gossip  The reference to the local [[GossipActor]].
      */
     final case class RegisterServices(
-      monitor: ActorRef[MonitorCommand],
-      gossip: ActorRef[GossipCommand],
-      consensus: ActorRef[ConsensusCommand]
+                                       monitor: ActorRef[MonitorCommand],
+                                       gossip: ActorRef[GossipCommand],
+                                       configuration: ActorRef[ConfigurationCommand],
+                                       consensus: ActorRef[ConsensusCommand]
     ) extends TrainerCommand
 
     /** 

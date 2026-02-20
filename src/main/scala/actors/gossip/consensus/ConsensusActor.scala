@@ -22,9 +22,6 @@ object ConsensusActor:
              discoveryActor: ActorRef[DiscoveryCommand]
            )(using config: AppConfig): Behavior[ConsensusCommand] =
     Behaviors.setup: context =>
-
-      discoveryActor ! RegisterGossip(context.self.unsafeUpcast[GossipCommand])
-
       Behaviors.withTimers: timers =>
         ConsensusBehavior(
           rootActor,

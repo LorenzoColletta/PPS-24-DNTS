@@ -5,9 +5,9 @@ import akka.actor.typed.scaladsl.Behaviors
 import config.AppConfig
 import actors.model.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.cluster.ClusterProtocol.ClusterMemberCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip}
 import actors.root.RootActor.RootCommand
+import actors.gossip.configuration.ConfigurationProtocol
 
 /**
  * Actor responsible for propagating patterns and control signals
@@ -30,7 +30,8 @@ object GossipActor:
     rootActor: ActorRef[RootCommand],
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
-    discoveryActor: ActorRef[DiscoveryCommand]
+    discoveryActor: ActorRef[DiscoveryCommand],
+    configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand]
   )(using config: AppConfig): Behavior[GossipCommand] =
     Behaviors.setup: context =>
       discoveryActor ! RegisterGossip(context.self)
@@ -40,7 +41,8 @@ object GossipActor:
           modelActor,
           trainerActor,
           discoveryActor,
+          configurationActor,
           timers,
           config
-        ).active(cachedConfig = None)
+        ).active()
         
