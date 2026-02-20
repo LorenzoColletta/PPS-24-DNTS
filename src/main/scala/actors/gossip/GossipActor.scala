@@ -8,6 +8,7 @@ import actors.trainer.TrainerActor.TrainerCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip}
 import actors.root.RootActor.RootCommand
 import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.consensus.ConsensusProtocol
 import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 
 /**
@@ -21,9 +22,10 @@ object GossipActor:
   /**
    * Creates the initial behavior for the GossipActor.
    *
-   * @param modelActor     Reference to the local ModelActor.
-   * @param trainerActor   Reference to the local TrainerActor.
-   * @param discoveryActor Reference to the DiscoveryActor for peer discovery.
+   * @param modelActor     Reference to the local [[ModelActor]].
+   * @param trainerActor   Reference to the local [[TrainerActor]].
+   * @param discoveryActor Reference to the [[DiscoveryActor]] for peer discovery.
+   * @param consensusActor Reference to the local [[ConsensusActor]].
    * @param config         Application global configuration.
    * @return A Behavior handling GossipCommand messages.
    */
@@ -33,8 +35,10 @@ object GossipActor:
     trainerActor: ActorRef[TrainerCommand],
     discoveryActor: ActorRef[DiscoveryCommand],
     configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand],
-    distributeDatasetActor: ActorRef[DatasetDistributionCommand]
+    distributeDatasetActor: ActorRef[DatasetDistributionCommand],
+    consensusActor: ActorRef[ConsensusProtocol.ConsensusCommand],
   )(using config: AppConfig): Behavior[GossipCommand] =
+  
     Behaviors.setup: context =>
       discoveryActor ! RegisterGossip(context.self)
       Behaviors.withTimers: timers =>
@@ -45,6 +49,7 @@ object GossipActor:
           discoveryActor,
           configurationActor,
           distributeDatasetActor,
+          consensusActor,
           timers,
           config
         ).active()

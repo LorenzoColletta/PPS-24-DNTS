@@ -8,6 +8,7 @@ import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.root.RootProtocol.RootCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.consensus.ConsensusProtocol
 import actors.gossip.dataset_distribution.DatasetDistributionProtocol
 import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 import config.AppConfig
@@ -19,8 +20,9 @@ import scala.util.Random
 /**
  * Encapsulates the behavior logic for the GossipActor.
  *
- * @param modelActor     Reference to the local ModelActor.
- * @param trainerActor   Reference to the local TrainerActor.
+ * @param modelActor     Reference to the local [[ModelActor]].
+ * @param trainerActor   Reference to the local [[TrainerActor]].
+ * @param consensusActor Reference to the local [[ConsensusActor]].
  * @param timers         The scheduler for managing periodic gossip ticks.
  * @param config         Global application configuration.
  */
@@ -31,6 +33,7 @@ private[gossip] class GossipBehavior(
   discoveryActor: ActorRef[DiscoveryCommand],
   configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand],
   datasetDistributionActor: ActorRef[DatasetDistributionCommand],
+  consensusActor: ActorRef[ConsensusProtocol.ConsensusCommand],
   timers: TimerScheduler[GossipCommand],
   config: AppConfig
 ):
@@ -49,6 +52,11 @@ private[gossip] class GossipBehavior(
         case distCmd: DatasetDistributionProtocol.DatasetDistributionCommand =>
           context.log.debug("Gossip: Routing dataset distribution command to DatasetDistributionActor")
           datasetDistributionActor ! distCmd
+          Behaviors.same
+
+        case consCmd: ConsensusProtocol.ConsensusCommand =>
+          context.log.debug("Gossip: Routing consensus command to ConsensusActor")
+          consensusActor ! consCmd
           Behaviors.same
 
         case other =>
