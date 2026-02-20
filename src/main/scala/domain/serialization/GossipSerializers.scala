@@ -1,12 +1,13 @@
 package domain.serialization
 
-import actors.gossip.GossipActor.GossipCommand.{HandleDistributeDataset, HandleRemoteModel}
+import actors.gossip.GossipActor.GossipCommand.HandleRemoteModel
 import actors.gossip.configuration.ConfigurationProtocol.ShareConfig
 import actors.gossip.GossipActor.ControlCommand
 import actors.gossip.GossipProtocol.GossipCommand
 import actors.gossip.GossipProtocol.GossipCommand.HandleControlCommand
 import actors.gossip.consensus.ConsensusProtocol.{ConsensusModelReply, RequestModelForConsensus}
 import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol.HandleDistributeDataset
 import actors.trainer.TrainerActor.TrainingConfig
 import akka.actor.typed.ActorRefResolver
 import domain.data.{Label, LabeledPoint2D, Point2D}

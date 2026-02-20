@@ -25,6 +25,9 @@ import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
 import actors.gossip.consensus.ConsensusActor
+import actors.gossip.dataset_distribution.DatasetDistributionActor
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 import domain.data.LabeledPoint2D
 import com.typesafe.config.Config
 import domain.data.dataset.{DataModelFactory, DatasetGenerator, shuffle}
@@ -104,7 +107,10 @@ class RootBehavior(
     val configurationActor = context.spawn(ConfigurationActor(discoveryActor), "configurationActor")
     context.watch(configurationActor)
 
-    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor, configurationActor), "gossipActor")
+    val distributeDatasetActor = context.spawn(DatasetDistributionActor(context.self, discoveryActor), "distributeDatasetActor")
+    context.watch(distributeDatasetActor)
+
+    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor, configurationActor, distributeDatasetActor), "gossipActor")
     context.watch(gossipActor)
 
     configurationActor ! ConfigurationProtocol.RegisterGossip(gossipActor)
@@ -127,26 +133,26 @@ class RootBehavior(
 
     configurationActor ! ConfigurationProtocol.StartTickRequest
 
-    waitingForStart(seedDataPayload, gossipActor, configurationActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
+    waitingForStart(seedDataPayload, gossipActor, configurationActor, distributeDatasetActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
 
   /**
    * State: Waiting for the Seed Start Simulation command.
    */
   private def waitingForStart(
-    seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
-    gossipActor: ActorRef[GossipCommand],
-    configurationActor: ActorRef[ConfigurationCommand],
-    modelActor: ActorRef[ModelCommand],
-    trainerActor: ActorRef[TrainerCommand],
-    monitorActor: ActorRef[MonitorCommand],
-    clusterManager: ActorRef[ClusterMemberCommand],
-    discoveryActor: ActorRef[DiscoveryCommand],
+                               seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
+                               gossipActor: ActorRef[GossipCommand],
+                               configurationActor: ActorRef[ConfigurationCommand],
+                               distributeDatasetActor: ActorRef[DatasetDistributionCommand],
+                               modelActor: ActorRef[ModelCommand],
+                               trainerActor: ActorRef[TrainerCommand],
+                               monitorActor: ActorRef[MonitorCommand],
+                               clusterManager: ActorRef[ClusterMemberCommand],
+                               discoveryActor: ActorRef[DiscoveryCommand],
   ): Behavior[RootCommand] =
 
     Behaviors.receive: (ctx, msg) =>
       msg match
         case RootCommand.ConfirmInitialConfiguration(seedID, model, trainConfig) =>
-          val myAddress = ctx.system.address.toString
           val regularizationStrategy = Regularizers.fromConfig(trainConfig.hp.regularization)
           val optimizer = Optimizers.SGD(trainConfig.hp.learningRate, regularizationStrategy)
           modelActor ! ModelCommand.Initialize(model, optimizer, trainerActor)
@@ -170,7 +176,7 @@ class RootBehavior(
               val (globalTrain, globalTest) = d.splitAt(trainSize)
 
               context.log.info(s"Root: Data Split - Train: ${globalTrain.size}, Test: ${globalTest.size}")
-              gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest)
+              distributeDatasetActor ! DatasetDistributionProtocol.DistributeDataset(globalTrain, globalTest)
               Behaviors.same
 
             case _ =>

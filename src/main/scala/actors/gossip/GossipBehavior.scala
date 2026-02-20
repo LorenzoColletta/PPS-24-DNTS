@@ -8,6 +8,8 @@ import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.root.RootProtocol.RootCommand
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 import config.AppConfig
 import domain.network.Model
 
@@ -28,6 +30,7 @@ private[gossip] class GossipBehavior(
   trainerActor: ActorRef[TrainerCommand],
   discoveryActor: ActorRef[DiscoveryCommand],
   configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand],
+  datasetDistributionActor: ActorRef[DatasetDistributionCommand],
   timers: TimerScheduler[GossipCommand],
   config: AppConfig
 ):
@@ -41,6 +44,11 @@ private[gossip] class GossipBehavior(
         case configCmd: ConfigurationProtocol.ConfigurationCommand =>
           context.log.debug(s"Gossip: Routing configuration command to ConfigurationActor")
           configurationActor ! configCmd
+          Behaviors.same
+
+        case distCmd: DatasetDistributionProtocol.DatasetDistributionCommand =>
+          context.log.debug("Gossip: Routing dataset distribution command to DatasetDistributionActor")
+          datasetDistributionActor ! distCmd
           Behaviors.same
 
         case other =>
@@ -66,32 +74,6 @@ private[gossip] class GossipBehavior(
           replyTo = context.messageAdapter(peers => GossipCommand.WrappedPeers(peers))
         )
 
-        Behaviors.same
-
-      case GossipCommand.DistributeDataset(trainSet , testSet) =>
-        discoveryActor ! NodesRefRequest(
-          replyTo = context.messageAdapter(peers =>
-            GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)
-          )
-        )
-        Behaviors.same
-
-      case GossipCommand.WrappedDistributeDataset(peers, trainSet, testSet)  =>
-        val totalNodes = peers.size
-        if totalNodes > 0 then
-          val chunkSize = trainSet.size / totalNodes
-
-          peers.zipWithIndex.foreach: (peer, index) =>
-            val from = index * chunkSize
-            val until = if (index == totalNodes - 1) trainSet.size else (index + 1) * chunkSize
-
-            val trainShard = trainSet.slice(from, until)
-
-            peer ! GossipCommand.HandleDistributeDataset(trainShard, testSet)
-        Behaviors.same
-
-      case GossipCommand.HandleDistributeDataset(trainShard, testSet) =>
-        rootActor ! RootCommand.DistributedDataset(trainShard, testSet)
         Behaviors.same
 
       case GossipCommand.WrappedPeers(peers) =>

@@ -8,6 +8,7 @@ import actors.trainer.TrainerActor.TrainerCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip}
 import actors.root.RootActor.RootCommand
 import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 
 /**
  * Actor responsible for propagating patterns and control signals
@@ -31,7 +32,8 @@ object GossipActor:
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
     discoveryActor: ActorRef[DiscoveryCommand],
-    configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand]
+    configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand],
+    distributeDatasetActor: ActorRef[DatasetDistributionCommand]
   )(using config: AppConfig): Behavior[GossipCommand] =
     Behaviors.setup: context =>
       discoveryActor ! RegisterGossip(context.self)
@@ -42,7 +44,7 @@ object GossipActor:
           trainerActor,
           discoveryActor,
           configurationActor,
+          distributeDatasetActor,
           timers,
           config
         ).active()
-        
