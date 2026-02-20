@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef
 import domain.data.LabeledPoint2D
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
+import akka.actor.typed.ActorRef
 
 /**
  * Defines the public API and data structures for the Gossip component.
@@ -13,7 +14,7 @@ object GossipProtocol:
   /**
    * Root trait for all messages handled by the GossipActor.
    */
-  sealed trait GossipCommand extends Serializable
+  trait GossipCommand extends Serializable
 
   /**
    * Commands that are broadcast to all application nodes
@@ -43,26 +44,8 @@ object GossipProtocol:
     /** Starts the periodic gossip timer. */
     case object StartGossipTick extends GossipCommand
 
-    case object StartTickConsensus extends GossipCommand
-
-    case object StartTickRequest extends GossipCommand
-
     /** Starts the periodic gossip timer. */
     case object StopGossipTick extends GossipCommand
-
-    case object StopTickConsensus extends GossipCommand
-
-    case object StopTickRequest extends GossipCommand
-
-    final case class ShareConfig(
-                                  seedID: String,
-                                  model: Model,
-                                  config: TrainingConfig
-                                ) extends GossipCommand
-
-    final case class RequestInitialConfig(replyTo: ActorRef[GossipCommand]) extends GossipCommand
-
-    final case class WrappedRequestConfig(peers: Set[ActorRef[GossipCommand]]) extends GossipCommand
 
     /**
      * Triggered periodically to request the list of active peers from the ClusterManager
@@ -72,70 +55,12 @@ object GossipProtocol:
     case object TickGossip extends GossipCommand
 
     /**
-     * Triggered periodically to start a consensus round by collecting all peer models.
-     */
-    case object TickConsensus extends GossipCommand
-
-    case object TickRequest extends GossipCommand
-
-    /**
-     *
-     * Command for the Master node to distribute the dataset to the cluster peers.
-     *
-     * @param trainSet The complete training dataset.
-     * @param testSet  The complete test dataset.
-     */
-    final case class DistributeDataset(trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
-
-    /**
-     *
-     * Internal wrapper for dataset distribution after peer discovery.
-     *
-     * @param peers Peer to send the portion of the dataset.
-     * @param trainSet The complete training dataset.
-     * @param testSet The complete test dataset.
-     * */
-    final case class WrappedDistributeDataset(peers: List[ActorRef[GossipCommand]], trainSet: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
-
-    /**
-     * Message received by a Client node containing its portion of the data.
-     *
-     * @param trainShard The slice of training data for the local node.
-     * @param testSet    The full test set for local evaluation.
-     */
-    final case class HandleDistributeDataset(trainShard: List[LabeledPoint2D], testSet: List[LabeledPoint2D]) extends GossipCommand
-
-    /**
-     * Wrapper for the list of discovered peers used for a consensus round.
-     * Initiates model requests to ALL peers (not just one at random).
-     *
-     * @param peers The list of discovered peers.
-     */
-    final case class WrappedPeersForConsensus(peers: List[ActorRef[GossipCommand]]) extends GossipCommand
-
-    /**
      * Wrapper for the list of discovered peers from the ClusterManager.
      * Select a peer at random and pass the local model to it using SendModelToPeer.
      *
      * @param peers The list of discovered peers.
      * */
     final case class WrappedPeers(peers: List[ActorRef[GossipCommand]]) extends GossipCommand
-
-    /**
-     * Request sent to a peer asking it to share its current model for consensus computation.
-     *
-     * @param replyTo The actor that will collect the response.
-     * @param roundId Unique identifier for the consensus round, used to correlate replies.
-     */
-    final case class RequestModelForConsensus(replyTo: ActorRef[GossipCommand], roundId: Long) extends GossipCommand
-
-    /**
-     * Response to [[RequestModelForConsensus]] carrying the peer's current model snapshot.
-     *
-     * @param model   The sender's current model.
-     * @param roundId The consensus round this response belongs to.
-     */
-    final case class ConsensusModelReply(model: Model, roundId: Long) extends GossipCommand
 
     /**
      * Handles a model received from a remote peer.
@@ -159,6 +84,8 @@ object GossipProtocol:
      */
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
 
+    final case class SpreadCommandOther(cmd: ControlCommand) extends ControlCommand
+
     /**
      * Internal wrapper to handle peer list for SpreadCommand
      *
@@ -173,17 +100,3 @@ object GossipProtocol:
      * @param cmd The control command to execute locally.
      */
     final case class HandleControlCommand(cmd: ControlCommand) extends ControlCommand
-
-    /**
-     * Internal message carrying the local model snapshot for a consensus round,
-     * together with the full list of peers that were contacted.
-     *
-     * @param localModel The local model at the moment the round was initiated.
-     * @param peers      All peers that were asked to participate in this round.
-     * @param roundId    Unique identifier for the round.
-     */
-    final case class WrappedLocalModelForConsensus(
-                                                localModel: Model,
-                                                peers: List[ActorRef[GossipCommand]],
-                                                roundId: Long
-                                              ) extends GossipCommand

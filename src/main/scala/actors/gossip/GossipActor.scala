@@ -5,9 +5,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import config.AppConfig
 import actors.model.ModelActor.ModelCommand
 import actors.trainer.TrainerActor.TrainerCommand
-import actors.cluster.ClusterProtocol.ClusterMemberCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip}
 import actors.root.RootActor.RootCommand
+import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.consensus.ConsensusProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 
 /**
  * Actor responsible for propagating patterns and control signals
@@ -20,9 +22,10 @@ object GossipActor:
   /**
    * Creates the initial behavior for the GossipActor.
    *
-   * @param modelActor     Reference to the local ModelActor.
-   * @param trainerActor   Reference to the local TrainerActor.
-   * @param discoveryActor Reference to the DiscoveryActor for peer discovery.
+   * @param modelActor     Reference to the local [[ModelActor]].
+   * @param trainerActor   Reference to the local [[TrainerActor]].
+   * @param discoveryActor Reference to the [[DiscoveryActor]] for peer discovery.
+   * @param consensusActor Reference to the local [[ConsensusActor]].
    * @param config         Application global configuration.
    * @return A Behavior handling GossipCommand messages.
    */
@@ -30,8 +33,12 @@ object GossipActor:
     rootActor: ActorRef[RootCommand],
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
-    discoveryActor: ActorRef[DiscoveryCommand]
+    discoveryActor: ActorRef[DiscoveryCommand],
+    configurationActor: ActorRef[ConfigurationProtocol.ConfigurationCommand],
+    distributeDatasetActor: ActorRef[DatasetDistributionCommand],
+    consensusActor: ActorRef[ConsensusProtocol.ConsensusCommand],
   )(using config: AppConfig): Behavior[GossipCommand] =
+  
     Behaviors.setup: context =>
       discoveryActor ! RegisterGossip(context.self)
       Behaviors.withTimers: timers =>
@@ -40,7 +47,9 @@ object GossipActor:
           modelActor,
           trainerActor,
           discoveryActor,
+          configurationActor,
+          distributeDatasetActor,
+          consensusActor,
           timers,
           config
-        ).active(cachedConfig = None)
-        
+        ).active()

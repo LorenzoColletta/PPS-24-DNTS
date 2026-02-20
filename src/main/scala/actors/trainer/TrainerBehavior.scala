@@ -13,6 +13,9 @@ import domain.training.{LossFunction, TrainingCore}
 import actors.trainer.TrainerActor.*
 import actors.model.ModelActor.ModelCommand
 import actors.gossip.GossipActor.GossipCommand
+import actors.gossip.configuration.ConfigurationProtocol
+import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
+import actors.gossip.consensus.ConsensusProtocol.{ConsensusCommand, StartTickConsensus, StopTickConsensus}
 import actors.monitor.MonitorActor.MonitorCommand
 import domain.data.util.Space
 
@@ -37,18 +40,20 @@ private[trainer] class TrainerBehavior(
    */
   def idle(
     monitor: Option[ActorRef[MonitorCommand]] = None,
-    gossip: Option[ActorRef[GossipCommand]] = None
+    gossip: Option[ActorRef[GossipCommand]] = None,
+    configuration: Option[ActorRef[ConfigurationCommand]] = None,
+    consensus: Option[ActorRef[ConsensusCommand]] = None
   ): Behavior[TrainerMessage] =
 
     Behaviors.receive: (ctx, msg) =>
       msg match
-        case TrainerCommand.RegisterServices(monRef, gosRef) =>
-          ctx.log.info("Trainer: Services registered (Monitor & Gossip).")
-          idle(Some(monRef), Some(gosRef))
+        case TrainerCommand.RegisterServices(monRef, gosRef, confRef, consRef) =>
+          ctx.log.info("Trainer: Services registered (Monitor & Gossip & consRef).")
+          idle(Some(monRef), Some(gosRef), Some(confRef), Some(consRef))
 
         case TrainerCommand.SetTrainConfig(trainConfig) =>
           ctx.log.info(s"Trainer: Setting Training Configuration")
-          ready(trainConfig, monitor, gossip)
+          ready(trainConfig, monitor, gossip, configuration, consensus)
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
           replyTo ! MetricsCalculated(0.0, 0.0, 0)
@@ -68,7 +73,9 @@ private[trainer] class TrainerBehavior(
   private def ready(
     trainConfig: TrainingConfig,
     monitor: Option[ActorRef[MonitorCommand]],
-    gossip: Option[ActorRef[GossipCommand]]
+    gossip: Option[ActorRef[GossipCommand]],
+    configuration: Option[ActorRef[ConfigurationCommand]],
+    consensus: Option[ActorRef[ConsensusCommand]]
   ): Behavior[TrainerMessage] =
 
     Behaviors.receive: (ctx, msg) =>
@@ -85,15 +92,15 @@ private[trainer] class TrainerBehavior(
 
           monitor.foreach(_ ! MonitorCommand.StartWithData(trainSet, testSet))
           gossip.foreach(_ ! GossipCommand.StartGossipTick)
-          gossip.foreach(_ ! GossipCommand.StartTickConsensus)
-          gossip.foreach(_ ! GossipCommand.StopTickRequest)
+          consensus.foreach(_ ! StartTickConsensus)
+          configuration.foreach(_ ! ConfigurationProtocol.StopTickRequest)
 
           ctx.self ! PrivateTrainerCommand.NextBatch(1, 0)
-          training(newTrainConfig, shuffledDataset, rand, 1, 0, monitor, gossip)
+          training(newTrainConfig, shuffledDataset, rand, 1, 0, monitor, gossip, consensus)
 
-        case TrainerCommand.RegisterServices(monRef, gosRef) =>
+        case TrainerCommand.RegisterServices(monRef, gosRef, confRef, consRef) =>
           ctx.log.info("Trainer: Services registered (Monitor & Gossip).")
-          ready(trainConfig, Some(monRef), Some(gosRef))
+          ready(trainConfig, Some(monRef), Some(gosRef), Some(confRef), Some(consRef))
 
         case TrainerCommand.CalculateMetrics(_, replyTo) =>
           replyTo ! MetricsCalculated(0.0, 0.0, 0)
@@ -115,7 +122,8 @@ private[trainer] class TrainerBehavior(
     currentEpoch: Int,
     currentIdx: Int,
     monitor: Option[ActorRef[MonitorCommand]],
-    gossip: Option[ActorRef[GossipCommand]]
+    gossip: Option[ActorRef[GossipCommand]],
+    consensus: Option[ActorRef[ConsensusCommand]]
   ): Behavior[TrainerMessage] =
 
     implicit val timeout: Timeout = 3.seconds
@@ -128,9 +136,9 @@ private[trainer] class TrainerBehavior(
 
             monitor.foreach(_ ! MonitorCommand.SimulationFinished)
             gossip.foreach(_ ! GossipCommand.StopGossipTick)
-            gossip.foreach(_ ! GossipCommand.StopTickConsensus)
+            consensus.foreach(_ ! StopTickConsensus)
 
-            paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
+            paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip, consensus)
           else
             val batch = currentDataset.slice(idx, idx + trainConfig.batchSize)
 
@@ -139,7 +147,7 @@ private[trainer] class TrainerBehavior(
               val nextShuffled = rand.shuffle(trainConfig.trainSet)
 
               ctx.self ! PrivateTrainerCommand.NextBatch(nextEpoch, 0)
-              training(trainConfig, nextShuffled, rand, nextEpoch, 0, monitor, gossip)
+              training(trainConfig, nextShuffled, rand, nextEpoch, 0, monitor, gossip, consensus)
             else
               ctx.ask[ModelCommand, Model](modelActor, ref => ModelCommand.GetModel(ref)) {
                 case Success(model) => TrainerCommand.ComputeGradients(model, batch, epoch, idx)
@@ -168,7 +176,7 @@ private[trainer] class TrainerBehavior(
           monitor.foreach(_ ! MonitorCommand.InternalPause)
           
           timers.cancelAll()
-          paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip)
+          paused(trainConfig, currentDataset, rand, (currentEpoch, currentIdx), monitor, gossip, consensus)
 
         case TrainerCommand.Stop =>
           timers.cancelAll()
@@ -185,7 +193,8 @@ private[trainer] class TrainerBehavior(
     rand: Random,
     resumePos: (Int, Int),
     monitor: Option[ActorRef[MonitorCommand]],
-    gossip: Option[ActorRef[GossipCommand]]
+    gossip: Option[ActorRef[GossipCommand]],
+    consensus: Option[ActorRef[ConsensusCommand]]
   ): Behavior[TrainerMessage] =
 
     Behaviors.receive: (ctx, msg) =>
@@ -196,7 +205,7 @@ private[trainer] class TrainerBehavior(
           monitor.foreach(_ ! MonitorCommand.InternalResume)
           
           ctx.self ! PrivateTrainerCommand.NextBatch(resumePos._1, resumePos._2)
-          training(trainConfig, currentDataset, rand, resumePos._1, resumePos._2, monitor, gossip)
+          training(trainConfig, currentDataset, rand, resumePos._1, resumePos._2, monitor, gossip, consensus)
 
         case TrainerCommand.CalculateMetrics(model, replyTo) =>
           val trainLoss = TrainingCore.computeDatasetLoss(model, trainConfig.trainSet)

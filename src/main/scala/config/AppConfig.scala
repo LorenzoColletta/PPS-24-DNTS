@@ -47,7 +47,7 @@ object ProductionConfig extends AppConfig:
   override final val batchInterval: FiniteDuration = 10.millis
 
   /** P2P synchronization frequency. */
-  override final val gossipInterval: FiniteDuration = 750.millis
+  override final val gossipInterval: FiniteDuration = 4.seconds
 
   /** Dynamic log filename generation with timestamp. */
   override final val netLogFileName: String =
@@ -66,6 +66,6 @@ object ProductionConfig extends AppConfig:
   /**
    * Global consensus round frequency.
    */
-  override final val consensusInterval: FiniteDuration = 750.millis
+  override final val consensusInterval: FiniteDuration = 500.millis
 
-  override final val gossipRequestConfig: FiniteDuration = 500.millis
+  override final val gossipRequestConfig: FiniteDuration = 3.seconds

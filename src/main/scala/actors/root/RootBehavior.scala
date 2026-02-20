@@ -12,9 +12,9 @@ import actors.monitor.MonitorActor
 import actors.monitor.MonitorActor.MonitorCommand
 import actors.cluster.{ClusterManager, ClusterProtocol, ClusterState}
 import actors.discovery.{DiscoveryActor, DiscoveryProtocol, GossipPeerState}
-import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor
 import actors.gossip.GossipProtocol.GossipCommand
+import actors.gossip.configuration.{ConfigurationActor, ConfigurationProtocol}
 import actors.model.ModelActor
 import actors.model.ModelActor.ModelCommand
 import actors.root.RootProtocol.{NodeRole, RootCommand}
@@ -22,6 +22,11 @@ import actors.trainer.TrainerActor
 import actors.trainer.TrainerActor.TrainerCommand
 import actors.trainer.TrainerActor.TrainingConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
+import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
+import actors.gossip.consensus.{ConsensusActor, ConsensusProtocol}
+import actors.gossip.dataset_distribution.DatasetDistributionActor
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol
+import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 import domain.data.LabeledPoint2D
 import com.typesafe.config.Config
 import domain.data.dataset.{DataModelFactory, DatasetGenerator, shuffle}
@@ -71,6 +76,7 @@ class RootBehavior(
         None
 
     val discoveryActor = context.spawn(DiscoveryActor(GossipPeerState.empty), "discoveryActor")
+
     context.watch(discoveryActor)
     
     val clusterManager = context.spawn(
@@ -94,9 +100,25 @@ class RootBehavior(
     val trainerActor = context.spawn(TrainerActor(modelActor), "trainerActor")
     context.watch(trainerActor)
 
-    val gossipActor = context.spawn(GossipActor(context.self, modelActor, trainerActor, discoveryActor), "gossipActor")
+    val consensusActor = context.spawn(ConsensusActor(context.self, modelActor, trainerActor, discoveryActor), "consensusActor")
+    context.watch(consensusActor)
+
+    val configurationActor = context.spawn(ConfigurationActor(discoveryActor), "configurationActor")
+    context.watch(configurationActor)
+
+    val distributeDatasetActor = context.spawn(DatasetDistributionActor(context.self, discoveryActor), "distributeDatasetActor")
+    context.watch(distributeDatasetActor)
+
+    val gossipActor = context.spawn(
+      GossipActor(
+        context.self, modelActor, trainerActor, discoveryActor,
+        configurationActor, distributeDatasetActor, consensusActor
+      ), "gossipActor")
     context.watch(gossipActor)
-    
+
+    configurationActor ! ConfigurationProtocol.RegisterGossip(gossipActor)
+
+
     val monitorActor = context.spawn(
       MonitorActor(
         modelActor,
@@ -109,12 +131,15 @@ class RootBehavior(
     )
     context.watch(monitorActor)
 
-    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor)
+    trainerActor ! TrainerCommand.RegisterServices(monitorActor, gossipActor, configurationActor, consensusActor)
     clusterManager ! ClusterProtocol.RegisterMonitor(monitorActor)
 
-    gossipActor ! GossipCommand.StartTickRequest
+    configurationActor ! ConfigurationProtocol.StartTickRequest
 
-    waitingForStart(seedDataPayload, gossipActor, modelActor, trainerActor, monitorActor, clusterManager, discoveryActor)
+    waitingForStart(
+      seedDataPayload, gossipActor, configurationActor, distributeDatasetActor, consensusActor,
+      modelActor, trainerActor, monitorActor, clusterManager, discoveryActor
+    )
 
   /**
    * State: Waiting for the Seed Start Simulation command.
@@ -122,6 +147,9 @@ class RootBehavior(
   private def waitingForStart(
     seedDataPayload: Option[(Model, List[LabeledPoint2D], TrainingConfig, Optimizers.SGD, FileConfig)],
     gossipActor: ActorRef[GossipCommand],
+    configurationActor: ActorRef[ConfigurationCommand],
+    distributeDatasetActor: ActorRef[DatasetDistributionCommand],
+    consensusActor: ActorRef[ConsensusProtocol.ConsensusCommand],
     modelActor: ActorRef[ModelCommand],
     trainerActor: ActorRef[TrainerCommand],
     monitorActor: ActorRef[MonitorCommand],
@@ -155,7 +183,8 @@ class RootBehavior(
               val (globalTrain, globalTest) = d.splitAt(trainSize)
 
               context.log.info(s"Root: Data Split - Train: ${globalTrain.size}, Test: ${globalTest.size}")
-              gossipActor ! GossipCommand.DistributeDataset(globalTrain, globalTest)
+              distributeDatasetActor ! DatasetDistributionProtocol.RegisterSeed(conf.seed.getOrElse(0))
+              distributeDatasetActor ! DatasetDistributionProtocol.DistributeDataset(globalTrain, globalTest)
               Behaviors.same
 
             case _ =>
@@ -172,7 +201,7 @@ class RootBehavior(
               monitorActor ! MonitorCommand.Initialize("LocalMaster", model, trainConfig)
               context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
 
-              gossipActor ! GossipCommand.ShareConfig(myAddress, model, trainConfig)
+              configurationActor ! ConfigurationProtocol.ShareConfig(myAddress, model, trainConfig)
               trainerActor ! TrainerCommand.SetTrainConfig(trainConfig)
 
             case None =>
@@ -196,6 +225,9 @@ class RootBehavior(
           monitorActor ! MonitorCommand.InternalStop
           modelActor ! ModelCommand.StopSimulation
           discoveryActor ! DiscoveryProtocol.Stop
+          configurationActor ! ConfigurationProtocol.Stop
+          consensusActor ! ConsensusProtocol.Stop
+          distributeDatasetActor ! DatasetDistributionProtocol.Stop
 
           val children: Set[ActorRef[Nothing]] = Set(
             discoveryActor.unsafeUpcast,
@@ -203,7 +235,10 @@ class RootBehavior(
             modelActor.unsafeUpcast,
             trainerActor.unsafeUpcast,
             gossipActor.unsafeUpcast,
-            monitorActor.unsafeUpcast
+            monitorActor.unsafeUpcast,
+            configurationActor.unsafeUpcast,
+            consensusActor.unsafeUpcast,
+            distributeDatasetActor.unsafeUpcast
           )
           gracefullyStopping(children)
 
