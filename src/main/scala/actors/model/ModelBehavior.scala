@@ -8,8 +8,6 @@ import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import config.AppConfig
 import domain.model.ModelTasks
 import domain.training.Optimizer
-import domain.training.Consensus.*
-import domain.training.consensus.ConsensusMetric.given
 import domain.network.Model
 import domain.serialization.Exporters.given
 import domain.serialization.Exporters.Exporter

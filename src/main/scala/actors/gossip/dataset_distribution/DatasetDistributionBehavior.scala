@@ -2,18 +2,16 @@ package actors.gossip.dataset_distribution
 
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import actors.gossip.GossipProtocol.GossipCommand
-import actors.gossip.consensus.ConsensusProtocol.ConsensusCommand
 import actors.gossip.dataset_distribution.DatasetDistributionProtocol.DatasetDistributionCommand
 import actors.root.RootProtocol.RootCommand
-import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
+import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import config.{AppConfig, FileConfig}
-
 
 private[dataset_distribution] class DatasetDistributionBehavior(
-                                                                 rootActor: ActorRef[RootCommand],
-                                                                 discoveryActor: ActorRef[DiscoveryCommand]
-                                                               ):
+  rootActor: ActorRef[RootCommand],
+  discoveryActor: ActorRef[DiscoveryCommand]
+):
+  
   private[dataset_distribution] def active(seed: Option[Long] = None): Behavior[DatasetDistributionCommand] =
     Behaviors.receive: (context, message) =>
       message match

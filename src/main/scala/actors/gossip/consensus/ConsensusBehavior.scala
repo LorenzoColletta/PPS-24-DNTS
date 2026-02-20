@@ -5,16 +5,12 @@ import akka.actor.typed.scaladsl.{Behaviors, TimerScheduler}
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
 import ConsensusProtocol.*
 import actors.model.ModelProtocol.ModelCommand
-import actors.root.RootProtocol.RootCommand
-import actors.trainer.TrainerProtocol.TrainerCommand
 import config.AppConfig
 import domain.network.Model
 import domain.training.Consensus.divergenceFrom
 
 private[consensus] class ConsensusBehavior(
-  rootActor: ActorRef[RootCommand],
   modelActor: ActorRef[ModelCommand],
-  trainerActor: ActorRef[TrainerCommand],
   discoveryActor: ActorRef[DiscoveryCommand],
   timers: TimerScheduler[ConsensusCommand],
   config: AppConfig
@@ -35,10 +31,11 @@ private[consensus] class ConsensusBehavior(
           )
           Behaviors.same
         case TickConsensus =>
-          context.log.debug("Gossip: Consensus tick")
-          discoveryActor ! NodesRefRequest(
-            replyTo = context.messageAdapter(peers => WrappedPeersForConsensus(peers))
-          )
+          if consensusRound.isEmpty then
+            context.log.debug("Gossip: Consensus tick")
+            discoveryActor ! NodesRefRequest(
+              replyTo = context.messageAdapter(peers => WrappedPeersForConsensus(peers))
+            )
           Behaviors.same
 
         case StopTickConsensus =>

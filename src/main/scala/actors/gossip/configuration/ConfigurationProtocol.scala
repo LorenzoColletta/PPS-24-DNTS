@@ -1,7 +1,6 @@
 package actors.gossip.configuration
 
 import actors.gossip.GossipProtocol.GossipCommand
-import actors.gossip.configuration.ConfigurationProtocol.ConfigurationCommand
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
 import akka.actor.typed.ActorRef
