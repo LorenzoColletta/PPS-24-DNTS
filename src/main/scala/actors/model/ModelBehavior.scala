@@ -63,11 +63,12 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
    * @param trainerActor     Reference to the associated TrainerActor.
    */
   private def active(
-                      currentModel: Model,
-                      currentEpoch: Int,
-                      currentConsensus: Double,
-                      trainerActor: ActorRef[TrainerCommand]
-                    )(using Optimizer): Behavior[ModelCommand] =
+    currentModel: Model,
+    currentEpoch: Int,
+    currentConsensus: Double,
+    trainerActor: ActorRef[TrainerCommand]
+  )(using Optimizer): Behavior[ModelCommand] =
+
     Behaviors.receive: (_, message) =>
       message match
         case ModelCommand.ApplyGradients(grads) =>
@@ -81,10 +82,7 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
 
         case ModelCommand.SyncModel(remoteModel) =>
           val (newModel, _) = ModelTasks.mergeWith(remoteModel).run(currentModel)
-          val pairwiseDivergence = currentModel.network divergenceFrom remoteModel.network
-
-          val updatedConsensus = math.max(currentConsensus, pairwiseDivergence * 10.0)
-          active(newModel, currentEpoch, updatedConsensus, trainerActor)
+          active(newModel, currentEpoch, currentConsensus, trainerActor)
 
         case ModelCommand.UpdateConsensus(consensusValue) =>
           context.log.debug(f"Model: Global consensus updated → $consensusValue%.6f")
