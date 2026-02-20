@@ -43,7 +43,7 @@ object BootstrapPolicy extends DecisionPolicy :
             (Joining))
 
       case JoinTimeout =>
-        List(NotifyRoot(ClusterFailed))
+        List(NotifyRoot(ClusterFailed), LeaveCluster)
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
@@ -83,6 +83,12 @@ object JoiningPolicy extends DecisionPolicy :
           LeaveCluster
         )
 
+      case StartSimulation =>
+        List(ChangePhase(Running))
+
+      case NodeRemoved(node) if node.roles.contains(NodeRole.Seed.id) =>
+        List(NotifyRoot(ClusterFailed), LeaveCluster)
+
       case NodeUnreachable(node) =>
         List(
           RemoveNodeFromCluster(node.address),
@@ -92,11 +98,14 @@ object JoiningPolicy extends DecisionPolicy :
           DownNode(node.address)
         )
 
-      case StartSimulation =>
-        List(ChangePhase(Running))
-
-      case NodeRemoved(node) if node.address == state.selfAddress.get =>
-        List(LeaveCluster, NotifyRoot(ClusterFailed))
+      case NodeRemoved(node) =>
+        List(
+          RemoveNodeFromCluster(node.address),
+          RemoveNodeFromMembership(node.address),
+          NotifyMonitor,
+          NotifyReceptionist(NotifyRemoveNode(node.address)),
+          DownNode(node.address)
+        )
 
       case StopSimulation =>
         List(LeaveCluster, StopBehavior)
@@ -140,6 +149,12 @@ object RunningPolicy extends DecisionPolicy :
           NotifyMonitor,
           NotifyReceptionist(NotifyAddNode(node.address))
         )
+
+      case NodeRemoved(node) if node.roles.contains(NodeRole.Seed.id) =>
+        List(NotifyRoot(SeedLost), LeaveCluster)
+
+      case NodeRemoved(node) =>
+        List(RemoveNodeFromMembership(node.address), DownNode(node.address))
 
       case StopSimulation =>
         List(LeaveCluster, StopBehavior)
