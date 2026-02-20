@@ -169,6 +169,7 @@ class SimulationPanel(using config: AppConfig) extends JPanel:
       lblStatus.setText(Text.StatusFinished)
       lblStatus.setForeground(Color.GREEN)
       btnPause.setEnabled(false)
+      btnCrash.setEnabled(false)
     )
 
 

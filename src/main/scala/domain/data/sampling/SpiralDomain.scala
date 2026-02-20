@@ -18,14 +18,6 @@ object SpiralDomain extends CurveDomainCalculator[SpiralCurve]:
    * @return the valid interval of parameters value
    */
   override def domain(curve: SpiralCurve)(using space: Space): Domain =
-    val minScale = math.min(space.width, space.height)
-    val angle = (minScale - curve.startDistance) / curve.branchDistance
-    val maxT = abs(math.min(
-      minScale * math.cos(angle),
-      minScale * math.sin(angle)
-    ))
-
-    if maxT > space.width then
-      Domain(-space.width, space.width)
-    else
-      Domain(0.0, maxT)
+    val minScale = math.min(space.width / 2, space.height / 2)
+    val maxR = (minScale - curve.startDistance) / curve.branchDistance
+    Domain(0.0, maxR)

@@ -19,10 +19,10 @@ object Strategies:
     given mse: LossFunction with
       def compute(predicted: Vector, target: Vector): Double =
         val diff = predicted - target
-        (diff dot diff) / (2.0 * predicted.length)
+        (diff dot diff) / predicted.length
       
       def derivative(predicted: Vector, target: Vector): Vector =
-        (predicted - target) / predicted.length.toDouble
+        ((predicted - target) * 2.0) / predicted.length.toDouble
 
 
   /** [[RegularizationStrategy]] implementations factory. */
