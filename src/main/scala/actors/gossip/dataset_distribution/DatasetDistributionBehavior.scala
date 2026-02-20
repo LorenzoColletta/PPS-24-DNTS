@@ -49,3 +49,7 @@ private[dataset_distribution] class DatasetDistributionBehavior(
         case DatasetDistributionProtocol.HandleDistributeDataset(trainShard, testSet) =>
           rootActor ! RootCommand.DistributedDataset(trainShard, testSet)
           Behaviors.same
+
+        case DatasetDistributionProtocol.Stop =>
+          context.log.info("DatasetDistribution: Stopping actor.")
+          Behaviors.stopped

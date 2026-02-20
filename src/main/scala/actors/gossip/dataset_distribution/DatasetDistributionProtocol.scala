@@ -46,3 +46,8 @@ object DatasetDistributionProtocol:
                                             trainShard: List[LabeledPoint2D],
                                             testSet: List[LabeledPoint2D]
                                           ) extends DatasetDistributionCommand
+
+  /**
+   * Stop the actor.
+   */
+  case object Stop extends DatasetDistributionCommand
