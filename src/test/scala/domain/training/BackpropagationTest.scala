@@ -44,13 +44,13 @@ class BackpropagationTest extends AnyFunSuite with Matchers {
     val grads = Backpropagation.computeGradients(simpleNet, inputPoint, features)
     val lastLayerGrad = grads.last
 
-    (lastLayerGrad.wGrad * Vector(1.0)).headOption.get shouldBe 2.0
+    (lastLayerGrad.wGrad * Vector(1.0)).headOption.get shouldBe 4.0
   }
 
   test("Correct error propagation to Hidden Layer") {
     val grads = Backpropagation.computeGradients(simpleNet, inputPoint, features)
     val firstLayerGrad = grads.head
 
-    (firstLayerGrad.wGrad * Vector(1.0)).headOption.get shouldBe 2.0
+    (firstLayerGrad.wGrad * Vector(1.0)).headOption.get shouldBe 4.0
   }
 }

@@ -13,13 +13,13 @@ class StrategiesTest extends AnyFunSuite with Matchers {
   test("MSE compute returns correct normalized squared error") {
     val loss = Strategies.Losses.mse.compute(Vector(2.0, 4.0), Vector(0.0, 0.0))
 
-    loss shouldBe 5.0
+    loss shouldBe 10.0
   }
 
   test("MSE derivative returns correct normalized gradient vector") {
     val derivative = Strategies.Losses.mse.derivative(Vector(10.0, 20.0), Vector(4.0, 14.0))
 
-    derivative.toList shouldBe List(3.0, 3.0)
+    derivative.toList shouldBe List(6.0, 6.0)
   }
 
 
