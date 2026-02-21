@@ -5,7 +5,7 @@ import actors.cluster.effect.*
 import actors.cluster.timer.{BootstrapTimerId, UnreachableTimerId}
 import actors.discovery.DiscoveryProtocol.{NotifyAddNode, NotifyRemoveNode, RegisterGossipPermit}
 import actors.root.RootProtocol.NodeRole
-import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady, SeedLost}
+import actors.root.RootActor.RootCommand.{ClusterFailed, ClusterReady}
 
 
 /**
@@ -129,13 +129,6 @@ object RunningPolicy extends DecisionPolicy :
       case NodeUp(node) =>
         List(RemoveNodeFromCluster(node.address), RemoveNodeFromMembership(node.address))
 
-      case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
-        List(
-          StartTimer(UnreachableTimerId(node.address), SeedUnreachableTimeout),
-          NotifyMonitor,
-          NotifyReceptionist(NotifyRemoveNode(node.address))
-        )
-
       case NodeUnreachable(node) =>
         List(
           StartTimer(UnreachableTimerId(node.address), UnreachableTimeout(node.address)),
@@ -150,17 +143,11 @@ object RunningPolicy extends DecisionPolicy :
           NotifyReceptionist(NotifyAddNode(node.address))
         )
 
-      case NodeRemoved(node) if node.roles.contains(NodeRole.Seed.id) =>
-        List(NotifyRoot(SeedLost), LeaveCluster)
-
       case NodeRemoved(node) =>
         List(RemoveNodeFromMembership(node.address), DownNode(node.address))
 
       case StopSimulation =>
         List(LeaveCluster, StopBehavior)
-
-      case SeedUnreachableTimeout =>
-        List(NotifyRoot(SeedLost), LeaveCluster)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))

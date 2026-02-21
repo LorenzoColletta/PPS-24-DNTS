@@ -63,7 +63,7 @@ object ClusterEffects:
 
       case RemoveNodeFromCluster(nodeAddress) =>
         val cluster = Cluster(context.system)
-        if cluster.selfMember.roles.contains(NodeRole.Seed.id) then
+        if cluster.state.leader == cluster.selfMember.address then
           cluster.manager ! Down(nodeAddress)
 
       case LeaveCluster =>

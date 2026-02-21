@@ -210,7 +210,6 @@ class RootBehavior(
           Behaviors.same
 
         case RootCommand.ClusterFailed |
-             RootCommand.SeedLost |
              RootCommand.InvalidCommandInBootstrap |
              RootCommand.InvalidCommandInJoining =>
 

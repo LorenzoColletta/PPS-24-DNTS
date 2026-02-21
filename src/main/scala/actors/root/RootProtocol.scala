@@ -94,6 +94,4 @@ object RootProtocol:
 
     case object InvalidCommandInJoining extends  RootCommand
 
-    case object SeedLost extends RootCommand
-    
     case object StopSimulation extends RootCommand

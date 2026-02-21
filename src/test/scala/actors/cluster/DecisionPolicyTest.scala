@@ -52,7 +52,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
 
     BootstrapPolicy.decide(state, JoinTimeout) should contain allOf (
       NotifyRoot(ClusterFailed),
-      StopBehavior
+      LeaveCluster
     )
 
   test("BootstrapPolicy: NodeEvent without master -> no phase change"):
@@ -84,7 +84,7 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
 
     JoiningPolicy.decide(state, NodeUnreachable(seedNode)) should contain allOf (
       NotifyRoot(ClusterFailed),
-      StopBehavior
+      LeaveCluster
     )
 
   test("JoiningPolicy: NodeUnreachable non-seed -> remove and down"):
@@ -113,15 +113,6 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
       RemoveNodeFromMembership(workerNode.address)
     )
 
-  test("RunningPolicy: NodeUnreachable seed -> start seed timer"):
-    val state = baseState(Running)
-
-    RunningPolicy.decide(state, NodeUnreachable(seedNode)) should contain allOf (
-      StartTimer(UnreachableTimerId(seedNode.address), SeedUnreachableTimeout),
-      NotifyMonitor,
-      NotifyReceptionist(NotifyRemoveNode(seedNode.address))
-    )
-
   test("RunningPolicy: NodeUnreachable non-seed -> start unreachable timer"):
     val state = baseState(Running)
 
@@ -145,14 +136,6 @@ class DecisionPolicyTest extends AnyFunSuite with Matchers:
 
     RunningPolicy.decide(state, ClusterProtocol.StopSimulation) should contain (
       LeaveCluster
-    )
-
-  test("RunningPolicy: SeedUnreachableTimeout -> cluster failure"):
-    val state = baseState(Running)
-
-    RunningPolicy.decide(state, SeedUnreachableTimeout) should contain allOf (
-      NotifyRoot(SeedLost),
-      StopBehavior
     )
 
   test("RunningPolicy: UnreachableTimeout -> remove and down node"):

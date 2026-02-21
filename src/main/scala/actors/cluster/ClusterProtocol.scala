@@ -100,7 +100,3 @@ object ClusterProtocol:
    */
   final case class UnreachableTimeout(node: Address) extends InternalEvent
 
-  /**
-   * Signals the end time from which the Seed is considered no longer recoverable.
-   */
-  case object SeedUnreachableTimeout extends InternalEvent
