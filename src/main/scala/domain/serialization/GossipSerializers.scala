@@ -22,8 +22,13 @@ import domain.network.Activations.given
 
 import java.nio.charset.StandardCharsets
 
+/**
+ * Provides binary serializers for the Gossip protocol messages.
+ * Uses ByteBuffer for manual binary encoding to ensure efficient network transmission.
+ */
 object GossipSerializers:
 
+  /** Serializer for [[RequestModelForConsensus]]. */
   given requestModelForConsensusSerializer(using resolver: ActorRefResolver): Serializer[RequestModelForConsensus] with
     def serialize(cmd: RequestModelForConsensus): Array[Byte] =
       val refString = resolver.toSerializationFormat(cmd.replyTo)
@@ -46,6 +51,7 @@ object GossipSerializers:
       RequestModelForConsensus(resolver.resolveActorRef(refString), roundId)
     }
 
+  /** Serializer for [[ConsensusModelReply]]. */
   given consensusModelReplySerializer(using modelSer: Serializer[Model]): Serializer[ConsensusModelReply] with
     def serialize(cmd: ConsensusModelReply): Array[Byte] =
       val mBytes = modelSer.serialize(cmd.model)
@@ -63,6 +69,7 @@ object GossipSerializers:
       ConsensusModelReply(model, roundId)
     }
 
+  /** Serializer for [[ConfigurationProtocol.RequestInitialConfig]]. */
   given requestInitialConfigSerializer(using resolver: ActorRefResolver): Serializer[ConfigurationProtocol.RequestInitialConfig] with
     def serialize(cmd: ConfigurationProtocol.RequestInitialConfig): Array[Byte] =
       val refString = resolver.toSerializationFormat(cmd.replyTo)
@@ -73,6 +80,7 @@ object GossipSerializers:
       ConfigurationProtocol.RequestInitialConfig(resolver.resolveActorRef(refString))
     }
 
+  /** Serializer for [[ConfigurationProtocol.ShareConfig]]. */
   given shareConfigSerializer(using
                               modelSer: Serializer[Model],
                               confSer: Serializer[TrainingConfig]
@@ -113,6 +121,7 @@ object GossipSerializers:
       ConfigurationProtocol.ShareConfig(seedID, model, config)
     }
 
+  /** Serializer for [[HandleRemoteModel]]. */
   given handleRemoteModelSerializer: Serializer[HandleRemoteModel] with
     override def serialize(t: HandleRemoteModel): Array[Byte] =
       summon[Serializer[Model]].serialize(t.remoteModel)
@@ -120,6 +129,7 @@ object GossipSerializers:
     override def deserialize(bytes: Array[Byte]): Try[HandleRemoteModel] =
       summon[Serializer[Model]].deserialize(bytes).map(model => HandleRemoteModel(model))
 
+  /** Serializer for [[HandleDistributeDataset]]. */
   given distributeDatasetSerializer: Serializer[HandleDistributeDataset] with
 
     override def serialize(t: HandleDistributeDataset): Array[Byte] =
@@ -164,6 +174,7 @@ object GossipSerializers:
       HandleDistributeDataset(trainShard, testSet)
     }
 
+  /** Serializer for [[HandleControlCommand]]. */
   given handleControlCommandSerializer(using controlSer: Serializer[ControlCommand]): Serializer[HandleControlCommand] with
     override def serialize(t: HandleControlCommand): Array[Byte] =
       controlSer.serialize(t.cmd)
