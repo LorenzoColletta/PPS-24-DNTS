@@ -7,11 +7,24 @@ import actors.root.RootProtocol.RootCommand
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
 
+/**
+ * Encapsulates the behavior logic for the DatasetDistributionActor.
+ *
+ * @param rootActor       Reference to the local [[RootActor]].
+ * @param discoveryActor  Reference to the [[DiscoveryActor]] for peer discovery.
+ */
 private[dataset_distribution] class DatasetDistributionBehavior(
   rootActor: ActorRef[RootCommand],
   discoveryActor: ActorRef[DiscoveryCommand]
 ):
-  
+
+  /**
+   * Main behavior for managing the partitioning and distribution of datasets across the cluster.
+   *
+   * @param seed An optional randomization seed used for shuffling the dataset before distribution.
+   *
+   * @return A behavior that handles the partitioning and dispatching of training shards to discovered nodes.
+   */
   private[dataset_distribution] def active(seed: Option[Long] = None): Behavior[DatasetDistributionCommand] =
     Behaviors.receive: (context, message) =>
       message match

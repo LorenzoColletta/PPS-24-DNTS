@@ -4,10 +4,19 @@ import actors.gossip.GossipProtocol.GossipCommand
 import akka.actor.typed.ActorRef
 import domain.data.LabeledPoint2D
 
+
+
+/** Defines the public API and data structures for the DatasetDistributionActor component. */
 object DatasetDistributionProtocol:
 
+  /** Base trait for all dataset distribution-related messages. */
   sealed trait DatasetDistributionCommand extends GossipCommand
 
+  /**
+   * Registers a seed to ensure reproducible shuffling during data distribution.
+   *
+   * @param seed The Long value used to initialize the random number generator.
+   */
   final case class RegisterSeed(seed: Long) extends DatasetDistributionCommand
 
   /**
