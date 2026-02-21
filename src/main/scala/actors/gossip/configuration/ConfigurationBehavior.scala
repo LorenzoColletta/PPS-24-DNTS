@@ -8,12 +8,27 @@ import actors.trainer.TrainerProtocol.TrainingConfig
 import config.AppConfig
 import domain.network.Model
 
+/**
+ * Encapsulates the behavior logic for the ConfigurationActor.
+ *
+ * @param discoveryActor Reference to the [[DiscoveryActor]] for peer discovery.
+ * @param timers         The scheduler for managing periodic configuration ticks.
+ * @param config         Shared configuration.
+ */
 private[configuration] class ConfigurationBehavior(
   discoveryActor: ActorRef[DiscoveryCommand],
   timers: TimerScheduler[ConfigurationProtocol.ConfigurationCommand],
   config: AppConfig
 ):
 
+  /**
+   * It handles periodic polling to discover the network configuration from peers
+   * and responds to requests from other nodes to share the local cached setup.
+   *
+   * @param cachedConfig The local storage for the initial model and training parameters.
+   * @param gossip       Reference to the Gossip actor used to propagate control commands.
+   * @return
+   */
   def active(
     cachedConfig: Option[(String, Model, TrainingConfig)] = None,
     gossip: Option[ActorRef[GossipCommand]] = None,

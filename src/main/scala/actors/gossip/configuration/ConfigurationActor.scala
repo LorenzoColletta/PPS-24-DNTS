@@ -3,19 +3,23 @@ package actors.gossip.configuration
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.actor.typed.scaladsl.Behaviors
 import config.AppConfig
-import actors.model.ModelActor.ModelCommand
-import actors.trainer.TrainerActor.TrainerCommand
-import actors.cluster.ClusterProtocol.ClusterMemberCommand
-import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, RegisterGossip}
-import actors.gossip.GossipProtocol.GossipCommand
-import actors.root.RootActor.RootCommand
+import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 
-
+/**
+ * Actor responsible for distributing the initial configuration from the seed to the client nodes.
+ */
 object ConfigurationActor:
+  export ConfigurationProtocol.*
 
-    export ConfigurationProtocol.*
-
-    def apply(
+  /**
+   * Creates the initial behavior for the ConfigurationActor.
+   *
+   * @param discoveryActor Reference to the [[DiscoveryActor]] for peer discovery.
+   * @param config         Shared configuration
+   *
+   * @return A Behavior handling ConfigurationCommand messages.
+   */
+  def apply(
                discoveryActor: ActorRef[DiscoveryCommand]
              )(using config: AppConfig): Behavior[ConfigurationProtocol.ConfigurationCommand] =
       Behaviors.setup: context =>
