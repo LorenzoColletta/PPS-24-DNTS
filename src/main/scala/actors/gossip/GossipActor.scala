@@ -22,11 +22,15 @@ object GossipActor:
   /**
    * Creates the initial behavior for the GossipActor.
    *
-   * @param modelActor     Reference to the local [[ModelActor]].
-   * @param trainerActor   Reference to the local [[TrainerActor]].
-   * @param discoveryActor Reference to the [[DiscoveryActor]] for peer discovery.
-   * @param consensusActor Reference to the local [[ConsensusActor]].
-   * @param config         Application global configuration.
+   * @param rootActor              Reference to the local [[RootActor]].
+   * @param modelActor             Reference to the local [[ModelActor]].
+   * @param trainerActor           Reference to the local [[TrainerActor]].
+   * @param discoveryActor         Reference to the [[DiscoveryActor]] for peer discovery.
+   * @param configurationActor     Reference to the local [[ConfigurationActor]]
+   * @param distributeDatasetActor Reference to the local [[DatasetDistributionActor]]
+   * @param consensusActor         Reference to the local [[ConsensusActor]].
+   * @param config                 Application global configuration.
+   *
    * @return A Behavior handling GossipCommand messages.
    */
   def apply(

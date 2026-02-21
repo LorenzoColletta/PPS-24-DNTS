@@ -20,11 +20,15 @@ import scala.util.Random
 /**
  * Encapsulates the behavior logic for the GossipActor.
  *
- * @param modelActor     Reference to the local [[ModelActor]].
- * @param trainerActor   Reference to the local [[TrainerActor]].
- * @param consensusActor Reference to the local [[ConsensusActor]].
- * @param timers         The scheduler for managing periodic gossip ticks.
- * @param config         Global application configuration.
+ * @param rootActor                  Reference to the local [[RootActor]]
+ * @param modelActor                 Reference to the local [[ModelActor]].
+ * @param trainerActor               Reference to the local [[TrainerActor]].
+ * @param discoveryActor             Reference to the [[DiscoveryActor]] for peer discovery.
+ * @param configurationActor         Reference to the local [[ConfigurationActor]]
+ * @param datasetDistributionActor   Reference to the local [[DatasetDistributionActor]]
+ * @param consensusActor             Reference to the local [[ConsensusActor]].
+ * @param timers                     The scheduler for managing periodic gossip ticks.
+ * @param config                     Global application configuration.
  */
 private[gossip] class GossipBehavior(
   rootActor: ActorRef[RootCommand],
@@ -38,6 +42,12 @@ private[gossip] class GossipBehavior(
   config: AppConfig
 ):
 
+  /**
+   * Distributes incoming messages to specialized sub-components or handles
+   * them as general gossip via processGossipMessage
+   *
+   * @return The next behavior of the actor
+   */
   private[gossip] def active(): Behavior[GossipCommand] =
     Behaviors.receive: (context, message) =>
       message match
@@ -62,6 +72,19 @@ private[gossip] class GossipBehavior(
         case other =>
           processGossipMessage(context, other)
 
+  /**
+   *
+   * Implements the core logic of the Gossip protocol and handles simulation control commands.
+   *
+   * This method manages:
+   * - The periodic gossip cycle (requesting peers and syncing models).
+   * - Model exchange between nodes (pushing/pulling model states).
+   * - Global simulation control (Pause, Resume, Stop) propagated via the cluster.
+   *
+   * @param context The actor context.
+   * @param message The specific [[GossipCommand]] to process.
+   * @return The behavior resulting from the message processing
+   */
   private def processGossipMessage(context: ActorContext[GossipCommand], message: GossipCommand): Behavior[GossipCommand] =
     message match
       case GossipCommand.StartGossipTick =>

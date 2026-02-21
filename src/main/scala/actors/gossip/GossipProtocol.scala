@@ -32,6 +32,13 @@ object GossipProtocol:
     /** Signal to stop the simulation and cleanup globally. */
     case object GlobalStop extends ControlCommand
 
+    /**
+     * Prepares a client node with the initial configuration provided by the Seed.
+     *
+     * @param seedID      Identifier of the master node.
+     * @param model       The initial global model to be used.
+     * @param trainConfig The hyperparameters and dataset setup.
+     */
     final case class PrepareClient(
                                     seedID: String,
                                     model: Model,
@@ -84,6 +91,11 @@ object GossipProtocol:
      */
     final case class SpreadCommand(cmd: ControlCommand) extends ControlCommand
 
+    /**
+     * Broadcast a control command to all peers except itself
+     *
+     * @param cmd The control command to spread.
+     */
     final case class SpreadCommandOther(cmd: ControlCommand) extends ControlCommand
 
     /**
