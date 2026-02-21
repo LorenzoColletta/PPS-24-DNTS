@@ -1,6 +1,6 @@
 # 3. Design Architetturale
 
-Questa sezione descrive l'architettura complessiva del sistema Distributed Neural Training Simulation (DNTS). La progettazione è stata guidata dai requisiti di resilienza, concorrenza distribuita e trasparenza computazionale, adottando uno stile decentralizzato supportato dai paradigmi della programmazione funzionale e ad attori.
+Questa sezione descrive l'architettura complessiva del sistema Distributed Neural Training Simulation (DNTS). La progettazione è stata guidata dai requisiti di resilienza, concorrenza distribuita e rigorosa separazione delle responsabilità, adottando un approccio decentralizzato fondato sui paradigmi della programmazione funzionale e del modello ad attori.
 
 ## 3.1 Architettura Complessiva e Stile Architetturale
 
