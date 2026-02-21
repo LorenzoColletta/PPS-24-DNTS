@@ -10,9 +10,7 @@ import actors.gossip.consensus.{ConsensusActor, ConsensusProtocol}
 import actors.gossip.consensus.ConsensusProtocol.*
 import actors.model.ModelActor.ModelCommand
 import actors.discovery.DiscoveryProtocol.{DiscoveryCommand, NodesRefRequest}
-import actors.root.RootActor.RootCommand
-import actors.trainer.TrainerActor.TrainerCommand
-import domain.network.{Activations, Feature, Model, ModelBuilder}
+import domain.network.{Activations, Feature, ModelBuilder}
 import config.{AppConfig, ProductionConfig}
 
 class ConsensusActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike with Matchers {
@@ -26,17 +24,13 @@ class ConsensusActorTest extends ScalaTestWithActorTestKit with AnyFunSuiteLike 
     .withSeed(1234L)
     .build()
 
-  def setup(): (ActorRef[ConsensusCommand], TestProbe[ModelCommand], TestProbe[DiscoveryCommand], TestProbe[ConsensusCommand]) = {
-    val rootProbe = createTestProbe[RootCommand]()
+  private def setup(): (ActorRef[ConsensusCommand], TestProbe[ModelCommand], TestProbe[DiscoveryCommand], TestProbe[ConsensusCommand]) = {
     val modelProbe = createTestProbe[ModelCommand]()
-    val trainerProbe = createTestProbe[TrainerCommand]()
     val discoveryProbe = createTestProbe[DiscoveryCommand]()
     val peerProbe = createTestProbe[ConsensusCommand]() // simula un nodo peer remoto
 
     val consensusActor = spawn(ConsensusActor(
-      rootProbe.ref,
       modelProbe.ref,
-      trainerProbe.ref,
       discoveryProbe.ref
     ))
 

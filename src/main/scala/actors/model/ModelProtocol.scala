@@ -56,11 +56,10 @@ object ModelProtocol:
     final case class  SyncModel(remoteModel: Model)  extends ModelCommand
 
     /**
-     * Updates the stored consensus metric with a freshly computed network-wide value.
+     * Updates the stored consensus metric.
      *
-     * This command is sent by the [[GossipActor]] at the end of a global consensus
-     * round, after collecting model snapshots from every known peer and computing
-     * the mean divergence from the network centroid.
+     * This command is sent by the [[ConsensusActor]] at the end of a global consensus round,
+     * after collecting model snapshots from every peer and computing the mean divergence between them. .
      *
      * @param consensusValue Mean divergence from the network centroid (≥ 0.0).
      *                       A value close to 0.0 indicates strong convergence
@@ -102,4 +101,7 @@ object ModelProtocol:
                                      replyTo: ActorRef[Double]
                                    ) extends ModelCommand
 
+    /**
+     * Stop [[ModelActor]] execution
+     */
     case object StopSimulation extends ModelCommand

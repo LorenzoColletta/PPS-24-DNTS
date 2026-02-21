@@ -55,7 +55,7 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
   /**
    * Main state: Model updates and synchronization.
    *
-   * @param currentModel     The current instance of the Neural Network.
+   * @param currentModel     The current model of the Neural Network.
    * @param currentEpoch     The current training epoch count.
    * @param currentConsensus The current consensus metric (divergence from peers).
    * @param trainerActor     Reference to the associated TrainerActor.
@@ -66,7 +66,6 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
     currentConsensus: Double,
     trainerActor: ActorRef[TrainerCommand]
   )(using Optimizer): Behavior[ModelCommand] =
-
     Behaviors.receive: (_, message) =>
       message match
         case ModelCommand.ApplyGradients(grads) =>
@@ -124,9 +123,8 @@ private[model] class ModelBehavior(context: ActorContext[ModelCommand], config: 
               context.log.error(s"Error in exportation of $fileName: ${e.getMessage}")
           }
           Behaviors.same
-          
+
         case ModelCommand.StopSimulation =>
           Behaviors.stopped
           
         case _ => Behaviors.unhandled
-        
