@@ -43,7 +43,7 @@ object BootstrapPolicy extends DecisionPolicy :
             (Joining))
 
       case JoinTimeout =>
-        List(NotifyRoot(ClusterFailed), StopBehavior)
+        List(NotifyRoot(ClusterFailed), LeaveCluster)
 
       case _: NodeEvent =>
         if (checkClusterConnection(state))
@@ -51,6 +51,9 @@ object BootstrapPolicy extends DecisionPolicy :
             (RegisterGossipPermit), ChangePhase(Joining))
         else
           joiningEffects
+
+      case StopSimulation =>
+        List(LeaveCluster, StopBehavior)
 
       case _ => Nil
 
@@ -77,9 +80,14 @@ object JoiningPolicy extends DecisionPolicy :
       case NodeUnreachable(node) if node.roles.contains(NodeRole.Seed.id) =>
         List(
           NotifyRoot(ClusterFailed),
-          LeaveCluster,
-          StopBehavior
+          LeaveCluster
         )
+
+      case StartSimulation =>
+        List(ChangePhase(Running))
+
+      case NodeRemoved(node) if node.roles.contains(NodeRole.Seed.id) =>
+        List(NotifyRoot(ClusterFailed), LeaveCluster)
 
       case NodeUnreachable(node) =>
         List(
@@ -90,11 +98,14 @@ object JoiningPolicy extends DecisionPolicy :
           DownNode(node.address)
         )
 
-      case StartSimulation =>
-        List(ChangePhase(Running))
-
-      case NodeRemoved(node) if node.address == state.selfAddress.get =>
-        List(LeaveCluster, NotifyRoot(ClusterFailed))
+      case NodeRemoved(node) =>
+        List(
+          RemoveNodeFromCluster(node.address),
+          RemoveNodeFromMembership(node.address),
+          NotifyMonitor,
+          NotifyReceptionist(NotifyRemoveNode(node.address)),
+          DownNode(node.address)
+        )
 
       case StopSimulation =>
         List(LeaveCluster, StopBehavior)
@@ -139,11 +150,17 @@ object RunningPolicy extends DecisionPolicy :
           NotifyReceptionist(NotifyAddNode(node.address))
         )
 
+      case NodeRemoved(node) if node.roles.contains(NodeRole.Seed.id) =>
+        List(NotifyRoot(SeedLost), LeaveCluster)
+
+      case NodeRemoved(node) =>
+        List(RemoveNodeFromMembership(node.address), DownNode(node.address))
+
       case StopSimulation =>
         List(LeaveCluster, StopBehavior)
 
       case SeedUnreachableTimeout =>
-        List(NotifyRoot(SeedLost), LeaveCluster, StopBehavior)
+        List(NotifyRoot(SeedLost), LeaveCluster)
 
       case UnreachableTimeout(address) =>
         List(RemoveNodeFromMembership(address), DownNode(address))

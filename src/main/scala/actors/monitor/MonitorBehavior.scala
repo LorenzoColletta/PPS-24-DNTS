@@ -93,6 +93,11 @@ private[monitor] class MonitorBehavior(
 
           active(newSnapshot)
 
+        case MonitorCommand.ConnectionFailed(reason) =>
+          context.log.info(s"Monitor: Critical connection failure: $reason")
+          boundary.showInitialError(reason)
+          connecting(snapshot)
+          
         case MonitorCommand.PeerCountChanged(active, total) =>
           context.log.info(s"Monitor: Cluster Status changed, $active/$total connected peer.")
           boundary.updatePeerDisplay(active, total)
