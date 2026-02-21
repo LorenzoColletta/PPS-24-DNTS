@@ -59,11 +59,9 @@ object ModelProtocol:
      * Updates the stored consensus metric.
      *
      * This command is sent by the [[ConsensusActor]] at the end of a global consensus round,
-     * after collecting model snapshots from every peer and computing the mean divergence between them. .
+     * after collecting model snapshots from every peer and computing the mean divergence between them.
      *
-     * @param consensusValue Mean divergence from the network centroid (≥ 0.0).
-     *                       A value close to 0.0 indicates strong convergence
-     *                       across the cluster.
+     * @param consensusValue Mean divergence between cluster peers.
      */
     final case class UpdateConsensus(consensusValue: Double) extends ModelCommand
 
