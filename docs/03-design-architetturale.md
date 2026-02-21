@@ -4,38 +4,37 @@ Questa sezione descrive l'architettura complessiva del sistema Distributed Neura
 
 ## 3.1 Architettura Complessiva e Stile Architetturale
 
-Il sistema adotta a livello macroscopico uno stile architetturale **Peer-to-Peer (P2P) Strutturato Leaderless**. Il cluster è composto da un insieme dinamico di Nodi autonomi, senza la presenza di un server centrale (Single Point of Failure) o di un Parameter Server dedicato. Il consenso sul modello globale emerge in modo organico attraverso la comunicazione asincrona diretta tra i peer (*Gossip Learning*).
+L'architettura adottata si basa sul modello Peer-to-Peer: il cluster è composto da un insieme dinamico di nodi autonomi, senza la presenza di un server centrale (Single Point of Failure). Il consenso sul modello globale viene sviluppato attraverso la comunicazione asincrona diretta tra i peer (*Gossip Learning*).
 
-A livello del singolo nodo, l'architettura segue rigorosamente il principio della **Separation of Concerns (SOC)**. Per gestire la complessità derivante dall'unione di calcolo matematico intensivo e comunicazione distribuita, l'architettura interna del nodo è basata su un pattern **Layered (a strati) ibrido**:
+A livello di singolo nodo, l'architettura separa in modo netto le responsabilità. Per non mescolare il calcolo matematico puro con la gestione della comunicazione di rete, la struttura interna è organizzata in livelli distinti:
 
-1. **Layer Computazionale (Pure Functional Core):** Uno strato deterministico e privo di effetti collaterali che gestisce unicamente la logica matematica delle reti neurali.
-2. **Layer di Stato e Distribuzione (Actor System):** Uno strato concorrente che orchestra il flusso di esecuzione, detiene lo stato mutabile e gestisce la rete.
-3. **Layer di I/O e Presentazione:** Il confine esterno del sistema che interagisce con l'utente (CLI/GUI).
+1. **Layer Computazionale (Pure Functional Core):** Uno strato deterministico e privo di side effect che gestisce unicamente la logica matematica della rete neurale.
+2. **Layer di Stato e Distribuzione (Actor System):** Uno strato concorrente che orchestra il flusso di esecuzione, detiene lo stato mutabile e gestisce la comunicazione tra nodi.
+3. **Layer di I/O e Presentazione:** Il confine esterno del sistema che interagisce con l'utente (GUI).
 
 ## 3.2 Pattern Architetturali Utilizzati
 
 Per soddisfare i requisiti, la struttura si appoggia ai seguenti pattern architetturali:
 
-* **Actor Model:** Pattern fondamentale utilizzato per modellare l'intera infrastruttura concorrente e di rete. Garantisce l'incapsulamento dello stato e l'elaborazione asincrona basata su messaggi, eliminando alla radice la necessità di lock espliciti o memoria condivisa tra i thread.
-* **Entity-Control-Boundary (ECB):** L'organizzazione degli attori riflette questo pattern:
-    * *Entity:* Il gestore dello stato del modello locale (Model Actor).
-    * *Control:* Gli orchestratori dei cicli operativi locali e di rete (Trainer Actor, Gossip Actor, Consensus Actor).
-    * *Boundary:* L'interfaccia verso l'esterno per l'acquisizione dei comandi e la visualizzazione delle metriche (Monitor Actor).
-* **Gossip Protocol:** Pattern architetturale di rete utilizzato per la disseminazione epidemica delle informazioni. I nodi scelgono iterativamente e casualmente dei peer con cui sincronizzare il proprio stato, garantendo tolleranza ai guasti ed eventuale consistenza.
+* **Actor Model:** Pattern fondamentale utilizzato per modellare l'intera infrastruttura concorrente. Garantisce l'incapsulamento dello stato e l'elaborazione asincrona basata su messaggi, eliminando alla radice la necessità di lock espliciti o memoria condivisa.
+* **Design Basato sui Ruoli:** In aderenza al principio di Separation of Concerns (SOC), l'organizzazione della topologia degli attori riflette una divisione in base al loro scopo all'interno del nodo, evitando la commistione tra logica, stato mutabile e I/O: 
+  * **Stato (State Keepers):** Il gestore isolato del modello locale, dedicato esclusivamente alla custodia e all'aggiornamento atomico dei dati di dominio (Model Actor).
+  * **Controllo (Coordinators):** Gli orchestratori della logica di business, dei calcoli e dei protocolli di rete (Trainer Actor, Gossip Actor, Consensus Actor).
+  * **Infrastruttura e Supervisione (Infrastructure Managers):** Componenti dedicati al ciclo di vita del nodo e alla tolleranza ai guasti. Includono la gestione dinamica della Membership e il rilevamento dei fallimenti (es. Cluster Manager), la scoperta dei peer nel cluster (es. Discovery Actor tramite pattern Receptionist) e il bootstrap gerarchico (Root Actor).
+  * **Confine (Gateways):** L'interfaccia verso l'esterno per tradurre i comandi utente e trasmettere i dati da visualizzare (Monitor Actor). 
+* **Gossip Protocol:** Pattern architetturale di rete utilizzato per la diffusione epidemica delle informazioni. I nodi scelgono iterativamente e casualmente dei peer con cui sincronizzare il proprio stato, garantendo tolleranza ai guasti ed eventuale consistenza.
 
 ## 3.3 Componenti del Sistema Distribuito
 
-L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita un sistema ad attori gerarchico supervisionato da un *Root Actor*, che instrada l'inizializzazione, e da un *Cluster Manager*, responsabile della topology di rete.
-
-All'interno di ogni istanza della JVM (il Nodo), operano i seguenti macro-componenti logici e distribuiti:
-
-* **Gossip Actor (Controller di Rete):** È il componente deputato all'interazione P2P. Gestisce il protocollo di rete, preleva snapshot del modello locale e li invia ai peer, ricevendo a sua volta i modelli remoti da fondere.
-* **Model Actor (Stateful Entity - Single Source of Truth):** Rappresenta il cuore dello stato mutabile del nodo. Incapsula i Pesi e i Bias della rete neurale, esponendo interfacce per aggiornamenti atomici sequenziali (sia derivanti dal calcolo locale che dai merge di rete).
-* **Trainer Actor (Controller di Calcolo):** Esecutore logico del ciclo di addestramento. Preleva batch di dati locali, delega i calcoli intensivi al Pure Functional Core (Backpropagation) e notifica i gradienti risultanti al gestore del modello.
+  L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita un sistema ad attori gerarchico:
+* **RootActor:** avvia, inizializza e orchestra gli altri attori.
+* **Cluster Manager (Membership & Failure Detector):** Gestisce la visione che il nodo ha dell'intera topologia distribuita. Interpreta gli eventi di membership nativi (es. nodi aggiunti, rimossi o irraggiungibili) su cui si basa per determinare lo stato di salute del cluster e applicare dinamicamente le policy decisionali per la tolleranza ai guasti (come la riconfigurazione o lo spegnimento di emergenza in caso di perdita del Seed).
+* **Discovery Actor (Peer Locator):** Sfrutta il pattern Receptionist di Akka per indicizzare e scoprire dinamicamente i servizi esposti dagli altri nodi. Mantiene e fornisce agli orchestratori di rete (come il Gossip Actor e il Consensus Actor) la lista costantemente aggiornata dei peer attivi e raggiungibili con cui scambiare i modelli.
+* **Gossip Actor:** È il componente deputato all'interazione P2P. Gestisce il protocollo di rete, preleva snapshot del modello locale e li invia ai peer, ricevendo a sua volta i modelli remoti da fondere.
 * **Sub-Controller di Dominio (Consensus & Dataset Distribution):** Componenti specializzati nello smistamento asincrono iniziale dei dati dal Master verso i Client (*Dataset Distribution*) e nel calcolo distribuito delle metriche di deviazione della rete (*Consensus Actor*).
-* **Monitor Actor (Boundary/Presenter):** Agisce come ponte tra l'infrastruttura distribuita e le interfacce I/O (GUI/CLI). Aggrega periodicamente le metriche e aggiorna i grafici senza bloccare l'Actor System sottostante.
-
-L'isolamento di queste responsabilità fa sì che il fallimento della rete (es. crash di un nodo simulato) impatti solo il livello Gossip/Cluster, permettendo al resto del sistema di riorganizzarsi e continuare l'addestramento senza corrompere i dati.
+* **Trainer Actor:** Esecutore logico del ciclo di addestramento. Preleva batch di dati locali, delega i calcoli di addestramento al Layer Computazionale (Backpropagation) e notifica i gradienti risultanti al Model Actor.
+* **Model Actor (Single Source of Truth):** Rappresenta il cuore dello stato mutabile del nodo. Incapsula i pesi e i bias della rete neurale, esponendo interfacce per aggiornamenti atomici sequenziali (sia derivanti dal calcolo locale che dai merge di rete).
+* **Monitor Actor:** Agisce come ponte tra gli attori e le interfacce I/O. Aggrega periodicamente le metriche e aggiorna i grafici.
 
 
 *(Figura: Diagramma dei componenti che mostra il Nodo DNTS, i Worker Actors nel livello Akka, le interazioni con il Domain Core Layer puro e i collegamenti verso il P2P Cluster esterno)*
