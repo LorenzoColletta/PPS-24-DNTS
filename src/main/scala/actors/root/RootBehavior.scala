@@ -34,7 +34,7 @@ import domain.data.util.Space
 import view.*
 
 /**
- * Encapsulates the behavior logic for the TrainerActor.
+ * Encapsulates the behavior logic for the RootActor.
  *
  * @param context     The actor context providing access to the actor system.
  * @param role        The specific role of this node.
@@ -241,6 +241,15 @@ class RootBehavior(
           )
           gracefullyStopping(children)
 
+  /**
+   * It coordinates the sequential shutdown of all local child actors. The actor enters
+   * a 'waiting' mode, remaining active only until it receives confirmation signals
+   * that every child has successfully terminated.
+   *
+   * @param remainingActors A set of ActorRefs representing the child actors that still need to shut down.
+   *
+   * @return A Behavior that handles Terminated signals and waits for the remaining child actors to stop.
+   */
   private def gracefullyStopping(remainingActors: Set[ActorRef[Nothing]]): Behavior[RootCommand] =
     Behaviors.receiveSignal {
       case (ctx, Terminated(ref)) =>
@@ -254,13 +263,26 @@ class RootBehavior(
           gracefullyStopping(stillAlive)
     }
 
-
+  /**
+   * A factory method that builds the neural network Model based on the provided file configuration.
+   *
+   * @param conf The [[FileConfig]] containing layer definitions, input features, and activation functions.
+   *
+   * @return A fully initialized [[Model]] instance with the specified architecture and weights.
+   */
   private def createModel(conf: FileConfig): Model =
     var builder = ModelBuilder.fromInputs(conf.features *)
     conf.networkLayers.foreach(l => builder = builder.addLayer(l.neurons, l.activation))
     conf.seed.foreach(s => builder = builder.withSeed(s))
     builder.build()
 
+  /**
+   * Generates the global dataset that will be used for the training session.
+   *
+   * @param conf The configuration containing dataset size, distribution type, and the random seed.
+   *
+   * @return A shuffled list of [[LabeledPoint2D]] (coordinates and labels).
+   */
   private def generateDataset(conf: FileConfig): List[domain.data.LabeledPoint2D] =
     val seedPos = conf.seed
 
@@ -272,6 +294,13 @@ class RootBehavior(
     context.log.info(s"Root: Generated Global Dataset with ${data.size} samples.")
     data
 
+  /**
+   * Constructs the training hyper-parameters and environment settings.
+   *
+   * @param conf The [[FileConfig]] defining learning rates, batch sizes, epochs, and regularization.
+   *
+   * @return A [[TrainingConfig]] object containing the serialized hyper-parameters and environment setup.
+   */
   private def createTrainConfig(conf: FileConfig): TrainingConfig =
     TrainingConfig(
       trainSet = Nil,
