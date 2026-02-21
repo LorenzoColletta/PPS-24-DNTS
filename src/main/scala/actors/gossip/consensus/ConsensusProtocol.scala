@@ -4,10 +4,15 @@ import akka.actor.typed.ActorRef
 import domain.network.Model
 import actors.gossip.GossipProtocol.GossipCommand
 
+/**
+ * Defines the public API and data structures for the Consensus component.
+ */
 object ConsensusProtocol:
 
+  /** Base trait for all consensus-related messages. */
   sealed trait ConsensusCommand extends GossipCommand
 
+  /** Starts the periodic consensus monitoring timer. */
   case object StartTickConsensus extends ConsensusCommand
 
   /**
@@ -15,6 +20,7 @@ object ConsensusProtocol:
    */
   case object TickConsensus extends ConsensusCommand
 
+  /** Stops the periodic consensus monitoring timer. */
   case object StopTickConsensus extends ConsensusCommand
 
   /**

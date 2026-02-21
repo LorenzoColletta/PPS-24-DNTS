@@ -5,9 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import config.AppConfig
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 
-/**
- * Actor responsible for distributing the initial configuration from the seed to the client nodes.
- */
+/** Actor responsible for distributing the initial configuration from the seed to the client nodes. */
 object ConfigurationActor:
   export ConfigurationProtocol.*
 

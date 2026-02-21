@@ -9,6 +9,14 @@ import config.AppConfig
 import domain.network.Model
 import domain.training.Consensus.divergenceFrom
 
+/**
+ * Encapsulates the behavior logic for the ConsensusActor.
+ *
+ * @param modelActor      Reference to the local [[ModelActor]].
+ * @param discoveryActor  Reference to the [[DiscoveryActor]] for peer discovery.
+ * @param timers          The scheduler for managing periodic consensus ticks.
+ * @param config          Global application configuration.
+ */
 private[consensus] class ConsensusBehavior(
   modelActor: ActorRef[ModelCommand],
   discoveryActor: ActorRef[DiscoveryCommand],
@@ -16,6 +24,15 @@ private[consensus] class ConsensusBehavior(
   config: AppConfig
 ):
 
+  /**
+   * Main behavior that manages the lifecycle of consensus rounds.
+   * It coordinates the discovery of peers, requests local and remote models,
+   * and aggregates results to update the global network consensus.
+   *
+   * @param consensusRound Current active round state (tracking collected models and IDs).
+   * @param roundCounter   Incremental counter to track and validate consensus sessions.
+   * @return The updated behavior with the current consensus state.
+   */
   private[consensus] def active(
     consensusRound: Option[ConsensusRoundState] = None,
     roundCounter: Long = 0L
@@ -149,7 +166,7 @@ private[consensus] class ConsensusBehavior(
               )
               Behaviors.same
 
-
+/** Calculates the average divergence between the networks */
 private def computeNetworkConsensus(localModel: Model, allModels: List[Model]): Double =
   if allModels.isEmpty then 0.0
   else

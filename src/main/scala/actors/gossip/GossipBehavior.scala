@@ -20,12 +20,12 @@ import scala.util.Random
 /**
  * Encapsulates the behavior logic for the GossipActor.
  *
- * @param rootActor                  Reference to the local [[RootActor]]
+ * @param rootActor                  Reference to the local [[RootActor]].
  * @param modelActor                 Reference to the local [[ModelActor]].
  * @param trainerActor               Reference to the local [[TrainerActor]].
  * @param discoveryActor             Reference to the [[DiscoveryActor]] for peer discovery.
- * @param configurationActor         Reference to the local [[ConfigurationActor]]
- * @param datasetDistributionActor   Reference to the local [[DatasetDistributionActor]]
+ * @param configurationActor         Reference to the local [[ConfigurationActor]].
+ * @param datasetDistributionActor   Reference to the local [[DatasetDistributionActor]].
  * @param consensusActor             Reference to the local [[ConsensusActor]].
  * @param timers                     The scheduler for managing periodic gossip ticks.
  * @param config                     Global application configuration.
