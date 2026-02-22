@@ -54,3 +54,78 @@ L'interazione tra gli attori e l'interfaccia grafica (View) è stata progettata 
 * **Stato Grafico Immutabile:** Tutti i dati necessari per aggiornare lo schermo (epoca corrente, loss, metriche di consenso) sono raggruppati nella case class immutabile ViewStateSnapshot. Questo oggetto viene generato e passato di stato in stato all'interno del comportamento dell'attore, eliminando del tutto l'uso di variabili mutabili da sincronizzare.
 * **Aggiornamento Asincrono dei Grafici:** Per aggiornare le metriche senza bloccare l'attore in cicli di attesa, è stato utilizzato il TimerScheduler di Akka. Il MonitorActor si auto-invia periodicamente un messaggio (TickMetrics) che fa scattare la richiesta dei dati al ModelActor. Appena riceve i dati aggiornati l'attore li inoltra alla View richiamando boundary.plotMetrics(...) in modo reattivo.
 
+
+## 5.2 Implementazione a cura di Domenico Francesco Giacobbi
+Il mio lavoro si è concentrato:
+* sulla gestione del ModelActor e delle Monade State
+* sullo sviluppo del GossipActor
+* sul passaggio della configurazione iniziale ai peer
+* sulla distribuzione del dataset
+* sul calcolo del consensus
+
+### 5.2.1 Integrazione delle Monade State
+
+Per evitare l'uso di variabili mutabili e prevenire race conditions, la logica di aggiornamento dei pesi è stata delegata all'oggetto ModelTasks, che restituisce una monade State[Model, Unit].
+L'implementazione segue questo flusso:
+* **Ricezione Gradienti**: Quando il TrainerActor invia ApplyGradients(grads), il ModelActor non modifica i parametri esistenti.
+* **Definizione della Transizione**: Viene richiamata ModelTasks.applyGradients(grads), che definisce come il modello deve cambiare in base all'ottimizzatore (es. SGD o Adam).
+* **Esecuzione**: Tramite il metodo .run(currentModel), la monade produce una nuova istanza immutabile del modello (nextModel).
+* **Ricorsione**: L'attore transita nuovamente nello stato active con il nuovo modello
+
+### 5.2.2 Implementazione del Sottosistema Gossip
+Il sottosistema Gossip costituisce la spina dorsale della comunicazione P2P del sistema distribuito. 
+La sua implementazione traduce in codice le scelte architetturali descritte nella sezione 4.5, sfruttando in modo sistematico i costrutti di Scala 3 e il modello ad attori di Akka Typed per garantire sicurezza ai tipi, assenza di stato mutabile condiviso e resilienza ai guasti di rete.
+
+### 5.2.3 Protocollo e Gerarchia dei Tipi (`GossipProtocol`)
+Il punto di partenza dell'intera infrastruttura è la definizione del protocollo dei messaggi in `GossipProtocol`. 
+La scelta progettuale fondamentale è stata modellare la gerarchia dei comandi come un'unica famiglia di tipi chiusa, sfruttando i `sealed trait` di Scala 3.
+Il trait radice `GossipCommand` è volutamente non-sealed: questo permette ai sottomoduli (`ConfigurationProtocol`, `ConsensusProtocol`, `DatasetDistributionProtocol`) di estendere il tipo con i propri comandi specializzati. 
+Il risultato è una gerarchia aperta verso l'esterno ma chiusa all'interno di ogni sottomodulo, che permette al compilatore di verificare la completezza del pattern matching a livello locale senza vincolare l'estensibilità del sistema.
+I comandi di controllo globale sono separati semanticamente in una gerarchia distinta (`ControlCommand extends GossipCommand`). 
+Questa scelta non è puramente estetica: consente al `GossipBehavior` di distinguere staticamente, a tempo di compilazione, i messaggi che devono essere instradati ai sottomoduli da quelli che richiedono la propagazione sull'intera rete, senza alcun casting a runtime.
+
+### 5.2.4 Il Ciclo di Gossip
+
+Il cuore dell'algoritmo di Gossip Learning è implementato come una pipeline asincrona a più stadi, orchestrata dal `TimerScheduler`.
+Allo scattare del tick periodico (`TickGossip`), si avvia una catena di messaggi che attraversa tre stadi distinti.
+Nel primo stadio, l'attore interroga il `DiscoveryActor` per ottenere la lista aggiornata dei peer attivi. 
+Questa richiesta è non bloccante: l'attore rimane responsivo ad altri messaggi mentre attende la risposta. 
+Nel secondo stadio, alla ricezione di `WrappedPeers`, viene selezionato un peer casuale tra quelli disponibili (escludendo se stesso) e viene richiesta al `ModelActor` una snapshot del modello locale tramite `GetModel`.
+Nel terzo stadio, alla ricezione del modello tramite un nuovo `messageAdapter`, il messaggio `SendModelToPeer` viene recapitato al peer selezionato, che lo riceverà come `HandleRemoteModel` e delegherà al proprio `ModelActor` la fusione tramite `SyncModel`.
+
+### 5.2.5 Propagazione dei Comandi di Controllo
+
+La diffusione dei comandi globali (pausa, ripresa, stop) è implementata attraverso due varianti del pattern broadcast. 
+`SpreadCommand` propaga il comando a tutti i peer incluso se stesso, mentre `SpreadCommandOther` lo propaga esclusivamente agli altri nodi. 
+Questa distinzione è necessaria perché il nodo Seed, che emette il comando, ha già eseguito localmente l'azione corrispondente e non deve riceverla una seconda volta.
+La gestione del comando `GlobalStop` merita particolare attenzione: oltre a propagare lo stop al `RootActor` locale, l'implementazione invoca `timers.cancelAll()` prima di restituire `Behaviors.stopped`. 
+Questo garantisce che non rimangano timer orfani in esecuzione dopo che l'attore è terminato.
+
+### 5.2.6 Bootstrap Distribuito: `ConfigurationBehavior`
+
+L'implementazione del `ConfigurationBehavior` risolve un classico problema del distributed computing: come sincronizzare lo stato iniziale di un cluster in assenza di un coordinator centralizzato e affidabile.
+La soluzione adottata sfrutta lo stato immutabile dell'attore, dove il metodo `active` accetta due parametri opzionali — `cachedConfig` e `gossip` — che rappresentano lo stato corrente. 
+Ogni transizione di stato produce una nuova invocazione ricorsiva di `active` con i parametri aggiornati, seguendo il pattern di Akka Typed per evitare variabili mutabili.
+Un aspetto sottile riguarda la gestione del riferimento al `GossipActor`. Poiché i due attori possono essere avviati in ordine non deterministico, la registrazione avviene tramite il messaggio `RegisterGossip`, ricevuto dopo l'avvio. 
+Fino a quando questo messaggio non è arrivato, l'attore notifica un avviso ma non blocca il sistema: il polling continua e i peer vengono interrogati non appena il riferimento è disponibile.
+La transizione dal ruolo di richiedente al ruolo di fornitore avviene automaticamente alla ricezione di `ShareConfig`: da quel momento `cachedConfig` è popolato e qualsiasi `RequestInitialConfig` ricevuto da un nodo verrà soddisfatto immediatamente, senza richiedere alcuna logica aggiuntiva.
+
+### 5.2.7 Calcolo del Consensus: `ConsensusBehavior`
+
+L'implementazione del `ConsensusBehavior` è la più sofisticata del sottosistema e traduce direttamente il pattern Scatter-Gather.
+**Gestione del round tramite stato immutabile.** La case class `ConsensusRoundState` incapsula tutto il contesto di un round attivo: l'identificativo univoco (`roundId`), il numero di risposte attese (`expectedCount`), i modelli raccolti (`collected`) e la snapshot del modello locale al momento dell'avvio del round (`localModel`). 
+La separazione tra `consensusRound` e `roundCounter` è intenzionale: il contatore viene incrementato alla ricezione dei peer nella fase di Scatter, mentre il round state viene aggiornato ad ogni risposta ricevuta nella fase di Gather.
+**Filtraggio dei peer remoti.** `WrappedPeersForConsensus`  esclude i nodi locali dal calcolo. 
+**Correlazione e scarto dei messaggi stale.** La gestione di `ConsensusModelReply` implementa un meccanismo di correlazione esplicita basato sul `roundId`.
+**Completamento del round e timeout.** Il round può concludersi in due modi distinti. 
+Nel caso nominale, quando il contatore `updated.collected.size >= updated.expectedCount + 1` viene raggiunto, il timer di timeout viene annullato e il consenso viene calcolato su tutti i modelli ricevuti. 
+Nel caso di timeout, il messaggio `ConsensusRoundTimeout` viene processato solo se il `roundId` corrisponde al round attivo, dopodiché il sistema procede con i dati parziali disponibili.
+Il calcolo finale del consenso è delegato alla funzione privata `computeNetworkConsensus`, definita a livello di package.
+
+
+### 5.2.8 Distribuzione del Dataset: `DatasetDistributionBehavior`
+
+L'implementazione del `DatasetDistributionBehavior` si occupa della suddivisione del train set.
+Esso viene suddiviso in parti uguali e ogni parte viene affidata a un peer.
+Prima di essere suddiviso in chunk, viene effetuato uno shuffle del train set basato sul seed che viene fornito mediante il metodo `RegisterSeed`.
+Il test set viene passato interamente ad ogni peer senza essere suddiviso.
