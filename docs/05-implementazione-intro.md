@@ -1,0 +1,22 @@
+# 5. Implementazione
+Questo capitolo illustra i dettagli implementativi più rilevanti del progetto, evidenziando come le scelte di design discusse nel capitolo precedente siano state tradotte in codice. L'attenzione è posta sull'utilizzo dei paradigmi funzionali e dei costrutti avanzati offerti da Scala 3.
+
+## 5.1 Implementazione a cura di Giorgio Fantilli
+Il mio lavoro si è concentrato sulla realizzazione del dominio matematico, del motore di addestramento (concorrente e funzionale), dell'interfaccia verso l'utente e dei meccanismi di base dell'infrastruttura (serializzazione e configurazione). Di seguito vengono esplorati i dettagli tecnici più interessanti.
+
+### 5.1.1 Core Matematico
+L'implementazione dell'algebra lineare richiedeva alte performance e immutabilità. Per evitare l'overhead prestazionale derivante dall'istanziazione di classi wrapper, si è sfruttato il costrutto nativo di Scala 3 opaque type.
+I tipi Vector e Matrix sono stati definiti come type alias opachi delle normali collezioni immutabili di Scala. A tempo di compilazione, il type checker garantisce la type safety, mentre a runtime i tipi opachi vengono completamente cancellati garantendo l'assenza di penalità prestazionali.
+
+Per fornire un'interfaccia fluida e domain-specific (DSL matematico), le operazioni algebriche non sono state definite come metodi di istanza, ma iniettate sulle strutture dati tramite gli extension methods. Questo ha permesso di fare un overloading pulito degli operatori standard e di definire operatori custom efficienti.
+
+All'interno della topologia della rete (Network), la computazione del Forward Pass è totalmente priva dall'uso di cicli iterativi imperativi e variabili mutabili. La propagazione dell'input attraverso i layer è stata risolta in modo puramente dichiarativo concatenando l'uso di funzioni come map, zip e in particolare foldLeft: l'operazione di fold accumula ricorsivamente le trasformazioni, passando l'output di un layer (layer.weights * x + layer.biases) come input per l'iterazione successiva.
+
+### 5.1.2 Motore di Addestramento
+L'implementazione del motore di addestramento ha richiesto di coniugare la flessibilità matematica con l'esecuzione asincrona distribuita.
+
+Per quanto concerne il dominio matematico (es. TrainingCore), l'iniezione delle diverse euristiche (come la LossFunction o la definizione dello Space 2D) non è stata realizzata tramite la classica Dependency Injection basata sui costruttori (tipica del mondo Java), bensì sfruttando le Contextual Abstractions di Scala 3. I metodi di calcolo, come computeBatchGradients, definiscono le dipendenze strategiche tramite clausole using (es. using lossFn: LossFunction). Le implementazioni concrete (es. la Mean Squared Error) sono definite come istanze given all'interno dell'oggetto Strategies o iniettate al momento della configurazione. Questo costrutto ha permesso di disaccoppiare totalmente l'algoritmo di Backpropagation dalla specifica metrica di errore, rendendo il codice estremamente pulito e idiomatico.
+
+Sul fronte concorrente, la gestione del ciclo di vita dell'addestramento è stata implementata nel TrainerActor realizzando una Macchina a Stati Finiti (FSM) nativa tramite l'API di Akka Typed. Invece di mantenere uno stato mutabile interno (es. var currentState), i diversi stati (idle, ready, training, paused) sono stati codificati come metodi mutuamente ricorsivi che restituiscono un Behavior[TrainerMessage]. Ogni metodo definisce tramite Behaviors.receive solo le transizioni di stato valide per quel contesto, ignorando in modo sicuro (con Behaviors.same o unhandled) i messaggi non pertinenti.
+
+Inoltre, per evitare il blocco del thread dell'attore durante il partizionamento del dataset in epoche e batch (che impedirebbe la reattività ai comandi dell'utente), il loop di training è stato srotolato in modo asincrono. È stato impiegato il TimerScheduler fornito da Akka (timers.startSingleTimer): al termine del calcolo di un batch, l'attore autoprogramma l'invio di un messaggio privato (PrivateTrainerCommand.NextBatch) a se stesso. Questo approccio garantisce che la mailbox dell'attore possa processare richieste prioritarie (es. calcolo metriche o pausa) tra l'esecuzione di due iterazioni sequenziali.
