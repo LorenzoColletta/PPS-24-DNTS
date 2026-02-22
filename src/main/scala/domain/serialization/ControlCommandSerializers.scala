@@ -40,6 +40,9 @@ object ControlCommandSerializers:
 
           buffer.array()
 
+        case other =>
+          throw new IllegalArgumentException(s"Serialization not supported for ControlCommand: $other")
+
     def deserialize(bytes: Array[Byte]): Try[ControlCommand] = Try {
       
       if (bytes.length > 0 && bytes(0) == 1.toByte) {
