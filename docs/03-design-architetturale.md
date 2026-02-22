@@ -37,8 +37,12 @@ L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita u
 * **Model Actor (Single Source of Truth):** Rappresenta il cuore dello stato mutabile del nodo. Incapsula i pesi e i bias della rete neurale, esponendo interfacce per aggiornamenti atomici sequenziali (sia derivanti dal calcolo locale che dai merge di rete).
 * **Monitor Actor:** Agisce come ponte tra gli attori e le interfacce I/O. Aggrega periodicamente le metriche e aggiorna i grafici.
 
+<div align="center">
+  <img src="assets/diagramma-architettura-3-3.png" width="100%" alt="Diagramma dei componenti del nodo DNTS.">
+  <br>
+  <em>Figura 1: Architettura di dettaglio del Nodo DNTS, interazioni interne e di rete.</em>
+</div>
 
-*(Figura: Diagramma dei componenti che mostra il Nodo DNTS, i Worker Actors nel livello Akka, le interazioni con il Domain Core Layer puro e i collegamenti verso il P2P Cluster esterno)*
 
 ## 3.4 Scelte Tecnologiche Cruciali ai Fini Architetturali
 
