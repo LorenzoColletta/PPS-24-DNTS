@@ -3,7 +3,6 @@ package domain.data.util
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import domain.data.Point2D
-import domain.data.util.Space
 
 class SpaceTest extends AnyFunSuite with Matchers {
 

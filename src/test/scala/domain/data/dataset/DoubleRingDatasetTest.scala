@@ -1,9 +1,7 @@
 package domain.data.dataset
 
 import domain.data.*
-import domain.data.dataset.DoubleRingDataset
 import domain.data.sampling.Domain
-import domain.data.util.Space
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -26,7 +24,6 @@ class DoubleRingDatasetTest extends AnyFunSuite with Matchers:
   )
 
   test("DoubleRingDataset should generate positive points within inner radius"):
-    given Space = Space(100.0, 100.0)
     val sample = dataset.sample(Label.Positive)
     val dx = sample.point.x - center.x
     val dy = sample.point.y - center.y
@@ -38,7 +35,6 @@ class DoubleRingDatasetTest extends AnyFunSuite with Matchers:
 
 
   test("DoubleRingDataset should generate negative points within outer ring"):
-    given Space = Space(100.0, 100.0)
     val sample = dataset.sample(Label.Negative)
     val dx = sample.point.x - center.x
     val dy = sample.point.y - center.y
@@ -50,7 +46,6 @@ class DoubleRingDatasetTest extends AnyFunSuite with Matchers:
 
 
   test("DoubleRingDataset should generate multiple points correctly"):
-    given Space = Space(100.0, 100.0)
     val samples = List.fill(20)(dataset.sample(Label.Positive)) ++
       List.fill(20)(dataset.sample(Label.Negative))
 

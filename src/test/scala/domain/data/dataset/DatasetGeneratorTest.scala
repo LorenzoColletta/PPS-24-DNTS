@@ -2,7 +2,7 @@ package domain.data.dataset
 
 import domain.data.{Label, LabeledPoint2D, Point2D}
 import domain.data.Label.*
-import domain.data.dataset.{DatasetGenerator, LabeledDatasetModel, withNoise}
+import domain.data.dataset.withNoise
 import domain.data.util.{Noise, Space}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

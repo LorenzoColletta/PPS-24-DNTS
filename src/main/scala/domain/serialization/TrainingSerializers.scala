@@ -1,10 +1,8 @@
 package domain.serialization
 
-
 import actors.trainer.TrainerActor.TrainingConfig
 import domain.network.{Feature, HyperParams, Regularization}
 import domain.network.Regularization.{ElasticNet, L1, L2, None as RegNone}
-import domain.serialization.Serializer
 
 import java.nio.ByteBuffer
 import scala.util.Try

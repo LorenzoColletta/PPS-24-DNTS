@@ -3,7 +3,6 @@ package domain.data.dataset
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import domain.data.Label
-import domain.data.dataset.DoubleGaussianDataset
 import domain.data.sampling.Domain
 
 class DoubleGaussianDatasetTest extends AnyFunSuite with Matchers:

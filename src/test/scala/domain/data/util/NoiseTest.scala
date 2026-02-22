@@ -4,7 +4,6 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import domain.data.{Point2D, util}
 import domain.data.sampling.Domain
-import domain.data.util.{Distribution, NoiseWithDistribution, Space}
 
 class NoiseTest extends AnyFunSuite with Matchers:
 

@@ -15,8 +15,6 @@ class DiscoveryActorTest extends AnyFunSuite with Matchers:
   private val address1 =
     Address("akka", "TestSystem", "node1", 2551)
 
-  private val address2 = ("akka", "TestSystem", "node2", 2552)
-
   private def spawnDiscovery(state: GossipPeerState, testKit: ActorTestKit) =
     testKit.spawn(DiscoveryActor(state))
 
@@ -112,6 +110,5 @@ class DiscoveryActorTest extends AnyFunSuite with Matchers:
       discovery ! NodesRefRequest(replyProbe.ref)
 
       replyProbe.expectMessage(Nil)
-
     }
 

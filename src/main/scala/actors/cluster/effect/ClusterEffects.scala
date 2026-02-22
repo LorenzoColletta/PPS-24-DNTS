@@ -7,7 +7,7 @@ import actors.cluster.timer.ClusterTimers
 import actors.discovery.DiscoveryProtocol.DiscoveryCommand
 import actors.monitor.MonitorProtocol.MonitorCommand
 import actors.monitor.MonitorProtocol.MonitorCommand.PeerCountChanged
-import actors.root.RootProtocol.{NodeRole, RootCommand}
+import actors.root.RootProtocol.RootCommand
 import akka.actor.typed.*
 import akka.actor.typed.scaladsl.*
 import akka.cluster.typed.{Cluster, Down, Leave}
@@ -73,3 +73,5 @@ object ClusterEffects:
 
       case StopBehavior =>
         Behaviors.stopped
+
+      case _ => Behaviors.unhandled

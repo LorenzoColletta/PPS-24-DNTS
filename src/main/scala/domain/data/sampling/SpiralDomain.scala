@@ -3,7 +3,6 @@ package domain.data.sampling
 import domain.data.pattern.SpiralCurve
 import domain.data.util.Space
 
-import scala.math.abs
 
 /**
  * Computes the parameter domain of a [[SpiralCurve]] in a finite [[Space]].
