@@ -155,8 +155,8 @@ In linea con il paradigma Akka Typed, il ModelActor è modellato come una macchi
 L'attore è composto da 2 diverse fasi: Idle e Active. 
 * La fase Idle che si occupa della inizializzazione dell'attore.
 * La fase Active che si occupa di:
-  * applicare i gradienti al model e quindi di aggiornare i pesi della rete locale passati dal TrainingActor e di effettuare.
-  * effettuare il merge della propria rete locale con quella ricevuta dal GossipActor.
+  * applicare i gradienti al model e quindi aggiornare i pesi della rete locale passati dal TrainingActor.
+  * effettuare il merge della propria rete locale con quella ricevuta dal gossip.
 
 ### 4.4.2 Pattern State per il Model
 
