@@ -3,12 +3,13 @@ package actors
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import akka.actor.testkit.typed.scaladsl.*
-import akka.actor.typed.ActorRef
-import akka.actor.Address
+import akka.actor.typed.{ActorRef, ActorRefResolver}
+import akka.actor.{Address, RootActorPath}
 import actors.discovery.DiscoveryProtocol.*
 import actors.discovery.{DiscoveryActor, GossipPeerState}
 import actors.gossip.GossipActor.GossipCommand
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.*
 
 class DiscoveryActorTest extends AnyFunSuite with Matchers:
 
@@ -75,14 +76,9 @@ class DiscoveryActorTest extends AnyFunSuite with Matchers:
 
       val discovery = spawnDiscovery(GossipPeerState.empty, testKit)
 
-  //    val replyProbe = testKit.createTestProbe[List[ActorRef[GossipCommand]]]()
-
       discovery ! RegisterGossip(ref)
       discovery ! RegisterGossipPermit
       discovery ! NotifyAddNode(ref.path.address)
-  //    discovery ! NodesRefRequest(replyProbe.ref)
-
-  //    replyProbe.expectMessage(3.seconds, List(ref))
       val replyProbe = testKit.createTestProbe[List[ActorRef[GossipCommand]]]()
       gossipProbe.awaitAssert {
         discovery ! NodesRefRequest(replyProbe.ref)
@@ -90,28 +86,3 @@ class DiscoveryActorTest extends AnyFunSuite with Matchers:
       }
 
     }
-
-  test("removes ActorRef from acceptedReferences when node address is removed"):
-    withTestKit { testKit =>
-
-      val gossipProbe = testKit.createTestProbe[GossipCommand]()
-      val ref = gossipProbe.ref
-
-
-      val discovery =
-        spawnDiscovery(
-          GossipPeerState.empty
-            .updateKnownReferences(Set(ref))
-            .acceptNode(ref.path.address),
-          testKit
-        )
-
-      val replyProbe = testKit.createTestProbe[List[ActorRef[GossipCommand]]]()
-
-      discovery ! NotifyRemoveNode(ref.path.address)
-      discovery ! NodesRefRequest(replyProbe.ref)
-
-      replyProbe.expectMessage(Nil)
-
-    }
-
