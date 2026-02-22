@@ -22,5 +22,22 @@ lazy val root = (project in file("."))
         "org.scalatest" %% "scalatest" % "3.2.18" % Test,
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test,
       )
+    },
+
+    assembly / assemblyJarName := "dnts.jar",
+
+    assembly / assemblyMergeStrategy := {
+      case x if x.endsWith("module-info.class") => MergeStrategy.discard
+
+      case "reference.conf" => MergeStrategy.concat
+
+      case PathList("META-INF", xs @ _*) =>
+        xs match {
+          case "MANIFEST.MF" :: Nil => MergeStrategy.discard
+          case "services" :: _      => MergeStrategy.concat
+          case _                    => MergeStrategy.discard
+        }
+
+      case _ => MergeStrategy.first
     }
   )
