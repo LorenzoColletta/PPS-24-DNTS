@@ -153,10 +153,10 @@ Il ModelActor costituisce il fulcro del sistema per quanto concerne la gestione 
 
 In linea con il paradigma Akka Typed, il ModelActor è modellato come una macchina a stati finiti (FSM) per eliminare la necessità di lock o variabili mutabili condivise.
 L'attore è composto da 2 diverse fasi: Idle e Active. 
-La fase Idle che si occupa della inizializzazione dell'attore.
-La fase Active che si occupa di:
- * applicare i gradienti al model e quindi di aggiornare i pesi della rete locale passati dal TrainingActor e di effettuare.
- * effettuare il merge della propria rete locale con quella ricevuta dal GossipActor.
+* La fase Idle che si occupa della inizializzazione dell'attore.
+* La fase Active che si occupa di:
+  * applicare i gradienti al model e quindi di aggiornare i pesi della rete locale passati dal TrainingActor e di effettuare.
+  * effettuare il merge della propria rete locale con quella ricevuta dal GossipActor.
 
 ### 4.4.2 Pattern State per il Model
 
