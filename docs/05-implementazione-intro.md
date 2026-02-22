@@ -48,7 +48,7 @@ L'avvio dell'applicazione (Main) e la lettura dei parametri sono stati implement
 
 
 ### 5.1.5 Monitoraggio Reattivo e Boundary Layer
-L'interazione tra gli attori e l'interfaccia grafica (View) è stata progettata per garantire un disaccoppiamento totale, in modo che la logica di backend non conosca i dettagli di rendering.
+L'interazione tra gli attori e l'interfaccia grafica (View) è stata progettata per garantire un disaccoppiamento totale, in modo che la logica di backend non conosca i dettagli sulla tecnologia di rendering (nel nostro caso Swing).
 * **Disaccoppiamento tramite ViewBoundary:** Il MonitorActor non usa direttamente librerie grafiche, ma comunica con l'esterno unicamente tramite il trait ViewBoundary. Questa interfaccia astratta viene passata all'attore al momento della sua creazione. Ciò permette di testare il sistema isolatamente o di sostituire l'intera interfaccia grafica .
 * **Gestione dei Comandi della UI:** Per consentire all'interfaccia di inviare comandi (Start, Pause, Stop) al sistema, ViewBoundary espone il metodo bindController. In fase di avvio, il MonitorActor vi collega una semplice funzione che inoltra i comandi ricevuti dalla UI direttamente alla propria mailbox, garantendo una comunicazione sicura tra i diversi thread.
 * **Stato Grafico Immutabile:** Tutti i dati necessari per aggiornare lo schermo (epoca corrente, loss, metriche di consenso) sono raggruppati nella case class immutabile ViewStateSnapshot. Questo oggetto viene generato e passato di stato in stato all'interno del comportamento dell'attore, eliminando del tutto l'uso di variabili mutabili da sincronizzare.
