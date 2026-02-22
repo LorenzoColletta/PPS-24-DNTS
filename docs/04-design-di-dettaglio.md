@@ -127,6 +127,29 @@ Il design riflette la natura P2P e l'esigenza di resilienza attraverso meccanism
   *   **Fase di Running (Autonomia e Tolleranza)**: Una volta avviata la simulazione, i nodi diventano funzionalmente autonomi. Se un peer diventa irraggiungibile, viene concesso un **periodo di grazia** tramite timer (`UnreachableTimeout`) per permettere un recupero spontaneo senza perturbare la topologia.
 * Il design gestisce il nodo Seed in modo ibrido. Sebbene sia fondamentale come punto di contatto iniziale e fornitore di dati durante il `Bootstrap`, una volta raggiunta la fase di `Running` esso viene trattato come un **peer paritario**. Coerentemente con la natura P2P, la perdita di connettività con il Seed in fase operativa non causa l'arresto del nodo locale, poiché ogni partecipante dispone ormai di tutte le informazioni necessarie per proseguire autonomamente la simulazione.
 
+## 4.4 Gestione del Modello e dello Stato (ModelActor)
+
+Il ModelActor costituisce il fulcro del sistema per quanto concerne la gestione dello stato della rete neurale. Il suo obbiettivo principale è agire come custode del modello predittivo, garantendo la coerenza dei pesi durante l'addestramento e la sincronizzazione distribuita.
+
+### 4.4.1 Incapsulamento dello Stato tramite Attori
+
+In linea con il paradigma Akka Typed, il ModelActor è modellato come una macchina a stati finiti (FSM) per eliminare la necessità di lock o variabili mutabili condivise.
+L'attore è composto da 2 diverse fasi: Idle e Active. 
+La fase Idle che si occupa della inizializzazione dell'attore.
+La fase Active che si occupa di:
+ * applicare i gradienti al model e quindi di aggiornare i pesi della rete locale passati dal TrainingActor e di effettuare.
+ * effettuare il merge della propria rete locale con quella ricevuta dal GossipActor.
+
+### 4.4.2 Pattern State per il Model
+
+Per mantenere il codice dell'attore focalizzato esclusivamente sul protocollo di comunicazione, la logica di manipolazione della rete è delegata al componente ModelTasks. Il design adotta il Pattern State (astratto tramite una Monade di Stato):
+Le operazioni di aggiornamento (es. applicazione dei gradienti o fusione tra modelli) sono descritte come trasformazioni pure State[Model, A].
+Questo approccio permette di definire "cosa" deve accadere al modello separatamente da "quando" l'attore decide di applicare tale modifica, facilitando il testing della logica matematica senza dover istanziare l'intero sistema ad attori.
+
+### 4.4.3 Sincronizzazione del Model
+Il ModelActor orchestra la convergenza del sistema distribuito gestendo l'interazione tra i contributi locali (trainer) e globali (gossip).
+Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene implementa eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
+
 ## 4.X Livello di Serializzazione
 
 La natura P2P dell'architettura e l'algoritmo di Gossip Learning richiedono che i nodi si scambino ripetutamente lo stato dei propri modelli predittivi. Le entità scambiate possono essere di grandi dimensioni. Per ottimizzare le performance di rete e ridurre la latenza, il sistema adotta una serializzazione binaria custom, evitando formati verbosi o meccanismi di serializzazione standard inefficienti.
