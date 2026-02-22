@@ -150,6 +150,24 @@ Questo approccio permette di definire "cosa" deve accadere al modello separatame
 Il ModelActor orchestra la convergenza del sistema distribuito gestendo l'interazione tra i contributi locali (trainer) e globali (gossip).
 Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene implementa eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
 
+### 4.3.3 DiscoveryActor
+Il DiscoveryActor agisce come un intermediario tra l'infrastruttura di rete di Akka e la logica applicativa. Mentre il ClusterManager si occupa della salute dei nodi a livello di rete, il DiscoveryActor gestisce la raggiungibilità dei servizi a livello di attori.
+Le sue responsabilità principali includono:
+* Sottoscrizione al Receptionist: Monitoraggio dinamico di tutti gli attori che espongono il servizio di gossip nel cluster.
+* Validazione della Topologia: Filtro dei riferimenti scoperti per garantire che solo i nodi considerati "validi" e "attivi" dal ClusterManager siano esposti al resto del sistema.
+* Service Advertising: Registrazione protetta del servizio di gossip locale una volta che il nodo ha completato le fasi iniziali di bootstrap.
+
+#### Design dello Stato: GossipPeerState
+Lo stato dell'attore, incapsulato in GossipPeerState, segue i principi dell'immutabilità e della separazione dei domini.
+* Doppia Sorgente di Verità: Lo stato mantiene due insiemi distinti:
+  * knownReferences: L'elenco "grezzo" di tutti gli attori scoperti tramite il Receptionist di Akka.
+  * acceptedNodes: L'elenco degli indirizzi di rete (Address) che il ClusterManager ha esplicitamente validato come parte integrante e funzionante della simulazione.
+* Pattern Filter/Gateway: La funzione acceptedReferences applica un filtro di intersezione: un ActorRef è considerato utilizzabile solo se il suo indirizzo appartiene all'insieme dei nodi accettati o se è locale. Questo garantisce che i messaggi di gossip non vengano inviati a nodi non ancora pronti.
+
+#### Pattern di Progettazione e Interazione
+* Observer Pattern (Subscription): Il DiscoveryActor implementa il pattern Observer nei confronti del Receptionist (Akka) di sistema. All'avvio, l'attore non interroga passivamente il registro, ma si sottoscrive a una ServiceKey specifica (gossip-service). Ogni variazione nella rete (nuovi attori o attori rimossi) viene notificata asincronamente.
+* Adapter Pattern per i Messaggi di Sistema: Il DiscoveryActor utilizza un Message Adapter per tradurre le risposte native del Receptionist (Receptionist.Listing) in messaggi definiti nel proprio protocollo interno (ListingUpdated).
+
 ## 4.X Livello di Serializzazione
 
 La natura P2P dell'architettura e l'algoritmo di Gossip Learning richiedono che i nodi si scambino ripetutamente lo stato dei propri modelli predittivi. Le entità scambiate possono essere di grandi dimensioni. Per ottimizzare le performance di rete e ridurre la latenza, il sistema adotta una serializzazione binaria custom, evitando formati verbosi o meccanismi di serializzazione standard inefficienti.
