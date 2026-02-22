@@ -3,7 +3,6 @@ package domain.data.dataset
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import config.DatasetStrategyConfig
-import domain.data.dataset.{DataModelFactory, DoubleGaussianDataset, DoubleRingDataset, DoubleSpiralDataset, DoubleXorDataset}
 import domain.data.util.Space
 
 class DataModelFactoryTest extends AnyFunSuite with Matchers:

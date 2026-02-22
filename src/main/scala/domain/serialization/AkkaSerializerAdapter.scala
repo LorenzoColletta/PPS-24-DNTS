@@ -18,7 +18,6 @@ import domain.serialization.TrainingSerializers.given
 import actors.gossip.GossipActor.GossipCommand
 import actors.gossip.GossipActor.ControlCommand
 import actors.gossip.GossipActor.GossipCommand.HandleRemoteModel
-import actors.gossip.GossipActor.GossipCommand.HandleControlCommand.given
 import actors.gossip.consensus.ConsensusProtocol.*
 import actors.gossip.configuration.ConfigurationProtocol
 import actors.gossip.dataset_distribution.DatasetDistributionActor.HandleDistributeDataset

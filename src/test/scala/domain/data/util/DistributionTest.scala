@@ -1,7 +1,6 @@
 package domain.data.util
 
 import domain.data.sampling.Domain
-import domain.data.util.{NormalDistribution, UniformDistribution}
 import org.scalatest.funsuite.AnyFunSuite
 
 class DistributionTest extends AnyFunSuite:

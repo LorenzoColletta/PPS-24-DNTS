@@ -3,8 +3,8 @@ package actors
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import akka.actor.testkit.typed.scaladsl.*
-import akka.actor.typed.{ActorRef, ActorRefResolver}
-import akka.actor.{Address, RootActorPath}
+import akka.actor.typed.ActorRef
+import akka.actor.Address
 import actors.discovery.DiscoveryProtocol.*
 import actors.discovery.{DiscoveryActor, GossipPeerState}
 import actors.gossip.GossipActor.GossipCommand
@@ -15,8 +15,6 @@ class DiscoveryActorTest extends AnyFunSuite with Matchers:
 
   private val address1 =
     Address("akka", "TestSystem", "node1", 2551)
-
-  private val address2 = ("akka", "TestSystem", "node2", 2552)
 
   private def spawnDiscovery(state: GossipPeerState, testKit: ActorTestKit) =
     testKit.spawn(DiscoveryActor(state))

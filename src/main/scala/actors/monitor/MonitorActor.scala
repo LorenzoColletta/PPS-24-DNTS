@@ -39,7 +39,7 @@ object MonitorActor:
       boundary.bindController(cmd => context.self ! cmd)
 
       Behaviors.withTimers: timers =>
-        new MonitorBehavior(
+        MonitorBehavior(
           timers,
           modelActor,
           gossipActor,

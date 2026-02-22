@@ -4,7 +4,6 @@ import domain.data.pattern.SpiralCurve
 import domain.data.sampling.SpiralDomain
 import domain.data.util.Space
 import org.scalatest.funsuite.AnyFunSuite
-import domain.sampling.*
 
 class SpiralDomainTest extends AnyFunSuite:
 

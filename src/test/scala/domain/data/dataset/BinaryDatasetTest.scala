@@ -1,8 +1,6 @@
 package domain.data.dataset
 
-import domain.data.dataset.BinaryDataset
-import domain.data.pattern.SpiralCurve
-import domain.data.sampling.{Domain, PointSampler}
+import domain.data.sampling.PointSampler
 import domain.data.util.Space
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

@@ -1,6 +1,5 @@
 package domain.data.pattern
 
-import domain.data.pattern.SpiralCurve
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 

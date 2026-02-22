@@ -5,7 +5,6 @@ import org.scalatest.matchers.should.Matchers
 
 import domain.network.{Network, Layer, Activations}
 import domain.data.LinearAlgebra.{Matrix, Vector}
-import domain.training.{NetworkGradient, LayerGradient}
 import domain.training.Consensus._
 import domain.training.consensus.ConsensusMetric
 

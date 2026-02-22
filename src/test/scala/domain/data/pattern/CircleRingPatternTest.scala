@@ -1,7 +1,6 @@
 package domain.data.pattern
 
 import domain.data.Point2D
-import domain.data.pattern.CircleRingPattern
 import domain.data.sampling.Domain
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

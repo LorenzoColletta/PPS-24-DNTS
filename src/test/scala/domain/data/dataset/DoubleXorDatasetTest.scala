@@ -1,7 +1,6 @@
 package domain.data.dataset
 
 import domain.data.*
-import domain.data.dataset.DoubleXorDataset
 import domain.data.pattern.Quadrant
 import domain.data.sampling.Domain
 import domain.data.util.Space

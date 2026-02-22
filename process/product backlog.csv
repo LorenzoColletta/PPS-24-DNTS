@@ -20,12 +20,12 @@ Trainer Actor,impl. Trainer actor,Fantilli,5,3,3,0,0,0,0
 ,refactor training func. to actor pattern,Fantilli,5,3,0,0,0,0,0
 ,metrics and consensus utilities,Fantilli,3,3,0,0,0,0,0
 Monitor Actor,design Monitor actor and app behaviour,Fantilli,2,2,2,2,0,0,0
-Model Actor,impl. Model actor,Giacobbi,3,,,,,,
-,train integration,Giacobbi,1,,,,,,
-,gossip integration,Giacobbi,1,,,,,,
-Gossip Actor,impl. Gossip actor,Giacobbi,4,,,,,,
-,gossip protocol with akka,Giacobbi,3,,,,,,
-,app. global commad,Giacobbi,3,,,,,,
+Model Actor,impl. Model actor,Giacobbi,3,4,0,0,0,0,0
+,train integration,Giacobbi,1,0,2,1,0,0,0
+,gossip integration,Giacobbi,1,2,0,0,0,0,0
+Gossip Actor,impl. Gossip actor,Giacobbi,4,0,3,3,2,2,0
+,gossip protocol with akka,Giacobbi,3,0,0,0,2,4,
+,app. global commad,Giacobbi,3,0,0,0,0,0,3
 Cluster Manager,impl. Cluster manager actor,Colletta,6,,,,,,
 ,read of app configuration,Colletta,6,,,,,,
 ,main function,Colletta,3,,,,,,
@@ -37,6 +37,11 @@ Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,
 Application Bootstrap,monitor and trainer ref. with pipeline adjustment,Fantilli,3,0,0,0,0,0,0
 ,network configuration and building,Fantilli,6,6,3,0,0,0,0
 ,dataset generation,Fantilli,4,4,2,2,0,0,0
+ConfigurationActor,reading file configuration,Giacobbi,1,1,0,0,0,0,0
+,configuration transfer from seed to clients,Giacobbi,5,4,4,0,0,0,0
+DatasetDistributionActor,dataset distribution,Giacobbi,5,0,1,5,1,0,0
+RootActor,update rootActor,Giacobbi,4,0,0,0,4,2,2
+,,,,,,,,,
 ,,,,,,,,,
 ,,,,,,,,,
 ,,,,,,,,,
@@ -45,6 +50,7 @@ Product Backlog Item,Sprint Task,Volunteer,Initial Estimate of Effort,1,2,3,4,5,
 Application Bootstrap,main function,Fantilli,3,0,0,0,0,0,0
 ,pipeline adjustment and final fixing,Fantilli,5,5,3,0,0,0,0
 View,gui and controls,Fantilli,5,5,5,2,0,0,0
-,,,,,,,,,
-,,,,,,,,,
-,,,,,,,,,
+,shuffle in dataset distribution with seed,Giacobbi,1,1,0,0,0,0,0
+ConsensusActor,consensus calculation,Giacobbi,5,0,5,2,0,0,0
+Actor for every function,refactoring gossip,Giacobbi,5,0,0,5,5,0,0
+,update test for refactoring,Giacobbi,4,0,0,0,0,4,1

@@ -1,7 +1,5 @@
 package actors.gossip
 
-import akka.actor.typed.ActorRef
-import domain.data.LabeledPoint2D
 import domain.network.Model
 import actors.trainer.TrainerActor.TrainingConfig
 import akka.actor.typed.ActorRef

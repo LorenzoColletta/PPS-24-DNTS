@@ -5,7 +5,6 @@ import akka.actor.typed.{ActorRef, Behavior}
 
 import config.AppConfig
 import domain.training.LossFunction
-import actors.trainer.TrainerBehavior
 import actors.model.ModelActor.ModelCommand
 
 /**
@@ -28,4 +27,4 @@ object TrainerActor:
     modelActor: ActorRef[ModelCommand],
   )(using lossFunction: LossFunction, config: AppConfig): Behavior[TrainerMessage] =
     Behaviors.withTimers: timers =>
-      new TrainerBehavior(timers, modelActor).idle()
+      TrainerBehavior(timers, modelActor).idle()
