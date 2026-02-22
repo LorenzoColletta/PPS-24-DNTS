@@ -26,7 +26,8 @@ Per soddisfare i requisiti, la struttura si appoggia ai seguenti pattern archite
 
 ## 3.3 Componenti del Sistema Distribuito
 
-  L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita un sistema ad attori gerarchico:
+L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita un sistema ad attori gerarchico:
+
 * **RootActor:** avvia, inizializza e orchestra gli altri attori.
 * **Cluster Manager (Membership & Failure Detector):** Gestisce la visione che il nodo ha dell'intera topologia distribuita. Interpreta gli eventi di membership nativi (es. nodi aggiunti, rimossi o irraggiungibili) su cui si basa per determinare lo stato di salute del cluster e applicare dinamicamente le policy decisionali per la tolleranza ai guasti (come la riconfigurazione o lo spegnimento di emergenza in caso di perdita del Seed).
 * **Discovery Actor (Peer Locator):** Sfrutta il pattern Receptionist di Akka per indicizzare e scoprire dinamicamente i servizi esposti dagli altri nodi. Mantiene e fornisce agli orchestratori di rete (come il Gossip Actor e il Consensus Actor) la lista costantemente aggiornata dei peer attivi e raggiungibili con cui scambiare i modelli.
@@ -41,8 +42,7 @@ Per soddisfare i requisiti, la struttura si appoggia ai seguenti pattern archite
 
 ## 3.4 Scelte Tecnologiche Cruciali ai Fini Architetturali
 
-Le tecnologie sono state selezionate per supportare in modo nativo l'architettura sopra descritta:
+Le tecnologie sono state selezionate per supportare l'architettura sopra descritta:
 
-1. **Scala 3:** Scelto come linguaggio portante per il suo supporto nativo al paradigma ibrido (Object-Oriented e Functional Programming). Scala permette di modellare l'infrastruttura di routing tramite l'OOP e contemporaneamente confinare l'algoritmica matematica in costrutti puramente funzionali (immutabili e dichiarativi), soddisfacendo la necessità di disaccoppiare gli strati.
-2. **Akka Cluster & Akka Typed:** L'infrastruttura di distribuzione si basa interamente su Akka. Akka Typed garantisce a *compile-time* la correttezza dei protocolli di messaggistica tra i componenti. Akka Cluster fornisce internamente le funzionalità di Membership, Discovery (tramite Receptionist) e Failure Detection (Split Brain Resolver), scaricando il codice applicativo dalla gestione del networking di basso livello e garantendo la tolleranza ai guasti.
-3. **Serializzazione Custom Binaria (AkkaSerializerAdapter):** Poiché l'architettura Gossip richiede il continuo scambio dell'intero stato del modello (matrici e vettori) sulla rete, la serializzazione standard (es. JSON o Java nativa) è stata scartata per problemi di performance. È stato progettato un Adapter integrato nell'infrastruttura Akka che utilizza buffer binari (`ByteBuffer`) per serializzare le primitive di algebra lineare, riducendo drasticamente l'overhead di rete e la latenza della sincronizzazione.
+1. **Akka Cluster & Akka Typed:** L'infrastruttura di distribuzione si basa interamente su Akka. Akka Typed garantisce la correttezza dei protocolli di messaggistica tra i componenti. Akka Cluster fornisce internamente le funzionalità di Membership, Discovery (tramite Receptionist) e Failure Detection, scaricando il codice applicativo dalla gestione del networking di basso livello e garantendo la tolleranza ai guasti.
+3. **Serializzazione Custom Binaria:** Poiché l'architettura Gossip richiede il continuo scambio dell'intero stato del modello (matrici e vettori) sulla rete, è stato progettato un Adapter integrato nell'infrastruttura Akka che utilizza buffer binari per serializzare le primitive di algebra lineare, riducendo drasticamente l'overhead di rete e la latenza della sincronizzazione.
