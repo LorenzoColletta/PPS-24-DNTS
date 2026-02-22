@@ -127,6 +127,24 @@ Il design riflette la natura P2P e l'esigenza di resilienza attraverso meccanism
   *   **Fase di Running (Autonomia e Tolleranza)**: Una volta avviata la simulazione, i nodi diventano funzionalmente autonomi. Se un peer diventa irraggiungibile, viene concesso un **periodo di grazia** tramite timer (`UnreachableTimeout`) per permettere un recupero spontaneo senza perturbare la topologia.
 * Il design gestisce il nodo Seed in modo ibrido. Sebbene sia fondamentale come punto di contatto iniziale e fornitore di dati durante il `Bootstrap`, una volta raggiunta la fase di `Running` esso viene trattato come un **peer paritario**. Coerentemente con la natura P2P, la perdita di connettività con il Seed in fase operativa non causa l'arresto del nodo locale, poiché ogni partecipante dispone ormai di tutte le informazioni necessarie per proseguire autonomamente la simulazione.
 
+### 4.3.3 DiscoveryActor
+Il DiscoveryActor agisce come un intermediario tra l'infrastruttura di rete di Akka e la logica applicativa. Mentre il ClusterManager si occupa della salute dei nodi a livello di rete, il DiscoveryActor gestisce la raggiungibilità dei servizi a livello di attori.
+Le sue responsabilità principali includono:
+* Sottoscrizione al Receptionist: Monitoraggio dinamico di tutti gli attori che espongono il servizio di gossip nel cluster.
+* Validazione della Topologia: Filtro dei riferimenti scoperti per garantire che solo i nodi considerati "validi" e "attivi" dal ClusterManager siano esposti al resto del sistema.
+* Service Advertising: Registrazione protetta del servizio di gossip locale una volta che il nodo ha completato le fasi iniziali di bootstrap.
+
+#### Design dello Stato: GossipPeerState
+Lo stato dell'attore, incapsulato in GossipPeerState, segue i principi dell'immutabilità e della separazione dei domini.
+* Doppia Sorgente di Verità: Lo stato mantiene due insiemi distinti:
+  * knownReferences: L'elenco "grezzo" di tutti gli attori scoperti tramite il Receptionist di Akka.
+  * acceptedNodes: L'elenco degli indirizzi di rete (Address) che il ClusterManager ha esplicitamente validato come parte integrante e funzionante della simulazione.
+* Pattern Filter/Gateway: La funzione acceptedReferences applica un filtro di intersezione: un ActorRef è considerato utilizzabile solo se il suo indirizzo appartiene all'insieme dei nodi accettati o se è locale. Questo garantisce che i messaggi di gossip non vengano inviati a nodi non ancora pronti.
+
+#### Pattern di Progettazione e Interazione
+* Observer Pattern (Subscription): Il DiscoveryActor implementa il pattern Observer nei confronti del Receptionist (Akka) di sistema. All'avvio, l'attore non interroga passivamente il registro, ma si sottoscrive a una ServiceKey specifica (gossip-service). Ogni variazione nella rete (nuovi attori o attori rimossi) viene notificata asincronamente.
+* Adapter Pattern per i Messaggi di Sistema: Il DiscoveryActor utilizza un Message Adapter per tradurre le risposte native del Receptionist (Receptionist.Listing) in messaggi definiti nel proprio protocollo interno (ListingUpdated).
+
 ## 4.4 Gestione del Modello e dello Stato (ModelActor)
 
 Il ModelActor costituisce il fulcro del sistema per quanto concerne la gestione dello stato della rete neurale. Il suo obbiettivo principale è agire come custode del modello predittivo, garantendo la coerenza dei pesi durante l'addestramento e la sincronizzazione distribuita.
@@ -149,24 +167,6 @@ Questo approccio permette di definire "cosa" deve accadere al modello separatame
 ### 4.4.3 Sincronizzazione del Model
 Il ModelActor orchestra la convergenza del sistema distribuito gestendo l'interazione tra i contributi locali (trainer) e globali (gossip).
 Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene implementa eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
-
-### 4.3.3 DiscoveryActor
-Il DiscoveryActor agisce come un intermediario tra l'infrastruttura di rete di Akka e la logica applicativa. Mentre il ClusterManager si occupa della salute dei nodi a livello di rete, il DiscoveryActor gestisce la raggiungibilità dei servizi a livello di attori.
-Le sue responsabilità principali includono:
-* Sottoscrizione al Receptionist: Monitoraggio dinamico di tutti gli attori che espongono il servizio di gossip nel cluster.
-* Validazione della Topologia: Filtro dei riferimenti scoperti per garantire che solo i nodi considerati "validi" e "attivi" dal ClusterManager siano esposti al resto del sistema.
-* Service Advertising: Registrazione protetta del servizio di gossip locale una volta che il nodo ha completato le fasi iniziali di bootstrap.
-
-#### Design dello Stato: GossipPeerState
-Lo stato dell'attore, incapsulato in GossipPeerState, segue i principi dell'immutabilità e della separazione dei domini.
-* Doppia Sorgente di Verità: Lo stato mantiene due insiemi distinti:
-  * knownReferences: L'elenco "grezzo" di tutti gli attori scoperti tramite il Receptionist di Akka.
-  * acceptedNodes: L'elenco degli indirizzi di rete (Address) che il ClusterManager ha esplicitamente validato come parte integrante e funzionante della simulazione.
-* Pattern Filter/Gateway: La funzione acceptedReferences applica un filtro di intersezione: un ActorRef è considerato utilizzabile solo se il suo indirizzo appartiene all'insieme dei nodi accettati o se è locale. Questo garantisce che i messaggi di gossip non vengano inviati a nodi non ancora pronti.
-
-#### Pattern di Progettazione e Interazione
-* Observer Pattern (Subscription): Il DiscoveryActor implementa il pattern Observer nei confronti del Receptionist (Akka) di sistema. All'avvio, l'attore non interroga passivamente il registro, ma si sottoscrive a una ServiceKey specifica (gossip-service). Ogni variazione nella rete (nuovi attori o attori rimossi) viene notificata asincronamente.
-* Adapter Pattern per i Messaggi di Sistema: Il DiscoveryActor utilizza un Message Adapter per tradurre le risposte native del Receptionist (Receptionist.Listing) in messaggi definiti nel proprio protocollo interno (ListingUpdated).
 
 ## 4.X Livello di Serializzazione
 
