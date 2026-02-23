@@ -50,3 +50,6 @@ Le tecnologie sono state selezionate per supportare l'architettura sopra descrit
 
 1. **Akka Cluster & Akka Typed:** L'infrastruttura di distribuzione si basa interamente su Akka. Akka Typed garantisce la correttezza dei protocolli di messaggistica tra i componenti. Akka Cluster fornisce internamente le funzionalità di Membership, Discovery (tramite Receptionist) e Failure Detection, scaricando il codice applicativo dalla gestione del networking di basso livello e garantendo la tolleranza ai guasti.
 3. **Serializzazione Custom Binaria:** Poiché l'architettura Gossip richiede il continuo scambio dell'intero stato del modello (matrici e vettori) sulla rete, è stato progettato un Adapter integrato nell'infrastruttura Akka che utilizza buffer binari per serializzare le primitive di algebra lineare, riducendo drasticamente l'overhead di rete e la latenza della sincronizzazione.
+
+---
+[Vai al Capitolo 4: Design di Dettaglio -->](04-design-di-dettaglio.md)

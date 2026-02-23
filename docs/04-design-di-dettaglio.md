@@ -294,3 +294,6 @@ La progettazione del livello di controllo distribuito si fonda sul Modello ad At
 **Diagramma Strutturale: Type Classes per Serializzazione Distribuita**
 
 Questo diagramma mostra come la logica di serializzazione (necessaria al Gossip Protocol) sia disaccoppiata dal Core Dominio tramite Type Classes, permettendo all'`AkkaSerializerAdapter` di tradurre gli oggetti in array di byte senza che le classi matematiche ne siano a conoscenza.
+
+---
+[Vai al Capitolo 5: Implementazione -->](05-implementazione.md)

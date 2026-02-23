@@ -23,3 +23,6 @@ Per il livello concorrente i test si sono focalizzati sulle transizioni di stato
 Come illustrato nel report generato tramite sbt-scoverage, la suite di test garantisce una copertura eccellente in tutti i package nevralgici del sistema. I moduli centrali, come il core matematico (domain), le logiche di sincronizzazione e membership (cluster, gossip), e i meccanismi di validazione (config), presentano una coverage elevata. Questo assicura la totale affidabilità delle logiche di business, del calcolo distribuito e della resilienza del protocollo.
 
 Nelle aree in cui la percentuale risulta fisiologicamente inferiore, la flessione è dovuta a una precisa e naturale scelta ingegneristica. Moduli come il Boundary Layer grafico (view) o le casistiche di errore di rete di bassissimo livello legate al framework Akka sono intrinsecamente difficili, se non impossibili, da testare in modo deterministico, o di scarso valore aggiunto rispetto alla solidità dimostrata nel resto dell'architettura.
+
+---
+[Vai al Capitolo 7: Retrospettiva -->](07-retrospettiva.md)

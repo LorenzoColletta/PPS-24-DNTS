@@ -459,3 +459,7 @@ def acceptedReferences: Set[ActorRef[GossipCommand]]
 realizza il filtro applicativo selezionando esclusivamente le referenze il cui `Address` appartiene all’insieme dei nodi accettati oppure presenta `localScope`. Tale condizione consente di includere sempre il gossip locale, anche in assenza di esplicita accettazione.
 
 L’aggiornamento dello stato avviene sempre tramite metodi puri (`acceptNode`, `removeNode`, `updateKnownReferences`), che restituiscono una nuova istanza immutabile. Non sono presenti strutture dati mutabili né sincronizzazioni esplicite.
+
+
+---
+[Vai al Capitolo 6: Testing -->](06-testing.md)

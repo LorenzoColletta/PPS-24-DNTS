@@ -64,3 +64,6 @@ Il modello di dominio definisce gli elementi concettuali chiave del sistema.
 | :-: | :-: | :-: |
 | IR1 | Linguaggio di Programmazione | Il sistema deve essere interamente sviluppato in Scala 3. |
 | IR2 | Architettura Distribuita | La logica distribuita, la concorrenza e la gestione del cluster devono essere gestite tramite il framework Akka Cluster. |
+
+---
+[Vai al Capitolo 3: Design Architetturale -->](03-design-architetturale.md)
