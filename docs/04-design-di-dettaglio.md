@@ -30,12 +30,24 @@ Il package sampling introduce il trait PointSampler, che funge da interfaccia un
 1. Adattamento: DistributionSampler adatta una PointDistribution esistente all'interfaccia PointSampler.
 2. Composizione: CurveSampler compone una ParametricCurve con una distribuzione per il suo parametro. Questo permette di variare la densità dei punti lungo una curva senza modificarne la geometria sottostante.
 
+<div align="center">
+  <img src="assets/diagramma-classi-datapkg.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <br>
+  <em>Figura 4: Visualizzazione della separazione tra modelli geometrici deterministici (ParametricCurve), strategie statistiche di generazione (PointDistribution) e l'interfaccia unificata di campionamento (PointSampler). </em>
+</div>
+
 #### Modellazione dei Dataset e Specializzazioni
 Al di sopra del campionamento, l'astrazione LabeledDatasetModel definisce il contratto per la generazione di punti associati a una specifica etichetta. Per la gestione di dataset a due classi, è stata introdotta la classe base BinaryDataset. Questa implementa LabeledDatasetModel delegando la produzione dei campioni a due istanze distinte di PointSampler: una dedicata alla classe positiva e una alla negativa. Le implementazioni concrete sfruttano la composizione anziché l'ereditarietà per definire scenari specifici:
 * DoubleGaussianDataset: compone due GaussianCluster tramite DistributionSampler.
 * DoubleRingDataset: utilizza due CircleRingPattern per creare aree concentriche.
 * DoubleSpiralDataset: istanzia due SpiralCurve (una opposta all'altra) gestite da CurveSampler.
 * DoubleXorDataset: sfrutta lo XorSampler, un campionatore specializzato che alterna la generazione tra quadranti opposti definiti da UniformSquare.
+
+<div align="center">
+  <img src="assets/diagramma-classi-datasetpkg.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <br>
+  <em>Figura 4: Struttura gerarchica dei modelli di dataset basata sull'astrazione BinaryDataset. Viene illustrato come le specializzazioni concrete (Gaussian, Ring, Spiral, Xor) utilizzino la composizione di due istanze di PointSampler.</em>
+</div>
 
 #### Trasformazioni, Vincoli e Calcolo Dinamico
 Il design include meccanismi per garantire che i punti generati rispettino i vincoli spaziali e possano essere manipolati post-generazione.
@@ -118,6 +130,13 @@ Il design si avvale di pattern consolidati per gestire la complessità dei siste
 * Per disaccoppiare il sistema dalle API di Akka, è stato implementato l'**Adapter Pattern**. L'uso della **Typeclass** `HasMember` permette di estrarre in modo polimorfico informazioni sui membri da eventi eterogenei (Up, Removed, Reachable), convertendoli nel modello di dominio `ClusterNode`.
 * La gestione della membership utilizza uno **stato immutabile**. Ogni operazione di aggiunta, rimozione o modifica della raggiungibilità produce una nuova istanza della membership, garantendo la sicurezza del thread e la tracciabilità delle transizioni.
 
+<div align="center">
+  <img src="assets/diagramma-classi-ClusterManager.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <br>
+  <em>Figura 3:  Macchina a stati finiti del ClusterManager: rappresentazione del ciclo di vita del nodo attraverso le fasi di Bootstrap, Joining e Running, con evidenza delle transizioni basate sulla rilevazione del Seed e sulle politiche di timeout.</em>
+</div>
+
+
 #### Design Peer-to-Peer e Resilienza
 Il design riflette la natura P2P e l'esigenza di resilienza attraverso meccanismi di controllo distribuito.
 * In linea con il paradigma P2P, **ogni nodo interpreta lo stato della rete autonomamente**. Non esiste un'autorità centrale che impone la visione del cluster; ogni `ClusterManager` mantiene la propria `ClusterMembership` locale basata sugli eventi osservati direttamente.
@@ -146,6 +165,12 @@ Lo stato dell'attore, incapsulato in GossipPeerState, segue i principi dell'immu
 #### Pattern di Progettazione e Interazione
 * Observer Pattern (Subscription): Il DiscoveryActor implementa il pattern Observer nei confronti del Receptionist (Akka) di sistema. All'avvio, l'attore non interroga passivamente il registro, ma si sottoscrive a una ServiceKey specifica (gossip-service). Ogni variazione nella rete (nuovi attori o attori rimossi) viene notificata asincronamente.
 * Adapter Pattern per i Messaggi di Sistema: Il DiscoveryActor utilizza un Message Adapter per tradurre le risposte native del Receptionist (Receptionist.Listing) in messaggi definiti nel proprio protocollo interno (ListingUpdated).
+
+<div align="center">
+  <img src="assets/diagramma-sequenza-discoveryActor.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <br>
+  <em>Figura 4: Diagramma di sequenza del meccanismo di Permit: coordinamento temporale tra il ClusterManager e il DiscoveryActor per garantire che la registrazione del servizio di Gossip nel Receptionist avvenga solo dopo la validazione della connettività iniziale.</em>
+</div>
 
 ## 4.4 Gestione del Modello e dello Stato (ModelActor)
 
