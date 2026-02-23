@@ -163,7 +163,7 @@ L'attore è composto da 2 diverse fasi: Idle e Active.
 ### 4.4.2 Pattern State per il Model
 
 Per mantenere il codice dell'attore focalizzato esclusivamente sul protocollo di comunicazione, la logica di manipolazione della rete è delegata al componente ModelTasks. Il design adotta il Pattern State (astratto tramite una Monade di Stato):
-Le operazioni di aggiornamento (es. applicazione dei gradienti o fusione tra modelli) sono descritte come trasformazioni pure State[Model, A].
+le operazioni di aggiornamento (es. applicazione dei gradienti o fusione tra modelli) sono descritte come trasformazioni pure State[Model, A].
 Questo approccio permette di definire "cosa" deve accadere al modello separatamente da "quando" l'attore decide di applicare tale modifica, facilitando il testing della logica matematica senza dover istanziare l'intero sistema ad attori.
 
 ### 4.4.3 Sincronizzazione del Model
@@ -177,7 +177,7 @@ Per gestire l'elevata complessità derivante dalla natura asincrona e distribuit
 ### 4.5.1 Architettura Modulare(`GossipActor`)
 Il `GossipActor` funge da punto di ingresso (Gateway) per le comunicazioni P2P del nodo. 
 Riceve messaggi generici dal protocollo gossip e li instrada ai sottomoduli di competenza (`ConfigurationActor`, `DatasetDistributionActor`, `ConsensusActor`), disaccoppiando la ricezione dei messaggi dalla loro effettiva elaborazione.
-Oltre al routing, il `GossipActor` gestisce in prima persona la logica core dell'algoritmo di Gossip:
+Il `GossipActor` gestisce in prima persona la logica core dell'algoritmo di Gossip:
 * **Push-based Sync:** Tramite un sistema basato su timer periodici (`TickGossip`), l'attore interroga il sistema di Discovery per ottenere la lista dei peer attivi, ne seleziona uno in modo pseudo-casuale e gli invia il proprio stato locale del modello. Questo approccio probabilistico garantisce, nel tempo, la diffusione dell'informazione e la convergenza del cluster.
 * **Propagazione dei Segnali di Controllo:** Il protocollo prevede comandi per il controllo globale della simulazione (come `GlobalPause`, `GlobalResume`, `GlobalStop`). Il `GossipActor` si occupa di intercettare questi messaggi e diffonderli verso gli altri peer, per poi applicarne gli effetti sui sottomoduli locali.
 
