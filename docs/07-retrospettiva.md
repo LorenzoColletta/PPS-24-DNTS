@@ -1,3 +1,9 @@
+---
+layout: default
+title: Retrospettiva
+nav_order: 7
+---
+
 # 7. Retrospettiva
 Questo capitolo finale analizza l'andamento del processo di sviluppo, ripercorrendo le iterazioni del team, la gestione del Product Backlog e traendo le conclusioni sulle sfide affrontate e sui risultati ottenuti.
 

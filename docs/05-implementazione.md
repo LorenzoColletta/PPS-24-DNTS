@@ -1,3 +1,9 @@
+---
+layout: default
+title: Implementazione
+nav_order: 5
+---
+
 # 5. Implementazione
 Questo capitolo illustra i dettagli implementativi più rilevanti del progetto, evidenziando come le scelte di design discusse nel capitolo precedente siano state tradotte in codice. L'attenzione è posta sull'utilizzo dei paradigmi funzionali e dei costrutti avanzati offerti da Scala 3.
 

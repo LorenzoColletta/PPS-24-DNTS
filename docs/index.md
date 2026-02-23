@@ -1,3 +1,9 @@
+---
+layout: default
+title: Intro
+nav_order: 1
+---
+
 # Distributed Neural Training Simulation (DNTS)
 
 ## Introduzione e Visione del Sistema

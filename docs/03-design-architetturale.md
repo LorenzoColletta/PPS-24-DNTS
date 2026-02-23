@@ -1,3 +1,9 @@
+---
+layout: default
+title: Design Architetturale
+nav_order: 3
+---
+
 # 3. Design Architetturale
 
 Questa sezione descrive l'architettura complessiva del sistema Distributed Neural Training Simulation (DNTS). La progettazione è stata guidata dai requisiti di resilienza, concorrenza distribuita e rigorosa separazione delle responsabilità, adottando un approccio decentralizzato fondato sui paradigmi della programmazione funzionale e del modello ad attori.
@@ -37,11 +43,6 @@ L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita u
 * **Model Actor (Single Source of Truth):** Rappresenta il cuore dello stato mutabile del nodo. Incapsula i pesi e i bias della rete neurale, esponendo interfacce per aggiornamenti atomici sequenziali (sia derivanti dal calcolo locale che dai merge di rete).
 * **Monitor Actor:** Agisce come ponte tra gli attori e le interfacce I/O. Aggrega periodicamente le metriche e aggiorna i grafici.
 
-<div align="center">
-  <img src="assets/diagramma-architettura-3-3.png" width="100%" alt="Diagramma dei componenti del nodo DNTS.">
-  <br>
-  <em>Figura 1: Diagramma dei componenti che descrive l'architettura di dettaglio del Nodo DNTS, interazioni interne e di rete.</em>
-</div>
 
 
 ## 3.4 Scelte Tecnologiche Cruciali ai Fini Architetturali

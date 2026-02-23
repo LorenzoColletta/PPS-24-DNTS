@@ -1,3 +1,9 @@
+---
+layout: default
+title: Design di Dettaglio
+nav_order: 4
+---
+
 # 4. Design di Dettaglio
 
 Questa sezione dettaglia le scelte di progettazione interne ai moduli del sistema DNTS, illustrando come i principi architetturali di alto livello siano stati declinati attraverso pattern object-oriented e funzionali.
@@ -33,7 +39,7 @@ Il package `sampling` introduce il trait PointSampler, che funge da interfaccia 
 <div align="center">
   <img src="assets/diagramma-classi-datapkg.png" width="50%" alt="Visualizzazione della separazione tra modelli geometrici deterministici (ParametricCurve), strategie statistiche di generazione (PointDistribution) e l'interfaccia unificata di campionamento (PointSampler).">
   <br>
-  <em>Figura 2: Visualizzazione della separazione tra modelli geometrici deterministici (ParametricCurve), strategie statistiche di generazione (PointDistribution) e l'interfaccia unificata di campionamento (PointSampler). </em>
+  <em>Figura 1: Visualizzazione della separazione tra modelli geometrici deterministici (ParametricCurve), strategie statistiche di generazione (PointDistribution) e l'interfaccia unificata di campionamento (PointSampler). </em>
 </div>
 
 #### Modellazione dei Dataset e Specializzazioni
@@ -46,7 +52,7 @@ Al di sopra del campionamento, l'astrazione LabeledDatasetModel definisce il con
 <div align="center">
   <img src="assets/diagramma-classi-datasetpkg.png" width="60%" alt="Struttura gerarchica dei modelli di dataset basata sull'astrazione BinaryDataset. Viene illustrato come le specializzazioni concrete (Gaussian, Ring, Spiral, Xor) utilizzino la composizione di due istanze di PointSampler.">
   <br>
-  <em>Figura 3: Struttura gerarchica dei modelli di dataset basata sull'astrazione BinaryDataset. Viene illustrato come le specializzazioni concrete (Gaussian, Ring, Spiral, Xor) utilizzino la composizione di due istanze di PointSampler.</em>
+  <em>Figura 2: Struttura gerarchica dei modelli di dataset basata sull'astrazione BinaryDataset. Viene illustrato come le specializzazioni concrete (Gaussian, Ring, Spiral, Xor) utilizzino la composizione di due istanze di PointSampler.</em>
 </div>
 
 #### Trasformazioni, Vincoli e Calcolo Dinamico
@@ -82,7 +88,7 @@ La creazione stessa della topologia della rete neurale è un processo a più ste
 <div align="center">
   <img src="assets/diagramma-classi-4-2.png" width="35%" alt="Diagramma delle classi: Model, Network, Layer e Builder">
   <br>
-  <em>Figura 4: Struttura composizionale e pattern creazionali del Dominio e della Rete Neurale.</em>
+  <em>Figura 3: Struttura composizionale e pattern creazionali del Dominio e della Rete Neurale.</em>
 </div>
 
 
@@ -106,7 +112,7 @@ Per ovviare a questo problema, il TrainerActor è stato progettato adottando il 
 <div align="center">
   <img src="assets/sequence-diagram-4-3.png" width="60%" alt="Sequence Diagram che illustra il loop di addestramento asincrono">
   <br>
-  <em>Figura 5: Diagramma di sequenza che illustra il loop asincrono di addestramento.</em>
+  <em>Figura 4: Diagramma di sequenza che illustra il loop asincrono di addestramento.</em>
 </div>
 
 ### 4.3.2 Gestione del Cluster: ClusterManager
@@ -133,7 +139,7 @@ Il design si avvale di pattern consolidati per gestire la complessità dei siste
 <div align="center">
   <img src="assets/diagramma-classi-ClusterManager.png" width="70%" alt="Macchina a stati finiti del ClusterManager.">
   <br>
-  <em>Figura 6:  Macchina a stati finiti del ClusterManager. Rappresentazione del ciclo di vita del nodo attraverso le fasi di Bootstrap, Joining e Running, con evidenza delle transizioni basate sulla rilevazione del Seed e sulle politiche di timeout.</em>
+  <em>Figura 5:  Macchina a stati finiti del ClusterManager. Rappresentazione del ciclo di vita del nodo attraverso le fasi di Bootstrap, Joining e Running, con evidenza delle transizioni basate sulla rilevazione del Seed e sulle politiche di timeout.</em>
 </div>
 
 
@@ -167,7 +173,7 @@ Lo stato dell'attore, incapsulato in GossipPeerState, segue i principi dell'immu
 <div align="center">
   <img src="assets/diagramma-sequenza-discoveryActor.png" width="70%" alt="Diagramma di sequenza del meccanismo di Permit.">
   <br>
-  <em>Figura 7: Diagramma di sequenza del meccanismo di Permit. Coordinamento temporale tra il ClusterManager e il DiscoveryActor per garantire che la registrazione del servizio di Gossip nel Receptionist avvenga solo dopo la validazione della connettività iniziale.</em>
+  <em>Figura 6: Diagramma di sequenza del meccanismo di Permit. Coordinamento temporale tra il ClusterManager e il DiscoveryActor per garantire che la registrazione del servizio di Gossip nel Receptionist avvenga solo dopo la validazione della connettività iniziale.</em>
 </div>
 
 ### 4.3.4 Gestione del Modello e dello Stato (ModelActor)
@@ -221,7 +227,7 @@ Parallelamente alla configurazione, il cluster deve distribuire il set di dati d
 <div align="center">
   <img src="assets/diagramma-sequenza-sottosistema_gossip.png" width="85%" alt="Diagramma sequenza del sottosistema Gossip.">
   <br>
-  <em>Figura 8: Diagramma di sequenza del sottosistema Gossip.</em>
+  <em>Figura 7: Diagramma di sequenza del sottosistema Gossip.</em>
 </div>
 
 ### 4.3.6 Orchestrazione e Bootstrap del Nodo: RootActor
@@ -236,7 +242,7 @@ Il RootActor, infine si deve occupare di richiamare lo stop degli attori e di as
 <div align="center">
   <img src="assets/diagramma-classi-root-sottosistemagossip.png" width="85%"t="Diagramma delle classi RootActor e sottosistema Gossip.">
   <br>
-  <em>Figura 9: Diagramma delle classi RootActor e sottosistema Gossip.</em>
+  <em>Figura 8: Diagramma delle classi RootActor e sottosistema Gossip.</em>
 </div>
 
 ## 4.4 Livello di Serializzazione
@@ -256,7 +262,7 @@ Questo componente funge da ponte architetturale: implementa le interfacce richie
 <div align="center">
   <img src="assets/diagramma-serializzazione-4-4.png" width="85%" alt="Diagramma strutturale della serializzazione.">
   <br>
-  <em>Figura 10: Disaccoppiamento della logica di serializzazione tramite Type Classes e Adapter.</em>
+  <em>Figura 9: Disaccoppiamento della logica di serializzazione tramite Type Classes e Adapter.</em>
 </div>
 
 
@@ -276,7 +282,7 @@ L'interazione è governata da un'astrazione dedicata (il trait ViewBoundary) che
 <div align="center">
   <img src="assets/diagramma-monitor-4-5.png" width="55%" alt="Diagramma strutturale del livello di presentazione.">
   <br>
-  <em>Figura 11: Disaccoppiamento del livello di presentazione tramite ViewBoundary e MonitorActor.</em>
+  <em>Figura 10: Disaccoppiamento del livello di presentazione tramite ViewBoundary e MonitorActor.</em>
 </div>
 
 

@@ -1,3 +1,9 @@
+---
+layout: default
+title: Testing
+nav_order: 6
+---
+
 # 6. Testing
 La validazione del sistema DNTS è stata condotta con l'obiettivo di garantire la correttezza matematica del modello, la robustezza del protocollo distribuito e la resilienza del sistema. L'architettura separata tra logica pura e gestione dello stato concorrente ha facilitato enormemente la stesura dei test, permettendo di isolare i componenti e verificarli in modo mirato.
 
@@ -17,7 +23,7 @@ Per il livello concorrente i test si sono focalizzati sulle transizioni di stato
 <div align="center" style="margin-bottom: 20px;">
     <img src="assets/test-coverage.png" alt="Report di Copertura sbt-scoverage" width="30%"/>
     <br>
-    <em>Figura 12: Report di copertura per package generato tramite sbt-scoverage.</em>
+    <em>Figura 11: Report di copertura per package generato tramite sbt-scoverage.</em>
 </div>
 
 Come illustrato nel report generato tramite sbt-scoverage, la suite di test garantisce una copertura eccellente in tutti i package nevralgici del sistema. I moduli centrali, come il core matematico (domain), le logiche di sincronizzazione e membership (cluster, gossip), e i meccanismi di validazione (config), presentano una coverage elevata. Questo assicura la totale affidabilità delle logiche di business, del calcolo distribuito e della resilienza del protocollo.

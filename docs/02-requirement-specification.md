@@ -1,3 +1,9 @@
+---
+layout: default
+title: Requirement specification
+nav_order: 2
+---
+
 # 2. Requirement specification
 
 ## 2.1 Requisiti di Business
