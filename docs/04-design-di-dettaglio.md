@@ -218,6 +218,26 @@ Per monitorare l'andamento del Gossip Learning, il sistema deve calcolare quanto
 #### Segmentazione dei Dati (`DatasetDistributionActor`)
 Parallelamente alla configurazione, il cluster deve distribuire il set di dati da analizzare. Il `DatasetDistributionActor` è stato progettato come un modulo autonomo che intercetta i comandi di distribuzione generati dal nodo Seed, all'avvio della simulazione. Questo disaccoppiamento garantisce che la logica di partizionamento dei dati non interferisca con lo scambio continuo dei modelli predittivi, mantenendo pulita l'architettura dei flussi dati.
 
+<div align="center">
+  <img src="assets/diagramma-sequenza-sottosistema_gossip.png" width="85%" alt="Diagramma sequenza del sottosistema Gossip.">
+  <br>
+  <em>Figura 8: Diagramma di sequenza del sottosistema Gossip.</em>
+</div>
+
+### 4.3.6 Orchestrazione e Bootstrap del Nodo: RootActor
+Il RootActor funge da vertice gerarchico e supervisore di sistema per ogni singola istanza del software DNTS. 
+La sua responsabilità primaria risiede nel coordinare il ciclo di vita degli attori locali e nel gestire la transizione critica tra la fase di inizializzazione e quella operativa, garantendo che il nodo si integri correttamente nel cluster distribuito.
+Il RootActor isola l'infrastruttura di base dal resto dell'applicazione.
+Esso ha il compito di istanziare e monitorare i componenti core (ModelActor, TrainerActor, GossipActor, ecc.), agendo come unico punto di smistamento per i segnali di controllo globali.
+Questo design permette di gestire eventuali fallimenti dei componenti figli senza compromettere la stabilità dell'intero nodo.
+L'architettura del RootActor adatta la logica di bootstrap in base al ruolo (NodeRole) specificato in fase di avvio, ovvero nodo Seed o nodo Client.
+Il RootActor, infine si deve occupare di richiamare lo stop degli attori e di aspettare il loro termine, usando una deallocazione forzata degli attori in caso di necessità.
+
+<div align="center">
+  <img src="assets/diagramma-classi-root-sottosistemagossip.png" width="85%"t="Diagramma delle classi RootActor e sottosistema Gossip.">
+  <br>
+  <em>Figura 9: Diagramma delle classi RootActor e sottosistema Gossip.</em>
+</div>
 
 ## 4.4 Livello di Serializzazione
 
@@ -236,7 +256,7 @@ Questo componente funge da ponte architetturale: implementa le interfacce richie
 <div align="center">
   <img src="assets/diagramma-serializzazione-4-4.png" width="85%" alt="Diagramma strutturale della serializzazione.">
   <br>
-  <em>Figura N: Disaccoppiamento della logica di serializzazione tramite Type Classes e Adapter.</em>
+  <em>Figura 10: Disaccoppiamento della logica di serializzazione tramite Type Classes e Adapter.</em>
 </div>
 
 
@@ -256,7 +276,7 @@ L'interazione è governata da un'astrazione dedicata (il trait ViewBoundary) che
 <div align="center">
   <img src="assets/diagramma-monitor-4-5.png" width="55%" alt="Diagramma strutturale del livello di presentazione.">
   <br>
-  <em>Figura N: Disaccoppiamento del livello di presentazione tramite ViewBoundary e MonitorActor.</em>
+  <em>Figura 11: Disaccoppiamento del livello di presentazione tramite ViewBoundary e MonitorActor.</em>
 </div>
 
 

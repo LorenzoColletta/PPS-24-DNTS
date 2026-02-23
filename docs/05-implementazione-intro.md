@@ -146,7 +146,24 @@ L'implementazione del `DatasetDistributionBehavior` si occupa della suddivisione
 Esso viene suddiviso in parti uguali e ogni parte viene affidata a un peer.
 Prima di essere suddiviso in chunk, viene effetuato uno shuffle del train set basato sul seed che viene fornito mediante il metodo `RegisterSeed`.
 Il test set viene passato interamente ad ogni peer senza essere suddiviso.
-Inoltre, per evitare il blocco del thread dell'attore durante il partizionamento del dataset in epoche e batch (che impedirebbe la reattività ai comandi dell'utente), il loop di training è stato srotolato in modo asincrono. È stato impiegato il TimerScheduler fornito da Akka (timers.startSingleTimer): al termine del calcolo di un batch, l'attore autoprogramma l'invio di un messaggio privato (PrivateTrainerCommand.NextBatch) a se stesso. Questo approccio garantisce che la mailbox dell'attore possa processare richieste prioritarie (es. calcolo metriche o pausa) tra l'esecuzione di due iterazioni sequenziali.
+
+---
+
+### Gestione del RootActor
+
+Il RootActor ha diversi meccanismi di azione in base al NodeRole del nodo analizzato.
+In particolare, il RootActor:
+* del nodo **Seed**  si occupa della creazione del modello iniziale (tramite il ModelBuilder) e della generazione del dataset globale. Inoltre esso detiene la responsabilità di innescare la distribuzione delle configurazioni verso gli altri membri del cluster.
+* del nodo **Client:** ,pur istanziando i sottomoduli di comunicazione, mantiene il sistema in uno stato di sospensione finché il protocollo di Gossip non fornisce i parametri di rete e i dati necessari per l'addestramento.
+
+Il coordinamento tra le diverse fasi del bootstrap avviene attraverso uno scambio di messaggi tipizzati definiti nel RootProtocol:
+* **Validazione Configurazione (ConfirmInitialConfiguration):** Una volta che il nodo (sia esso Seed o Client) possiede i parametri corretti, il RootActor inizializza il ModelActor con la topologia neurale definitiva.
+* **Ricezione Dati (DistributedDataset):** Solo dopo l'acquisizione del chunk di dati assegnato dal DatasetDistributionActor, il RootActor sblocca le attività di calcolo del TrainerActor.
+* **L'avvio della simulazione (SeedStartSimulation)**: rappresenta l'evento di innesco trigger dell'intero processo distribuito all'interno del sistema DNTS.
+
+Per la gestione della terminazione (Graceful Shutdown) il RootActor assicura la persistenza dello stato e la pulizia delle risorse. Alla ricezione di un comando di interruzione (GlobalStop), l'attore coordina lo spegnimento ordinato degli attori istanziati.
+Inoltre comunica al ClusterManager l'intenzione di lasciare la rete per evitare falsi positivi nel monitoraggio dei guasti.
+Spegne l'intero ActorSystem locale solo dopo aver verificato la corretta terminazione dei processi critici.
 
 ## 5.3 Implementazione a cura di Lorenzo Colletta
 
