@@ -18,9 +18,9 @@ L'implementazione del motore di addestramento ha richiesto di coniugare la massi
 
 #### Il Dominio Matematico
 Per quanto concerne il calcolo puro, l'implementazione fa un uso estensivo dei costrutti avanzati di Scala 3 per garantire disaccoppiamento e manutenibilità:
-* **Contextual Abstractions:** L'iniezione delle euristiche di base non è stata realizzata tramite la classica Dependency Injection basata sui costruttori, bensì sfruttando le astrazioni contestuali. Metodi centrali come TrainingCore.computeBatchGradients definiscono dipendenze strategiche tramite clausole using (es. using lossFn: LossFunction, space: Space). Le implementazioni concrete (come la Mean Squared Error) sono fornite come istanze given all'interno dell'oggetto Strategies. Questo disaccoppia totalmente l'algoritmo di Backpropagation dalla metrica di errore, rendendo il codice estremamente pulito e idiomatico.
+* **Contextual Abstractions:** L'iniezione delle euristiche di base non è stata realizzata tramite la classica Dependency Injection basata sui costruttori, bensì sfruttando le astrazioni contestuali. Metodi centrali come TrainingCore.computeBatchGradients definiscono dipendenze strategiche tramite clausole using (es. using lossFn: LossFunction, space: Space). Le implementazioni concrete (come la Mean Squared Error) sono fornite come istanze given all'interno dell'oggetto Strategies. Questo disaccoppia totalmente l'algoritmo di Backpropagation dalla metrica di errore, rendendo il codice pulito e idiomatico.
 * **Enum avanzati per le Attivazioni:** Le funzioni di attivazione sfruttano le potenzialità degli enum di Scala 3. L'enum Activations implementa il trait Activation, incapsulando direttamente nel tipo non solo la logica di forward (metodo apply), ma anche la sua derivata (fondamentale per la retropropagazione) e l'euristica per il calcolo della deviazione standard ottimale usata nell'inizializzazione dei pesi.
-* **Strategy e Factory per l'Ottimizzazione:** Le regole di aggiornamento dei pesi e prevenzione dell'overfitting sono governate da interfacce generiche (Optimizer, RegularizationStrategy). L'oggetto Strategies agisce sia da contenitore che da Factory: ad esempio, traduce in tempo reale la configurazione dichiarativa dell'utente (modificata tramite l'enum Regularization in L1, L2 o ElasticNet) nella corrispondente funzione matematica pura applicabile alle matrici dei pesi. L'ottimizzatore concreto, come SGD (Stochastic Gradient Descent), orchestra questi calcoli per generare e restituire una copia interamente nuova e aggiornata della Rete.
+* **Strategy e Factory per l'Ottimizzazione:** Le regole di aggiornamento dei pesi e prevenzione dell'overfitting sono governate da interfacce generiche (Optimizer, RegularizationStrategy). L'oggetto Strategies agisce sia da contenitore che da Factory: ad esempio, traduce in tempo reale la configurazione dichiarativa dell'utente (modificata tramite l'enum Regularization in L1, L2 o ElasticNet) nella corrispondente funzione matematica pura applicabile alle matrici dei pesi. L'ottimizzatore concreto, come SGD (Stochastic Gradient Descent), orchestra questi calcoli per generare e restituire una copia interamente nuova e aggiornata della rete.
 * **Calcolo del Consenso e Aggregazione:** Il modulo Consensus funge da Facade per le primitive di sincronizzazione della rete. Sfruttando gli extension methods di Scala 3, operazioni come averageWith e divergenceFrom vengono "iniettate" direttamente sulla classe Network. Questo approccio permette di mascherare la complessità implementativa dietro un DSL estremamente leggibile (es. net1 averageWith net2). A livello operativo (ConsensusOps), sia la fusione dei pesi per il protocollo Gossip P2P (averageModels), sia l'aggregazione dei gradienti per il singolo mini-batch (averageGradients), sono realizzate senza alcuna mutazione di stato. Infine, la distanza matematica tra i modelli per valutare la convergenza distribuita è astratta dal trait ConsensusMetric. La sua implementazione di default (fornita come contesto given) calcola accuratamente il Mean Absolute Error (MAE): accumula le differenze assolute di ogni singolo parametro (tutti i pesi e i bias) scendendo ricorsivamente nei layer tramite l'uso di foldLeft.
 
 #### Il TrainerActor: Reattività e Macchina a Stati
@@ -28,7 +28,7 @@ Il TrainerActor realizza il controllo operativo del ciclo di addestramento, attr
 
 1. **FSM tramite Behaviors ricorsivi:** Per eliminare la necessità di variabili di stato mutabili, l'attore è implementato come una Macchina a Stati Finiti dove ogni stato (idle, ready, training, paused) è rappresentato da un metodo che ritorna un Behavior[TrainerMessage]. Il passaggio tra gli stati avviene tramite l'invocazione e la restituzione di un nuovo metodo (es. da ready a training alla ricezione del comando di Start), garantendo che l'attore risponda solo ai messaggi validi per il suo stato attuale ed eviti incongruenze (es. ignorando comandi di training se già in esecuzione).
 
-2. **Loop Asincrono:** Loop Asincrono: Per soddisfare il requisito vitale di reattività, il loop iterativo di addestramento è stato scomposto impiegando il TimerScheduler di Akka. Invece di usare un ciclo while bloccante che saturerebbe il thread dell'attore, il sistema processa un singolo batch, aggiorna il modello locale e poi auto-invia a se stesso un messaggio NextBatch tramite timers.startSingleTimer. Questo meccanismo permette alla coda dei messaggi (mailbox) di processare, tra un batch e l'altro, eventi ad alta priorità (come richieste di pausa, stop o il calcolo delle metriche per il MonitorActor), garantendo che la GUI rimanga fluida e il nodo sempre responsivo al cluster.
+2. **Loop Asincrono:** Per soddisfare il requisito vitale di reattività, il loop iterativo di addestramento è stato scomposto impiegando il TimerScheduler di Akka. Invece di usare un ciclo while bloccante che saturerebbe il thread dell'attore, il sistema processa un singolo batch, aggiorna il modello locale e poi auto-invia a se stesso un messaggio NextBatch tramite timers.startSingleTimer. Questo meccanismo permette alla coda dei messaggi (mailbox) di processare, tra un batch e l'altro, eventi ad alta priorità (come richieste di pausa, stop o il calcolo delle metriche per il MonitorActor), garantendo che la GUI rimanga fluida e il nodo sempre responsivo al cluster.
 
 3. **Integrazione Layered:** In ogni iterazione del loop, il TrainerActor agisce da coordinatore: richiede il modello al ModelActor, preleva il batch corrente, invoca il TrainingCore e reinvia i gradienti calcolati per l'applicazione. Questo flusso unidirezionale garantisce che la logica distribuita di Akka non "contamini" mai le funzioni matematiche sottostanti.
 
@@ -40,9 +40,9 @@ Come anticipato il sistema P2P necessita di scambiare continuamente l'intero sta
 
 
 ### 5.1.4 Inizializzazione del Sistema
-L'avvio dell'applicazione (Main) e la lettura dei parametri sono stati implementati mantenendo un rigoroso approccio funzionale e Fail-Fast, al fine di garantire che il nodo entri nella rete distribuita in uno stato perfettamente coerente.
+L'avvio dell'applicazione (Main) e la lettura dei parametri è stata implementata mantenendo un rigoroso approccio funzionale e Fail-Fast, al fine di garantire che il nodo entri nella rete distribuita in uno stato perfettamente coerente.
 * **Parsing della CLI:** L'elaborazione degli argomenti da riga di comando all'interno di CliParser evita completamente l'uso di cicli while o variabili mutabili. La logica è implementata tramite una funzione ricorsiva basata sul Pattern Matching. Per massimizzare le performance, la funzione è stata annotata con @tailrec, delegando al compilatore Scala l'ottimizzazione a basso livello. Il risultato è incapsulato in un ADT ParseResult (Success, Failure, Help) che permette la gestione esplicita di tutti i possibili esiti.
-* **ConfigLoader e Data Transfer Object (DTO):** Per la definizione della topologia della simulazione (iperparametri, layer, euristiche) si è sfruttata la libreria Typesafe Config (HOCON). Il modulo ConfigLoader legge i file testuali e si occupa di validare e tradurre i dati grezzi in un'unica struttura dati immutabile fortemente tipizzata, FileConfig, che agisce da DTO per il resto del sistema.
+* **ConfigLoader e Data Transfer Object (DTO):** Per la definizione della topologia della simulazione (iperparametri, layer, euristiche) si è sfruttata la libreria Typesafe Config (HOCON). Il modulo ConfigLoader legge il file testuale e si occupa di validare e tradurre i dati grezzi in un'unica struttura dati immutabile fortemente tipizzata, FileConfig, che agisce da DTO per il resto del sistema.
 * **Abstract Factory per la Generazione dei Dati:** La simulazione richiede la creazione procedurale di diverse distribuzioni di dati 2D. La configurazione testuale viene mappata su un ADT DatasetStrategyConfig (es. Gaussian, Ring, Spiral). Il componente DataModelFactory realizza il pattern Abstract Factory: tramite pattern matching sulla strategia richiesta, istanzia la corretta implementazione concreta di LabeledDatasetModel (es. DoubleSpiralDataset o DoubleXorDataset), calcolando inoltre in modo deterministico i sub-seed (positivi e negativi) necessari alla generazione matematica dei punti.
 * **Dependency Injection tramite Contextual Abstractions:** Alcuni parametri globali di sistema (come la frequenza di sincronizzazione P2P, l'intervallo di render grafico o la LossFunction di default) sono stati estratti nel trait AppConfig. L'oggetto Main istanzia la configurazione di produzione e la dichiara come contesto implicito (given). Questo approccio permette una Dependency Injection nativa a tempo di compilazione lungo l'intero albero degli attori.
 
@@ -90,7 +90,7 @@ La scelta progettuale fondamentale è stata modellare la gerarchia dei comandi c
 Il trait radice `GossipCommand` è volutamente non-sealed: questo permette ai sottomoduli (`ConfigurationProtocol`, `ConsensusProtocol`, `DatasetDistributionProtocol`) di estendere il tipo con i propri comandi specializzati. 
 Il risultato è una gerarchia aperta verso l'esterno ma chiusa all'interno di ogni sottomodulo, che permette al compilatore di verificare la completezza del pattern matching a livello locale senza vincolare l'estensibilità del sistema.
 I comandi di controllo globale sono separati semanticamente in una gerarchia distinta (`ControlCommand extends GossipCommand`). 
-Questa scelta non è puramente estetica: consente al `GossipBehavior` di distinguere staticamente, a tempo di compilazione, i messaggi che devono essere instradati ai sottomoduli da quelli che richiedono la propagazione sull'intera rete, senza alcun casting a runtime.
+Questa scelta consente al `GossipBehavior` di distinguere staticamente, a tempo di compilazione, i messaggi che devono essere instradati ai sottomoduli da quelli che richiedono la propagazione sull'intera rete, senza alcun casting a runtime.
 
 ---
 
@@ -128,7 +128,7 @@ La transizione dal ruolo di richiedente al ruolo di fornitore avviene automatica
 
 #### Calcolo del Consensus: `ConsensusBehavior`
 
-L'implementazione del `ConsensusBehavior` è tra le più sofisticata del sottosistema e traduce direttamente il pattern Scatter-Gather.
+L'implementazione del `ConsensusBehavior` traduce direttamente il pattern Scatter-Gather.
 **Gestione del round tramite stato immutabile.** La case class `ConsensusRoundState` incapsula tutto il contesto di un round attivo: l'identificativo univoco (`roundId`), il numero di risposte attese (`expectedCount`), i modelli raccolti (`collected`) e la snapshot del modello locale al momento dell'avvio del round (`localModel`). 
 La separazione tra `consensusRound` e `roundCounter` è intenzionale: il contatore viene incrementato alla ricezione dei peer nella fase di Scatter, mentre il round state viene aggiornato ad ogni risposta ricevuta nella fase di Gather.
 **Filtraggio dei peer remoti.** `WrappedPeersForConsensus`  esclude i nodi locali dal calcolo. 
@@ -146,7 +146,7 @@ L'implementazione del `DatasetDistributionBehavior` si occupa della suddivisione
 Esso viene suddiviso in parti uguali e ogni parte viene affidata a un peer.
 Prima di essere suddiviso in chunk, viene effetuato uno shuffle del train set basato sul seed che viene fornito mediante il metodo `RegisterSeed`.
 Il test set viene passato interamente ad ogni peer senza essere suddiviso.
-Inoltre, per evitare il blocco del thread dell'attore durante il partizionamento del dataset in epoche e batch (che impedirebbe la reattività ai comandi dell'utente), il loop di training è stato srotolato in modo asincrono. È stato impiegato il TimerScheduler fornito da Akka (timers.startSingleTimer): al termine del calcolo di un batch, l'attore autoprogramma l'invio di un messaggio privato (PrivateTrainerCommand.NextBatch) a se stesso. Questo approccio garantisce che la mailbox dell'attore possa processare richieste prioritarie (es. calcolo metriche o pausa) tra l'esecuzione di due iterazioni sequenziali.
+
 
 ## 5.3 Implementazione a cura di Lorenzo Colletta
 
@@ -393,22 +393,6 @@ def member(e: E): Member
 
 Essa esprime, a livello di tipo, la capacità di estrarre un’istanza di Member da un evento di tipo E. In altri termini, non si stabilisce una gerarchia di ereditarietà tra gli eventi, ma si definisce un vincolo comportamentale: un tipo E può essere adattato se esiste un’istanza implicita di HasMember[E]. Tali istanze sono dichiarate mediante given. Ogni given HasMember[SpecificEvent] fornisce un’implementazione concreta del metodo member per uno specifico tipo di evento di Akka (ad esempio MemberUp, MemberRemoved, UnreachableMember).
 
-##### Implicazioni sulla purezza e testabilità
-
-Grazie all’introduzione di `ClusterNode` e alla separazione operata dall’Adapter:
-
-* le policy operano esclusivamente su tipi di dominio;
-* non esistono dipendenze da `Cluster`, `Member`, `ActorContext`;
-* il comportamento decisionale può essere testato come funzione pura.
-
-In termini di programmazione funzionale, il sistema realizza:
-
-* isolamento degli effetti;
-* dominio chiuso tramite ADT;
-* composizione funzionale delle trasformazioni;
-* utilizzo avanzato del sistema dei tipi di Scala 3.
-
-
 ### 5.3.5 Implementazione del `DiscoveryActor`
 
 Il `DiscoveryActor` è responsabile della gestione dinamica delle referenze agli attori di tipo `GossipActor` considerati raggiungibili nel sistema. Dal punto di vista implementativo, esso costituisce un componente di integrazione tra il meccanismo di *service discovery* offerto da Akka Typed (tramite `Receptionist`) e il modello applicativo rappresentato da `GossipPeerState`.
@@ -454,7 +438,7 @@ La registrazione effettiva (`Receptionist.Register`) avviene solo quando:
 1. il riferimento al gossip locale è stato fornito (`RegisterGossip`);
 2. è stato esplicitamente concesso il permesso (`RegisterGossipPermit`).
 
-L’uso congiunto di un `Option[ActorRef]` e di un flag booleano evita condizioni di gara logiche tra l’inizializzazione del gossip e la fase di abilitazione alla registrazione. La registrazione viene eseguita solo quando entrambe le condizioni risultano soddisfatte, garantendo coerenza nello startup del sottosistema.
+L’uso congiunto di un `Option[ActorRef]` e di un flag booleano evita race condition logiche tra l’inizializzazione del gossip e la fase di abilitazione alla registrazione. La registrazione viene eseguita solo quando entrambe le condizioni risultano soddisfatte, garantendo coerenza nello startup del sottosistema.
 
 ---
 
