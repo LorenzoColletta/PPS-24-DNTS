@@ -155,8 +155,8 @@ Il ModelActor costituisce il fulcro del sistema per quanto concerne la gestione 
 
 In linea con il paradigma Akka Typed, il ModelActor è modellato come una macchina a stati finiti (FSM) per eliminare la necessità di lock o variabili mutabili condivise.
 L'attore è composto da 2 diverse fasi: Idle e Active. 
-* La fase Idle che si occupa della inizializzazione dell'attore.
-* La fase Active che si occupa di:
+* La fase Idle si occupa della inizializzazione dell'attore.
+* La fase Active si occupa di:
   * applicare i gradienti al model e quindi aggiornare i pesi della rete locale passati dal TrainingActor.
   * effettuare il merge della propria rete locale con quella ricevuta dal gossip.
 
@@ -168,9 +168,7 @@ Questo approccio permette di definire "cosa" deve accadere al modello separatame
 
 ### 4.4.3 Sincronizzazione del Model
 Il ModelActor orchestra la convergenza del sistema distribuito gestendo l'interazione tra i contributi locali (trainer) e globali (gossip).
-Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene implementa eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
-
-Ecco la stesura del paragrafo **4.5** per la tua relazione, focalizzata esclusivamente sulle scelte architetturali e i design pattern utilizzati nel sottosistema Gossip, mantenendo i dettagli implementativi e di codice separati per il capitolo 5.
+Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
 
 ## 4.5 Il Livello di Comunicazione P2P: Il Sottosistema Gossip
 Il package `actors.gossip` costituisce il cuore dell'infrastruttura di rete *peer-to-peer* (P2P) del sistema. Ha il duplice compito di garantire la convergenza dei modelli predittivi distribuiti (Gossip Learning) e di orchestrare il ciclo di vita della simulazione (bootstrap, pausa, terminazione) senza l'ausilio di un coordinatore centrale.
