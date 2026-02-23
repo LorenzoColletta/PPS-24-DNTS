@@ -29,18 +29,18 @@ Per soddisfare i requisiti, la struttura si appoggia ai seguenti pattern archite
 L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita un sistema ad attori gerarchico:
 
 * **RootActor:** avvia, inizializza e orchestra gli altri attori.
-* **Cluster Manager (Membership & Failure Detector):** Gestisce la visione che il nodo ha dell'intera topologia distribuita. Interpreta gli eventi di membership nativi (es. nodi aggiunti, rimossi o irraggiungibili) su cui si basa per determinare lo stato di salute del cluster e applicare dinamicamente le policy decisionali per la tolleranza ai guasti (come la riconfigurazione o lo spegnimento di emergenza in caso di perdita del Seed).
-* **Discovery Actor (Peer Locator):** Sfrutta il pattern Receptionist di Akka per indicizzare e scoprire dinamicamente i servizi esposti dagli altri nodi. Mantiene e fornisce agli orchestratori di rete (come il Gossip Actor e il Consensus Actor) la lista costantemente aggiornata dei peer attivi e raggiungibili con cui scambiare i modelli.
+* **Cluster Manager (Membership & Failure Detector):** Gestisce la visione che il nodo ha dell'intera topologia distribuita. Interpreta gli eventi di membership nativi (es. nodi aggiunti, rimossi o irraggiungibili) su cui si basa per determinare lo stato di salute del cluster e applicare dinamicamente le policy decisionali per la tolleranza ai guasti (come la riconfigurazione o lo spegnimento di emergenza in caso di perdita del nodo Seed pre simulazione).
+* **Discovery Actor (Peer Locator):** Sfrutta il Receptionist di Akka per indicizzare e scoprire dinamicamente i servizi esposti dagli altri nodi. Mantiene e fornisce agli orchestratori di rete (come il Gossip Actor e il Consensus Actor) la lista costantemente aggiornata dei peer attivi e raggiungibili con cui scambiare i modelli.
 * **Gossip Actor:** È il componente deputato all'interazione P2P. Gestisce il protocollo di rete, preleva snapshot del modello locale e li invia ai peer, ricevendo a sua volta i modelli remoti da fondere.
 * **Sub-Controller di Dominio (Consensus & Dataset Distribution):** Componenti specializzati nello smistamento asincrono iniziale dei dati dal Master verso i Client (*Dataset Distribution*) e nel calcolo distribuito delle metriche di deviazione della rete (*Consensus Actor*).
-* **Trainer Actor:** Esecutore logico del ciclo di addestramento. Preleva batch di dati locali, delega i calcoli di addestramento al Layer Computazionale (Backpropagation) e notifica i gradienti risultanti al Model Actor.
+* **Trainer Actor:** Esecutore logico del ciclo di addestramento. Preleva snapshot del modello locale e batch di dati, delega i calcoli di addestramento al Layer Computazionale (Backpropagation) e notifica i gradienti risultanti al Model Actor.
 * **Model Actor (Single Source of Truth):** Rappresenta il cuore dello stato mutabile del nodo. Incapsula i pesi e i bias della rete neurale, esponendo interfacce per aggiornamenti atomici sequenziali (sia derivanti dal calcolo locale che dai merge di rete).
 * **Monitor Actor:** Agisce come ponte tra gli attori e le interfacce I/O. Aggrega periodicamente le metriche e aggiorna i grafici.
 
 <div align="center">
   <img src="assets/diagramma-architettura-3-3.png" width="100%" alt="Diagramma dei componenti del nodo DNTS.">
   <br>
-  <em>Figura 1: Architettura di dettaglio del Nodo DNTS, interazioni interne e di rete.</em>
+  <em>Figura 1: Diagramma dei componenti che descrive l'architettura di dettaglio del Nodo DNTS, interazioni interne e di rete.</em>
 </div>
 
 
@@ -48,7 +48,7 @@ L'unità fondamentale del sistema distribuito è il **Nodo**. Ogni nodo ospita u
 
 Le tecnologie sono state selezionate per supportare l'architettura sopra descritta:
 
-1. **Akka Cluster & Akka Typed:** L'infrastruttura di distribuzione si basa interamente su Akka. Akka Typed garantisce la correttezza dei protocolli di messaggistica tra i componenti. Akka Cluster fornisce internamente le funzionalità di Membership, Discovery (tramite Receptionist) e Failure Detection, scaricando il codice applicativo dalla gestione del networking di basso livello e garantendo la tolleranza ai guasti.
+1. **Akka Cluster Typed:** L'infrastruttura di distribuzione si basa interamente su Akka. Akka Typed garantisce la correttezza dei protocolli di messaggistica tra i componenti. Akka Cluster fornisce internamente le funzionalità di Membership, Discovery (tramite Receptionist) e Failure Detection, scaricando il codice applicativo dalla gestione del networking di basso livello e garantendo la tolleranza ai guasti.
 3. **Serializzazione Custom Binaria:** Poiché l'architettura Gossip richiede il continuo scambio dell'intero stato del modello (matrici e vettori) sulla rete, è stato progettato un Adapter integrato nell'infrastruttura Akka che utilizza buffer binari per serializzare le primitive di algebra lineare, riducendo drasticamente l'overhead di rete e la latenza della sincronizzazione.
 
 ---

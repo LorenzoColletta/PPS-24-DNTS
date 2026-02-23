@@ -8,63 +8,63 @@ Per riflettere rigorosamente la Separation of Concerns (SOC) delineata nell'arch
 
 * **`domain`:** Contiene il Pure Functional Core (algebra lineare, strutture della rete neaurale, logica di training, generazione dataset). Questo package non ha alcuna dipendenza da librerie di concorrenza o I/O.
 * **`actors`:** Contiene il Distributed & State Layer. Definisce i protocolli, i comportamenti e la gerarchia del sistema ad Attori Akka.
-* **`view`:** Costituiscono il Boundary Layer, deputato all'interazione con l'utente e al rendering grafico.
+* **`view`:** Costituisce il Boundary Layer, deputato all'interazione con l'utente e al rendering grafico.
 * **`config` e `cli`:** Gestiscono il bootstrap, i parametri da terminale e i file di configurazione.
 
 ## 4.2 Pure Functional Core
 
-Il package domain si struttura in: data, model, common, network, serialization e training.
+Il package domain si struttura in: `data`, `model`, `common`, `network`, `serialization` e `training`.
 
-### 4.2.1 Il package data
+### 4.2.1 Il package `data`
 
-Il package è concepito per fornire una pipeline modulare per la generazione di dataset bidimensionali etichettati, strutturata su livelli di astrazione separati: geometria, strategia di campionamento, modellazione etichettata e orchestrazione della generazione. Questa stratificazione viene riflessa nell'organizzazione dei package pattern, sampling, dataset e util.
+Il package è concepito per fornire una pipeline modulare per la generazione di dataset bidimensionali etichettati, strutturata su livelli di astrazione separati: geometria, strategia di campionamento, modellazione etichettata e orchestrazione della generazione. Questa stratificazione viene riflessa nell'organizzazione dei package `pattern`, `sampling`, `dataset` e `util`.
 Ogni livello comunica con gli altri esclusivamente tramite interfacce o trait, permettendo di introdurre nuovi modelli o trasformazioni senza impattare la struttura esistente.
 
-#### Livello pattern: Geometria e Strategie di Generazione
+#### Livello `pattern`: Geometria e Strategie di Generazione
 Il sistema distingue la forma matematica e la logica di produzione dei punti.
-* ParametricCurve: un'astrazione per curve deterministiche (come la SpiralCurve) definite da una funzione che mappa un parametro reale in un punto 2D.
-* PointDistribution: definisce una strategia autonoma di generazione (es. GaussianCluster, CircleRingPattern o UniformSquare), che incapsula la logica statistica o geometrica necessaria a produrre un punto 2D.
+* **ParametricCurve:** un'astrazione per curve deterministiche (come la SpiralCurve) definite da una funzione che mappa un parametro reale in un punto 2D.
+* **PointDistribution:** definisce una strategia autonoma di generazione (es. GaussianCluster, CircleRingPattern o UniformSquare), che incapsula la logica statistica o geometrica necessaria a produrre un punto 2D.
 
-#### Livello sampling: Astrazione del Campionamento
-Il package sampling introduce il trait PointSampler, che funge da interfaccia unificata per la generazione di punti. Il design adotta due approcci distinti per l'implementazione del campionamento:
-1. Adattamento: DistributionSampler adatta una PointDistribution esistente all'interfaccia PointSampler.
-2. Composizione: CurveSampler compone una ParametricCurve con una distribuzione per il suo parametro. Questo permette di variare la densità dei punti lungo una curva senza modificarne la geometria sottostante.
+#### Livello `sampling`: Astrazione del Campionamento
+Il package `sampling` introduce il trait PointSampler, che funge da interfaccia unificata per la generazione di punti. Il design adotta due approcci distinti per l'implementazione del campionamento:
+1. **Adattamento:** DistributionSampler adatta una PointDistribution esistente all'interfaccia PointSampler.
+2. **Composizione:** CurveSampler compone una ParametricCurve con una distribuzione per il suo parametro. Questo permette di variare la densità dei punti lungo una curva senza modificarne la geometria sottostante.
 
 <div align="center">
-  <img src="assets/diagramma-classi-datapkg.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <img src="assets/diagramma-classi-datapkg.png" width="50%" alt="Diagramma strutturale del livello di presentazione.">
   <br>
-  <em>Figura 4: Visualizzazione della separazione tra modelli geometrici deterministici (ParametricCurve), strategie statistiche di generazione (PointDistribution) e l'interfaccia unificata di campionamento (PointSampler). </em>
+  <em>Figura 2: Visualizzazione della separazione tra modelli geometrici deterministici (ParametricCurve), strategie statistiche di generazione (PointDistribution) e l'interfaccia unificata di campionamento (PointSampler). </em>
 </div>
 
 #### Modellazione dei Dataset e Specializzazioni
 Al di sopra del campionamento, l'astrazione LabeledDatasetModel definisce il contratto per la generazione di punti associati a una specifica etichetta. Per la gestione di dataset a due classi, è stata introdotta la classe base BinaryDataset. Questa implementa LabeledDatasetModel delegando la produzione dei campioni a due istanze distinte di PointSampler: una dedicata alla classe positiva e una alla negativa. Le implementazioni concrete sfruttano la composizione anziché l'ereditarietà per definire scenari specifici:
-* DoubleGaussianDataset: compone due GaussianCluster tramite DistributionSampler.
-* DoubleRingDataset: utilizza due CircleRingPattern per creare aree concentriche.
-* DoubleSpiralDataset: istanzia due SpiralCurve (una opposta all'altra) gestite da CurveSampler.
-* DoubleXorDataset: sfrutta lo XorSampler, un campionatore specializzato che alterna la generazione tra quadranti opposti definiti da UniformSquare.
+* **DoubleGaussianDataset:** compone due GaussianCluster tramite DistributionSampler.
+* **DoubleRingDataset:** utilizza due CircleRingPattern per creare aree concentriche.
+* **DoubleSpiralDataset:** istanzia due SpiralCurve (una opposta all'altra) gestite da CurveSampler.
+* **DoubleXorDataset:** sfrutta lo XorSampler, un campionatore specializzato che alterna la generazione tra quadranti opposti definiti da UniformSquare.
 
 <div align="center">
-  <img src="assets/diagramma-classi-datasetpkg.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <img src="assets/diagramma-classi-datasetpkg.png" width="60%" alt="Diagramma strutturale del livello di presentazione.">
   <br>
-  <em>Figura 4: Struttura gerarchica dei modelli di dataset basata sull'astrazione BinaryDataset. Viene illustrato come le specializzazioni concrete (Gaussian, Ring, Spiral, Xor) utilizzino la composizione di due istanze di PointSampler.</em>
+  <em>Figura 3: Struttura gerarchica dei modelli di dataset basata sull'astrazione BinaryDataset. Viene illustrato come le specializzazioni concrete (Gaussian, Ring, Spiral, Xor) utilizzino la composizione di due istanze di PointSampler.</em>
 </div>
 
 #### Trasformazioni, Vincoli e Calcolo Dinamico
 Il design include meccanismi per garantire che i punti generati rispettino i vincoli spaziali e possano essere manipolati post-generazione.
-* Gestione dello Spazio (Space e Domain): La classe Space definisce i confini del mondo 2D, fornendo un metodo di clamping per riportare punti esterni entro i limiti ammissibili. Il Domain rappresenta invece un intervallo generico di valori reali.
-* Rumore: L'interfaccia Noise permette di applicare perturbazioni ai punti. L'implementazione NoiseWithDistribution permette di iniettare rumore statistico (es. Gaussiano) rispettando i vincoli di Space tramite il clamping automatico dei risultati.
+* **Gestione dello Spazio (Space e Domain):** La classe Space definisce i confini del mondo 2D, fornendo un metodo di clamping per riportare punti esterni entro i limiti ammissibili. Il Domain rappresenta invece un intervallo generico di valori reali.
+* **Rumore:** L'interfaccia Noise permette di applicare perturbazioni ai punti. L'implementazione NoiseWithDistribution permette di iniettare rumore statistico (es. Gaussiano) rispettando i vincoli di Space tramite il clamping automatico dei risultati.
 
 #### Creazione Centralizzata e Orchestrazione
 Per semplificare l'utilizzo del sistema e garantire la riproducibilità, sono stati introdotti componenti di gestione centralizzata.
-* DataModelFactory (Pattern Factory): Questo oggetto ha il compito di istanziare il modello di dataset corretto a partire da una configurazione (DatasetStrategyConfig). Gestisce inoltre il determinismo: centralizza la derivazione dei semi casuali (seeds), garantendo che ogni componente riceva un seme coerente ma distinto.
-* DatasetGenerator: Si occupa della costruzione materiale della lista di punti etichettati. Delega la logica di campionamento al modello e offre funzionalità di post-elaborazione come lo shuffling e l'applicazione del rumore.
+* **DataModelFactory (Pattern Factory):** Questo oggetto ha il compito di istanziare il modello di dataset corretto a partire da una configurazione (DatasetStrategyConfig). Gestisce inoltre il determinismo: centralizza la derivazione dei semi casuali (seeds), garantendo che ogni componente riceva un seme coerente ma distinto.
+* **DatasetGenerator:** Si occupa della costruzione materiale della lista di punti etichettati. Delega la logica di campionamento al modello e offre funzionalità di post-elaborazione come lo shuffling e l'applicazione del rumore.
 
 #### Riepilogo Pattern e Principi di Progettazione
 In sintesi, il design si fonda sui seguenti pattern di progettazione:
-* Strategy: per rendere intercambiabili le modalità di campionamento e le trasformazioni di rumore.
-* Adapter: per integrare diverse strategie di distribuzione nell'interfaccia di campionamento.
-* Factory: per disaccoppiare la logica di configurazione dalla creazione degli oggetti.
-* Dependency Inversion: i componenti di alto livello (DatasetGenerator) dipendono solo da astrazioni (LabeledDatasetModel), mai dalle implementazioni concrete delle curve o delle distribuzioni.
+* **Strategy:** per rendere intercambiabili le modalità di campionamento e le trasformazioni di rumore.
+* **Adapter:** per integrare diverse strategie di distribuzione nell'interfaccia di campionamento.
+* **Factory:** per disaccoppiare la logica di configurazione dalla creazione degli oggetti.
+* **Dependency Inversion:** i componenti di alto livello (DatasetGenerator) dipendono solo da astrazioni (LabeledDatasetModel), mai dalle implementazioni concrete delle curve o delle distribuzioni.
 
 ### 4.2.2 Core Matematico e Astrazione della Rete Neurale
 
@@ -80,7 +80,7 @@ Per garantire flessibilità matematica, il comportamento dei singoli strati è r
 La creazione stessa della topologia della rete neurale è un processo a più step (definizione feature, aggiunta di N hidden layers, applicazione di complesse euristiche per l'inizializzazione pesi). Per isolare questa complessità, è stato utilizzato il pattern creazionale Builder, che accumula la configurazione internamente e restituisce infine una struttura dati immutabile corretta.
 
 <div align="center">
-  <img src="assets/diagramma-classi-4-2.png" width="40%" alt="Diagramma delle classi: Model, Network, Layer e Builder">
+  <img src="assets/diagramma-classi-4-2.png" width="35%" alt="Diagramma delle classi: Model, Network, Layer e Builder">
   <br>
   <em>Figura N: Struttura composizionale e pattern creazionali del Dominio e della Rete Neurale.</em>
 </div>
@@ -104,7 +104,7 @@ Per ovviare a questo problema, il TrainerActor è stato progettato adottando il 
 2. **Loop di Addestramento Asincrono:** Il ciclo sui batch di dati non è continuo, ma è scandito dall'invio asincrono di messaggi a se stesso e da un sistema di Timer. Al termine del calcolo di un batch, l'attore programma l'elaborazione del successivo. Questo design garantisce che, tra un batch e l'altro, la coda dei messaggi dell'attore sia libera di processare altri eventi prioritari (come le richieste di misurazione delle metriche i comandi utente) mantenendo il sistema altamente responsivo.
 
 <div align="center">
-  <img src="assets/sequence-diagram-4-3.png" width="65%" alt="Sequence Diagram che illustra il loop di addestramento asincrono">
+  <img src="assets/sequence-diagram-4-3.png" width="60%" alt="Sequence Diagram che illustra il loop di addestramento asincrono">
   <br>
   <em>Figura N: Diagramma di sequenza che illustra il loop asincrono di addestramento.</em>
 </div>
@@ -199,7 +199,7 @@ Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal goss
 Il package `actors.gossip` costituisce il cuore dell'infrastruttura di rete *peer-to-peer* (P2P) del sistema. Ha il duplice compito di garantire la convergenza dei modelli predittivi distribuiti (Gossip Learning) e di orchestrare il ciclo di vita della simulazione (bootstrap, pausa, terminazione) senza l'ausilio di un coordinatore centrale.
 Per gestire l'elevata complessità derivante dalla natura asincrona e distribuita di queste operazioni, il design del sottosistema è stato fortemente modularizzato. Invece di concentrare tutte le responsabilità in un unico Actor, la logica è stata scomposta in attori specializzati, coordinati da un attore router principale.
 
-### 4.5.1 Architettura Modulare(`GossipActor`)
+### 4.5.1 Architettura Modulare (`GossipActor`)
 Il `GossipActor` funge da punto di ingresso (Gateway) per le comunicazioni P2P del nodo. 
 Riceve messaggi generici dal protocollo gossip e li instrada ai sottomoduli di competenza (`ConfigurationActor`, `DatasetDistributionActor`, `ConsensusActor`), disaccoppiando la ricezione dei messaggi dalla loro effettiva elaborazione.
 Il `GossipActor` gestisce in prima persona la logica core dell'algoritmo di Gossip:
@@ -256,7 +256,7 @@ Per garantire che il livello ad attori rimanga separato dalla tecnologia di rend
 L'interazione è governata da un'astrazione dedicata (il trait ViewBoundary) che implementa una logica Observer: il MonitorActor funge da Publisher, notificando gli aggiornamenti di stato alla GUI, che agisce da Subscriber passivo.
 
 <div align="center">
-  <img src="assets/diagramma-monitor-4-5.png" width="70%" alt="Diagramma strutturale del livello di presentazione.">
+  <img src="assets/diagramma-monitor-4-5.png" width="55%" alt="Diagramma strutturale del livello di presentazione.">
   <br>
   <em>Figura N: Disaccoppiamento del livello di presentazione tramite ViewBoundary e MonitorActor.</em>
 </div>
