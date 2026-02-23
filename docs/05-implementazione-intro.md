@@ -21,9 +21,9 @@ Sul fronte concorrente, la gestione del ciclo di vita dell'addestramento è stat
 
 Inoltre, per evitare il blocco del thread dell'attore durante il partizionamento del dataset in epoche e batch (che impedirebbe la reattività ai comandi dell'utente), il loop di training è stato srotolato in modo asincrono. È stato impiegato il TimerScheduler fornito da Akka (timers.startSingleTimer): al termine del calcolo di un batch, l'attore autoprogramma l'invio di un messaggio privato (PrivateTrainerCommand.NextBatch) a se stesso. Questo approccio garantisce che la mailbox dell'attore possa processare richieste prioritarie (es. calcolo metriche o pausa) tra l'esecuzione di due iterazioni sequenziali.
 
-## 5.2 Implementazione a cura di Lorenzo Colletta
+## 5.3 Implementazione a cura di Lorenzo Colletta
 
-### 5.2.1 Package `pattern`: Modellazione Geometrica e Distribuzioni Spaziali
+### 5.3.1 Package `pattern`: Modellazione Geometrica e Distribuzioni Spaziali
 Il package è strutturato attorno a due trait fondamentali, `PointDistribution` e `ParametricCurve`, che definiscono i contratti per la generazione di punti. Le implementazioni concrete sono modellate prevalentemente tramite `case class`, garantendo immutabilità e facilitando la manipolazione dei parametri attraverso il metodo copy.
 
 #### Implementazioni di PointDistribution
@@ -38,7 +38,7 @@ Il trait `ParametricCurve` definisce un contratto basato sulla funzione `at(x: D
 
 ---
 
-### 5.2.2 Package `sampling`: Astrazione e Meccanismi di Campionamento
+### 5.3.2 Package `sampling`: Astrazione e Meccanismi di Campionamento
 L'elemento centrale del package è il `trait PointSampler`, che definisce un contratto basato sul metodo `sample(): Point2D`. Funge da interfaccia unificata per i livelli superiori del sistema, nascondendo la complessità della logica di generazione sottostante.
 L'architettura del package implementa due modalità distinte per assolvere il contratto di campionamento:
 * `DistributionSampler`: Implementato come final case class, agisce come un Adapter tra PointDistribution e PointSampler. Il suo compito è puramente delegativo: il metodo `sample()` richiama direttamente la logica di generazione della distribuzione incapsulata.
@@ -51,7 +51,7 @@ Il trait `CurveDomainCalculator[C]` definisce il contratto per determinare l'int
 
 ---
 
-### 5.2.3 Package `dataset`
+### 5.3.3 Package `dataset`
 
 Il cuore dell'implementazione risiede nella classe `BinaryDataset`, che estende `LabeledDatasetModel`. Questa classe non è astratta ma fornisce la logica operativa per tutti i modelli binari: il metodo sample sfrutta il pattern matching sull'`enum Label` per delegare la generazione del punto al corrispondente `PointSampler` (positivo o negativo).
 Le specializzazioni concrete sono implementate come `final class` che estendono `BinaryDataset`, configurando i campionatori nel costruttore:
@@ -62,7 +62,7 @@ Le specializzazioni concrete sono implementate come `final class` che estendono 
 
 ---
 
-### 5.2.4 ClusterManager
+### 5.3.4 ClusterManager
 
 L’attore `ClusterManager` è implementato in conformità con il **modello funzionale raccomandato da Akka Typed**, che prevede la definizione del comportamento come funzione parametrizzata dallo stato corrente. In tale modello:
 
