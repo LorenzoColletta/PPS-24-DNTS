@@ -193,7 +193,7 @@ Per monitorare l'andamento del Gossip Learning, il sistema deve calcolare quanto
 * **Resilienza tramite Timeout:** In un sistema distribuito, i peer possono fallire o subire ritardi di rete. Per evitare che il nodo rimanga bloccato in attesa infinita di una risposta mancante, il design include un timer di timeout. Allo scadere del timer, il consenso viene forzatamente calcolato utilizzando unicamente i modelli ricevuti fino a quel momento (dati parziali), privilegiando la *Liveness* del sistema rispetto alla consistenza assoluta dell'interfaccia grafica.
 
 ### 4.5.4 Segmentazione dei Dati (`DatasetDistributionActor`)
-Parallelamente alla configurazione, il cluster deve spartirsi il set di dati da analizzare. Il `DatasetDistributionActor` è stato progettato come un modulo autonomo che intercetta i comandi di distribuzione generati dal nodo Seed all'avvio. Questo disaccoppiamento garantisce che la logica di partizionamento dei dati non interferisca con lo scambio continuo dei modelli predittivi, mantenendo pulita l'architettura dei flussi dati.
+Parallelamente alla configurazione, il cluster deve spartirsi il set di dati da analizzare. Il `DatasetDistributionActor` è stato progettato come un modulo autonomo che intercetta i comandi di distribuzione generati dal nodo Seed, all'avvio della simulazione. Questo disaccoppiamento garantisce che la logica di partizionamento dei dati non interferisca con lo scambio continuo dei modelli predittivi, mantenendo pulita l'architettura dei flussi dati.
 
 
 ## 4.X Livello di Serializzazione
