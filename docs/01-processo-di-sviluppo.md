@@ -33,3 +33,7 @@ Il progetto pone un'enfasi particolare sulla qualità e la robustezza del codice
   - **Versionamento:** Git è lo standard per il controllo versione, con GitHub utilizzato come repository centralizzato.
   - Testing: Verrà utilizzato ScalaTest come framework principale per la stesura dei test unitari.
   - **Continuous Integration (CI):** Il team utilizzerà lo strumento GitHub Actions per garantire che ogni nuovo codice integrato nel repository venga automaticamente compilato e sottoposto a tutti i test ScalaTest, preservando la stabilità del branch principale.
+
+
+---
+[Vai al Capitolo 2: Requirement Specification -->](02-requirement-specification.md)

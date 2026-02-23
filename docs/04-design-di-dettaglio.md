@@ -180,22 +180,20 @@ Il ModelActor costituisce il fulcro del sistema per quanto concerne la gestione 
 
 In linea con il paradigma Akka Typed, il ModelActor è modellato come una macchina a stati finiti (FSM) per eliminare la necessità di lock o variabili mutabili condivise.
 L'attore è composto da 2 diverse fasi: Idle e Active. 
-* La fase Idle che si occupa della inizializzazione dell'attore.
-* La fase Active che si occupa di:
+* La fase Idle si occupa della inizializzazione dell'attore.
+* La fase Active si occupa di:
   * applicare i gradienti al model e quindi aggiornare i pesi della rete locale passati dal TrainingActor.
   * effettuare il merge della propria rete locale con quella ricevuta dal gossip.
 
 ### 4.4.2 Pattern State per il Model
 
 Per mantenere il codice dell'attore focalizzato esclusivamente sul protocollo di comunicazione, la logica di manipolazione della rete è delegata al componente ModelTasks. Il design adotta il Pattern State (astratto tramite una Monade di Stato):
-Le operazioni di aggiornamento (es. applicazione dei gradienti o fusione tra modelli) sono descritte come trasformazioni pure State[Model, A].
+le operazioni di aggiornamento (es. applicazione dei gradienti o fusione tra modelli) sono descritte come trasformazioni pure State[Model, A].
 Questo approccio permette di definire "cosa" deve accadere al modello separatamente da "quando" l'attore decide di applicare tale modifica, facilitando il testing della logica matematica senza dover istanziare l'intero sistema ad attori.
 
 ### 4.4.3 Sincronizzazione del Model
 Il ModelActor orchestra la convergenza del sistema distribuito gestendo l'interazione tra i contributi locali (trainer) e globali (gossip).
-Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene implementa eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
-
-Ecco la stesura del paragrafo **4.5** per la tua relazione, focalizzata esclusivamente sulle scelte architetturali e i design pattern utilizzati nel sottosistema Gossip, mantenendo i dettagli implementativi e di codice separati per il capitolo 5.
+Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
 
 ## 4.5 Il Livello di Comunicazione P2P: Il Sottosistema Gossip
 Il package `actors.gossip` costituisce il cuore dell'infrastruttura di rete *peer-to-peer* (P2P) del sistema. Ha il duplice compito di garantire la convergenza dei modelli predittivi distribuiti (Gossip Learning) e di orchestrare il ciclo di vita della simulazione (bootstrap, pausa, terminazione) senza l'ausilio di un coordinatore centrale.
@@ -204,7 +202,7 @@ Per gestire l'elevata complessità derivante dalla natura asincrona e distribuit
 ### 4.5.1 Architettura Modulare(`GossipActor`)
 Il `GossipActor` funge da punto di ingresso (Gateway) per le comunicazioni P2P del nodo. 
 Riceve messaggi generici dal protocollo gossip e li instrada ai sottomoduli di competenza (`ConfigurationActor`, `DatasetDistributionActor`, `ConsensusActor`), disaccoppiando la ricezione dei messaggi dalla loro effettiva elaborazione.
-Oltre al routing, il `GossipActor` gestisce in prima persona la logica core dell'algoritmo di Gossip:
+Il `GossipActor` gestisce in prima persona la logica core dell'algoritmo di Gossip:
 * **Push-based Sync:** Tramite un sistema basato su timer periodici (`TickGossip`), l'attore interroga il sistema di Discovery per ottenere la lista dei peer attivi, ne seleziona uno in modo pseudo-casuale e gli invia il proprio stato locale del modello. Questo approccio probabilistico garantisce, nel tempo, la diffusione dell'informazione e la convergenza del cluster.
 * **Propagazione dei Segnali di Controllo:** Il protocollo prevede comandi per il controllo globale della simulazione (come `GlobalPause`, `GlobalResume`, `GlobalStop`). Il `GossipActor` si occupa di intercettare questi messaggi e diffonderli verso gli altri peer, per poi applicarne gli effetti sui sottomoduli locali.
 
@@ -321,3 +319,6 @@ La progettazione del livello di controllo distribuito si fonda sul Modello ad At
 **Diagramma Strutturale: Type Classes per Serializzazione Distribuita**
 
 Questo diagramma mostra come la logica di serializzazione (necessaria al Gossip Protocol) sia disaccoppiata dal Core Dominio tramite Type Classes, permettendo all'`AkkaSerializerAdapter` di tradurre gli oggetti in array di byte senza che le classi matematiche ne siano a conoscenza.
+
+---
+[Vai al Capitolo 5: Implementazione -->](05-implementazione.md)
