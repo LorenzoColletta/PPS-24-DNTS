@@ -263,8 +263,7 @@ val stateAfterHandle = state.copy(view = newView)
 Successivamente, la policy attiva (in funzione della fase corrente) viene invocata ricevendo esclusivamente lo stato aggiornato, il messaggio corrente e restituisce una lista dichiarativa di Effect.
 
 ```scala
-val effects =
-currentPolicy.decide(stateAfterHandle, message)
+val effects = currentPolicy.decide(stateAfterHandle, message)
 ```
 
 La funzione handle conclude restituendo:
@@ -286,12 +285,11 @@ Questi elementi non sono metodi che modificano direttamente lo stato, bensì val
 L’applicazione avviene mediante una riduzione funzionale:
 
 ```scala
-val newState =
-effects.foldLeft(stateAfterHandle) {
-case (currentState, transition: StateTransition) =>
-applyTransition(currentState, transition)
-case (currentState, _) =>
-currentState
+val newState = effects.foldLeft(stateAfterHandle) {
+    case (currentState, transition: StateTransition) =>
+      applyTransition(currentState, transition)
+    case (currentState, _) =>
+      currentState
 }
 ```
 
@@ -300,8 +298,7 @@ currentState
 Una volta ottenuto il nuovo stato, le Action vengono estratte e interpretate:
 
 ```scala
-effects.collect { case a: Action => a }
-.foreach(action => ClusterEffects.interpret(...))
+effects.collect { case a: Action => a }.foreach(action => ClusterEffects.interpret(...))
 ```
 
 Le Action rappresentano effetti collaterali quali:
