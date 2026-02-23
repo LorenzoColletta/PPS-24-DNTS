@@ -26,9 +26,7 @@ Model Actor,impl. Model actor,Giacobbi,3,4,0,0,0,0,0
 Gossip Actor,impl. Gossip actor,Giacobbi,4,0,3,3,2,2,0
 ,gossip protocol with akka,Giacobbi,3,0,0,0,2,4,
 ,app. global commad,Giacobbi,3,0,0,0,0,0,3
-Cluster Manager,impl. Cluster manager actor,Colletta,6,,,,,,
-,read of app configuration,Colletta,6,,,,,,
-,main function,Colletta,3,,,,,,
+Cluster Manager,design Cluster manager actor,Colletta,15,0,3,3,3,3,3
 ,,,,,,,,,
 ,,,,,,,,,
 ,,,,,,,,,
@@ -41,6 +39,8 @@ ConfigurationActor,reading file configuration,Giacobbi,1,1,0,0,0,0,0
 ,configuration transfer from seed to clients,Giacobbi,5,4,4,0,0,0,0
 DatasetDistributionActor,dataset distribution,Giacobbi,5,0,1,5,1,0,0
 RootActor,update rootActor,Giacobbi,4,0,0,0,4,2,2
+ClusterManager, refactor Cluster manager actor,Colletta,9,0,3,1,3,0,2
+DiscoveryActor, impl. discovery actor,Colletta,6,0,0,0,0,3,3
 ,,,,,,,,,
 ,,,,,,,,,
 ,,,,,,,,,
@@ -54,3 +54,6 @@ View,gui and controls,Fantilli,5,5,5,2,0,0,0
 ConsensusActor,consensus calculation,Giacobbi,5,0,5,2,0,0,0
 Actor for every function,refactoring gossip,Giacobbi,5,0,0,5,5,0,0
 ,update test for refactoring,Giacobbi,4,0,0,0,0,4,1
+Akka configuration, akka startup,Colletta,3,0,3,0,0,0,0
+ClusterManager, refactor ClusterManager actor,Colletta,3,0,0,3,0,0,0
+Debug, final fixing and refactoring,Colletta,9,2,0,0,3,2,2
