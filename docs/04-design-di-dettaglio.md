@@ -147,6 +147,57 @@ Lo stato dell'attore, incapsulato in GossipPeerState, segue i principi dell'immu
 * Observer Pattern (Subscription): Il DiscoveryActor implementa il pattern Observer nei confronti del Receptionist (Akka) di sistema. All'avvio, l'attore non interroga passivamente il registro, ma si sottoscrive a una ServiceKey specifica (gossip-service). Ogni variazione nella rete (nuovi attori o attori rimossi) viene notificata asincronamente.
 * Adapter Pattern per i Messaggi di Sistema: Il DiscoveryActor utilizza un Message Adapter per tradurre le risposte native del Receptionist (Receptionist.Listing) in messaggi definiti nel proprio protocollo interno (ListingUpdated).
 
+## 4.4 Gestione del Modello e dello Stato (ModelActor)
+
+Il ModelActor costituisce il fulcro del sistema per quanto concerne la gestione dello stato della rete neurale. Il suo obbiettivo principale è agire come custode del modello predittivo, garantendo la coerenza dei pesi durante l'addestramento e la sincronizzazione distribuita.
+
+### 4.4.1 Incapsulamento dello Stato tramite Attori
+
+In linea con il paradigma Akka Typed, il ModelActor è modellato come una macchina a stati finiti (FSM) per eliminare la necessità di lock o variabili mutabili condivise.
+L'attore è composto da 2 diverse fasi: Idle e Active. 
+* La fase Idle che si occupa della inizializzazione dell'attore.
+* La fase Active che si occupa di:
+  * applicare i gradienti al model e quindi aggiornare i pesi della rete locale passati dal TrainingActor.
+  * effettuare il merge della propria rete locale con quella ricevuta dal gossip.
+
+### 4.4.2 Pattern State per il Model
+
+Per mantenere il codice dell'attore focalizzato esclusivamente sul protocollo di comunicazione, la logica di manipolazione della rete è delegata al componente ModelTasks. Il design adotta il Pattern State (astratto tramite una Monade di Stato):
+Le operazioni di aggiornamento (es. applicazione dei gradienti o fusione tra modelli) sono descritte come trasformazioni pure State[Model, A].
+Questo approccio permette di definire "cosa" deve accadere al modello separatamente da "quando" l'attore decide di applicare tale modifica, facilitando il testing della logica matematica senza dover istanziare l'intero sistema ad attori.
+
+### 4.4.3 Sincronizzazione del Model
+Il ModelActor orchestra la convergenza del sistema distribuito gestendo l'interazione tra i contributi locali (trainer) e globali (gossip).
+Per effettuare il merge tra la propria rete e un'altra remota, ricevuta dal gossip, viene implementa eseguita una media dei parametri (pesi e bias) tra la rete locale e quella remota.
+
+Ecco la stesura del paragrafo **4.5** per la tua relazione, focalizzata esclusivamente sulle scelte architetturali e i design pattern utilizzati nel sottosistema Gossip, mantenendo i dettagli implementativi e di codice separati per il capitolo 5.
+
+## 4.5 Il Livello di Comunicazione P2P: Il Sottosistema Gossip
+Il package `actors.gossip` costituisce il cuore dell'infrastruttura di rete *peer-to-peer* (P2P) del sistema. Ha il duplice compito di garantire la convergenza dei modelli predittivi distribuiti (Gossip Learning) e di orchestrare il ciclo di vita della simulazione (bootstrap, pausa, terminazione) senza l'ausilio di un coordinatore centrale.
+Per gestire l'elevata complessità derivante dalla natura asincrona e distribuita di queste operazioni, il design del sottosistema è stato fortemente modularizzato. Invece di concentrare tutte le responsabilità in un unico Actor, la logica è stata scomposta in attori specializzati, coordinati da un attore router principale.
+
+### 4.5.1 Architettura Modulare(`GossipActor`)
+Il `GossipActor` funge da punto di ingresso (Gateway) per le comunicazioni P2P del nodo. 
+Riceve messaggi generici dal protocollo gossip e li instrada ai sottomoduli di competenza (`ConfigurationActor`, `DatasetDistributionActor`, `ConsensusActor`), disaccoppiando la ricezione dei messaggi dalla loro effettiva elaborazione.
+Oltre al routing, il `GossipActor` gestisce in prima persona la logica core dell'algoritmo di Gossip:
+* **Push-based Sync:** Tramite un sistema basato su timer periodici (`TickGossip`), l'attore interroga il sistema di Discovery per ottenere la lista dei peer attivi, ne seleziona uno in modo pseudo-casuale e gli invia il proprio stato locale del modello. Questo approccio probabilistico garantisce, nel tempo, la diffusione dell'informazione e la convergenza del cluster.
+* **Propagazione dei Segnali di Controllo:** Il protocollo prevede comandi per il controllo globale della simulazione (come `GlobalPause`, `GlobalResume`, `GlobalStop`). Il `GossipActor` si occupa di intercettare questi messaggi e diffonderli verso gli altri peer, per poi applicarne gli effetti sui sottomoduli locali.
+
+### 4.5.2 Bootstrap Distribuito (`ConfigurationActor`)
+L'avvio di un sistema distribuito richiede che tutti i nodi condividano la stessa configurazione iniziale (architettura della rete e iperparametri), originariamente generata dal nodo Seed. Il design del `ConfigurationActor` affronta questo problema adottando un pattern di **Polling Attivo con Caching**:
+* **Fase di Attesa:** All'avvio, i nodi client non possiedono la configurazione. L'attore instaura un ciclo di polling periodico interrogando i vicini finché non riceve i parametri iniziali. Questo design impedisce che un nodo inizi ad addestrare una rete neurale non compatibile con il resto del cluster.
+* **Caching e Propagazione:** Una volta ricevuta, la configurazione viene salvata nello stato interno dell'attore (`cachedConfig`). Da questo momento, il nodo smette di richiedere la configurazione e diventa a sua volta una potenziale fonte (Seed secondario) per i nuovi nodi che si uniscono tardivamente al cluster, garantendo scalabilità in fase di bootstrap.
+
+### 4.5.3 Pattern Scatter-Gather e Tolleranza ai Guasti (`ConsensusActor`)
+Per monitorare l'andamento del Gossip Learning, il sistema deve calcolare quanto le reti neurali dei vari nodi divergano tra loro (Consenso Globale). Essendo un sistema P2P, nessun nodo ha la visione globale istantanea della rete. Il `ConsensusActor` risolve questo problema implementando il pattern architetturale **Scatter-Gather** strutturato in "Round" (epoche di consenso):
+* **Scatter (Dispersione):** A intervalli regolari, l'attore avvia un nuovo `ConsensusRoundState`, registrando il proprio modello locale e inviando una richiesta di snapshot a *tutti* i peer attualmente visibili nella rete (a differenza dell'algoritmo di addestramento che ne sceglie solo uno).
+* **Gather (Raccolta):** L'attore accumula le risposte in modo asincrono, verificando che appartengano al Round corretto tramite un identificativo univoco (`roundId`). Questo accorgimento progettuale impedisce che messaggi arrivati in ritardo da round precedenti inquinino il calcolo corrente.
+* **Resilienza tramite Timeout:** In un sistema distribuito, i peer possono fallire o subire ritardi di rete. Per evitare che il nodo rimanga bloccato in attesa infinita di una risposta mancante, il design include un timer di timeout. Allo scadere del timer, il consenso viene forzatamente calcolato utilizzando unicamente i modelli ricevuti fino a quel momento (dati parziali), privilegiando la *Liveness* del sistema rispetto alla consistenza assoluta dell'interfaccia grafica.
+
+### 4.5.4 Segmentazione dei Dati (`DatasetDistributionActor`)
+Parallelamente alla configurazione, il cluster deve spartirsi il set di dati da analizzare. Il `DatasetDistributionActor` è stato progettato come un modulo autonomo che intercetta i comandi di distribuzione generati dal nodo Seed all'avvio. Questo disaccoppiamento garantisce che la logica di partizionamento dei dati non interferisca con lo scambio continuo dei modelli predittivi, mantenendo pulita l'architettura dei flussi dati.
+
+
 ## 4.X Livello di Serializzazione
 
 La natura P2P dell'architettura e l'algoritmo di Gossip Learning richiedono che i nodi si scambino ripetutamente lo stato dei propri modelli predittivi. Le entità scambiate possono essere di grandi dimensioni. Per ottimizzare le performance di rete e ridurre la latenza, il sistema adotta una serializzazione binaria custom, evitando formati verbosi o meccanismi di serializzazione standard inefficienti.
