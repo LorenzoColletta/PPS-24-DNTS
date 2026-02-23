@@ -1,3 +1,9 @@
+---
+layout: default
+title: Processo di Sviluppo
+nav_order: 2
+---
+
 # 1. Processo di Sviluppo Adottato
 
 Il processo di sviluppo per il progetto Distributed Neural Training Simulation (DNTS) segue una metodologia incrementale e iterativa aderente al framework Scrum.
