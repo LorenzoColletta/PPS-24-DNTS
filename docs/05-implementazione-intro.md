@@ -393,3 +393,72 @@ In termini di programmazione funzionale, il sistema realizza:
 * dominio chiuso tramite ADT;
 * composizione funzionale delle trasformazioni;
 * utilizzo avanzato del sistema dei tipi di Scala 3.
+
+
+### 5.3.5 Implementazione del `DiscoveryActor`
+
+Il `DiscoveryActor` è responsabile della gestione dinamica delle referenze agli attori di tipo `GossipActor` considerati raggiungibili nel sistema. Dal punto di vista implementativo, esso costituisce un componente di integrazione tra il meccanismo di *service discovery* offerto da Akka Typed (tramite `Receptionist`) e il modello applicativo rappresentato da `GossipPeerState`.
+
+#### Integrazione con il Receptionist
+
+All’interno del metodo `apply`, l’attore viene inizializzato mediante `Behaviors.setup`. In questa fase viene creato un `messageAdapter` per trasformare i messaggi di tipo `Receptionist.Listing` nel messaggio interno `ListingUpdated`.
+
+L’adapter:
+
+* consente di mantenere chiuso il protocollo dell’attore (`DiscoveryCommand`);
+* evita che il comportamento debba gestire direttamente tipi infrastrutturali esterni;
+* realizza una forma di adattamento locale analoga a quella adottata in altri punti del sistema.
+
+Successivamente l’attore si sottoscrive al `Receptionist` mediante `Receptionist.Subscribe`, utilizzando una `ServiceKey[GossipCommand]`. In questo modo il `DiscoveryActor` riceve notifiche ogni volta che l’insieme degli attori registrati per quel servizio viene aggiornato.
+
+Questa scelta implementativa consente di delegare completamente ad Akka il tracciamento dei servizi disponibili, evitando la necessità di meccanismi manuali di sincronizzazione o polling.
+
+---
+
+#### Struttura del comportamento e gestione dello stato
+
+Il comportamento principale è definito dalla funzione `running`, parametrizzata da tre elementi:
+
+* lo stato corrente (`GossipPeerState`);
+* un riferimento opzionale al gossip locale (`Option[ActorRef[GossipCommand]]`);
+* un flag booleano (`registerGossipPermit`) che regola la registrazione al `Receptionist`.
+
+Anche in questo caso, coerentemente con lo stile funzionale adottato nel sistema, lo stato è immutabile e ogni transizione produce una nuova istanza del comportamento:
+
+```scala
+running(newState, gossip, registerGossipPermit)
+```
+
+Non sono presenti variabili mutabili né effetti collaterali impliciti; ogni modifica avviene tramite copia strutturale del case class `GossipPeerState`.
+
+---
+
+#### Registrazione controllata del GossipActor
+
+La registrazione effettiva (`Receptionist.Register`) avviene solo quando:
+
+1. il riferimento al gossip locale è stato fornito (`RegisterGossip`);
+2. è stato esplicitamente concesso il permesso (`RegisterGossipPermit`).
+
+L’uso congiunto di un `Option[ActorRef]` e di un flag booleano evita condizioni di gara logiche tra l’inizializzazione del gossip e la fase di abilitazione alla registrazione. La registrazione viene eseguita solo quando entrambe le condizioni risultano soddisfatte, garantendo coerenza nello startup del sottosistema.
+
+---
+
+#### Modello dello stato: `GossipPeerState`
+
+Lo stato è rappresentato dal case class `GossipPeerState` con parametri:
+
+* `knownReferences`: insieme delle referenze scoperte tramite `Receptionist`;
+* `acceptedNodes`: insieme degli `Address` considerati validi a livello applicativo.
+
+Il `Receptionist` fornisce l’elenco completo dei servizi registrati, ma non tutti devono essere necessariamente considerati validi dal punto di vista applicativo. La validità è determinata dall’insieme `acceptedNodes`, che viene aggiornato tramite i messaggi `NotifyAddNode` e `NotifyRemoveNode`.
+
+Il metodo:
+
+```scala
+def acceptedReferences: Set[ActorRef[GossipCommand]]
+```
+
+realizza il filtro applicativo selezionando esclusivamente le referenze il cui `Address` appartiene all’insieme dei nodi accettati oppure presenta `localScope`. Tale condizione consente di includere sempre il gossip locale, anche in assenza di esplicita accettazione.
+
+L’aggiornamento dello stato avviene sempre tramite metodi puri (`acceptNode`, `removeNode`, `updateKnownReferences`), che restituiscono una nuova istanza immutabile. Non sono presenti strutture dati mutabili né sincronizzazioni esplicite.
