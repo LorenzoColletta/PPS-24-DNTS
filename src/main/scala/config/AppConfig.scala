@@ -41,10 +41,10 @@ trait AppConfig:
  */
 object ProductionConfig extends AppConfig:
   /** UI and metrics refresh rate. */
-  override final val metricsInterval: FiniteDuration = 500.millis
+  override final val metricsInterval: FiniteDuration = 550.millis
 
   /** Local training speed (delay between batches). */
-  override final val batchInterval: FiniteDuration = 10.millis
+  override final val batchInterval: FiniteDuration = 75.millis
 
   /** P2P synchronization frequency. */
   override final val gossipInterval: FiniteDuration = 4.seconds
@@ -66,6 +66,6 @@ object ProductionConfig extends AppConfig:
   /**
    * Global consensus round frequency.
    */
-  override final val consensusInterval: FiniteDuration = 500.millis
+  override final val consensusInterval: FiniteDuration = 400.millis
 
   override final val gossipRequestConfig: FiniteDuration = 3.seconds

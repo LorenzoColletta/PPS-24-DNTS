@@ -198,7 +198,7 @@ class RootBehavior(
           seedDataPayload match
             case Some((model, _, trainConfig, optimizer, _)) =>
               modelActor   ! ModelCommand.Initialize(model, optimizer, trainerActor)
-              monitorActor ! MonitorCommand.Initialize("LocalMaster", model, trainConfig)
+              monitorActor ! MonitorCommand.Initialize(myAddress, model, trainConfig)
               context.log.info("Root: Received Start Command. Distributing Data and Model to Cluster...")
 
               configurationActor ! ConfigurationProtocol.ShareConfig(myAddress, model, trainConfig)
