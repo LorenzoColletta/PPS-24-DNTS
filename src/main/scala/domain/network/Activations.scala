@@ -43,7 +43,7 @@ enum Activations extends Activation:
   case LeakyRelu
   case Tanh
 
-  override def name: String = this.toString
+  override def name: String = this.productPrefix
 
   override def apply(x: Double): Double =
     this match
