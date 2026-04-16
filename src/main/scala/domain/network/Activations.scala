@@ -5,7 +5,7 @@ package domain.network
  * It encapsulates the function logic, its derivative for backpropagation,
  * and initialization heuristics.
  */
-trait Activation:
+trait Activation extends (Double => Double):
 
   /** @return The unique string identifier for this activation. */
   def name: String

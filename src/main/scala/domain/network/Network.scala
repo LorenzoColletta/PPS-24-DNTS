@@ -42,7 +42,7 @@ case class Network(layers: List[Layer]):
   def forward(input: Vector): Vector =
     layers.foldLeft(input) { (x, layer) =>
       val z = (layer.weights * x) + layer.biases
-      z.map(layer.activation.apply)
+      z.map(layer.activation)
     }
 
 /**
